@@ -1,4 +1,4 @@
-export type Role = 'SUPER_ADMIN' | 'CLIENT' | 'EMPLOYEE' | 'PENDING';
+export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'CLIENT' | 'EMPLOYEE' | 'PENDING';
 
 export type LeadStatus =
   | 'NEW'
@@ -124,9 +124,10 @@ export interface User {
   avatar?: string;
   designation?: string;
   department?: string;
+  linkedEntity?: string;
   joinDate?: string;
   salaryBasic?: number;
-  status?: 'ACTIVE' | 'ON_LEAVE' | 'RESIGNED';
+  status?: 'ACTIVE' | 'ON_LEAVE' | 'RESIGNED' | 'SUSPENDED';
   isOnboarded?: boolean;
   onboardingData?: EmployeeOnboardingData;
   clientOnboardingData?: ClientOnboardingData;

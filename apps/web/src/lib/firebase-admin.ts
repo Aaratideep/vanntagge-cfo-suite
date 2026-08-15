@@ -1,10 +1,12 @@
-import * as admin from 'firebase-admin';
+import { getApps, initializeApp, applicationDefault } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 // Protect against multiple initializations in development
-if (!admin.getApps().length) {
+if (!getApps().length) {
   try {
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
+    initializeApp({
+      credential: applicationDefault(),
     });
   } catch (error) {
     console.warn('Firebase Admin SDK initialization failed:', error);
@@ -15,7 +17,7 @@ if (!admin.getApps().length) {
 // Fallback logic for mock sandbox if credentials fail
 export const getAdminAuth = () => {
   try {
-    return admin.auth();
+    return getAuth();
   } catch (e) {
     return null;
   }
@@ -23,7 +25,7 @@ export const getAdminAuth = () => {
 
 export const getAdminDb = () => {
   try {
-    return admin.firestore();
+    return getFirestore();
   } catch (e) {
     return null;
   }

@@ -53,14 +53,14 @@ export const ClientDashboardView: React.FC = () => {
   };
 
   const totalTasks = myTasks.length;
-  const completedTasks = myTasks.filter(t => t.status === 'COMPLETED').length;
+  const completedTasks = myTasks.filter(t => (t.status as string) === 'COMPLETED').length;
   const overallProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Chart Data Calculations
   const taskStatusCounts = {
     Completed: completedTasks,
-    InProgress: myTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'REVIEW_PENDING').length,
-    Pending: myTasks.filter(t => t.status === 'PENDING' || !t.status || t.status === 'TODO').length,
+    InProgress: myTasks.filter(t => (t.status as string) === 'IN_PROGRESS' || (t.status as string) === 'REVIEW_PENDING').length,
+    Pending: myTasks.filter(t => (t.status as string) === 'PENDING' || !t.status || (t.status as string) === 'TODO').length,
   };
 
   const taskChartData = [
@@ -157,7 +157,7 @@ export const ClientDashboardView: React.FC = () => {
                       <Tooltip 
                         cursor={{fill: '#f8fafc'}}
                         contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
-                        formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Amount']}
+                        formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, 'Amount']}
                       />
                       <Bar dataKey="Amount" radius={[4, 4, 0, 0]}>
                         {billingChartData.map((entry, index) => (
