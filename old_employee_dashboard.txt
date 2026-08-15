@@ -1,0 +1,1 @@
+"        if (t.status === 'COMPLETED') {\n          myCompletedTasks++;\n        } else {\n          myOpenTasks++;\n          myTasks.push({ ...t, clientName: e.clientCompanyName });\n          if (t.dueDate && new Date(t.dueDate) < now) {\n            myOverdueTasks++;\n          }\n        }"

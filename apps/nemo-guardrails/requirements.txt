@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+nemoguardrails
+pydantic
+python-dotenv
+langchain-openai

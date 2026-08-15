@@ -1,0 +1,14 @@
+{
+  "projectId": "38b72e23-87e7-4804-8ac0-1c602c184d95",
+  "type": "frontend",
+  "name": "Sandbox Login and Dashboard Check",
+  "planSteps": [
+    { "type": "action", "description": "If there is a 'Click to Continue' button on a warning page, click it to proceed to the application" },
+    { "type": "action", "description": "Type 'sarah.jenkins@vanntagge.com' into the input field with id 'login-email'" },
+    { "type": "action", "description": "Type 'TEST' into the CAPTCHA text input field" },
+    { "type": "action", "description": "Click the submit button to sign in" },
+    { "type": "assertion", "description": "The page displays the welcome header 'Your Operations Workspace'" },
+    { "type": "action", "description": "Click on the Workloads navigation link in the sidebar" },
+    { "type": "assertion", "description": "The workloads page loads showing 'Consultant Workloads & Assessment' header" }
+  ]
+}

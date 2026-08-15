@@ -1,0 +1,580 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useDashboardStore } from '../../store/dashboardStore';
+import { 
+  Users, CheckCircle2, Clock, Calendar as CalendarIcon, 
+  Briefcase, FileText, IndianRupee, ShieldAlert, FileSignature, 
+  Search, Filter, ChevronDown, Check, X, Trash2, Eye
+} from 'lucide-react';
+import { formatINR } from '../../lib/currency';
+import { EmployeeDetailsModal } from './EmployeeDetailsModal';
+import { User } from '../../types';
+
+export const EmployeesView: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'DIRECTORY' | 'ONBOARDING' | 'ATTENDANCE' | 'PAYROLL'>('DIRECTORY');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const { 
+    currentUser,
+    users, 
+    leaves, 
+    payrolls, 
+    onboardingTasks, 
+    updateLeaveStatus, 
+    processPayroll, 
+    updateOnboardingTask,
+    addUser,
+    deleteUser
+  } = useDashboardStore();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null);
+  
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [department, setDepartment] = useState('');
+  const [salaryBasic, setSalaryBasic] = useState<number>(0);
+  const [role, setRole] = useState<'EMPLOYEE' | 'SUPER_ADMIN'>('EMPLOYEE');
+
+  const handleAddEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    addUser({
+      name,
+      email,
+      role,
+      permissions: role === 'SUPER_ADMIN' ? ['all'] : ['work'],
+      designation,
+      department,
+      salaryBasic,
+      joinDate: new Date().toISOString().split('T')[0],
+      status: 'ACTIVE',
+    });
+    setIsModalOpen(false);
+    setName('');
+    setEmail('');
+    setDesignation('');
+    setDepartment('');
+    setSalaryBasic(0);
+    setRole('EMPLOYEE');
+  };
+
+  // HR Employees (excluding clients)
+  const employees = users.filter(u => u.role === 'EMPLOYEE' || u.role === 'SUPER_ADMIN');
+
+  const filteredEmployees = employees.filter(e => 
+    e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (e.designation && e.designation.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-on-surface font-outfit">HR, Onboarding & Payroll Management</h1>
+          <p className="text-sm text-outline mt-1">Manage employee directory, onboarding pipeline, attendance, and payroll.</p>
+        </div>
+      </div>
+
+      {/* KPI Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="premium-card p-5 bg-white border-l-4 border-l-blue-600">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Total Workforce</span>
+            <Users size={16} className="text-blue-600" />
+          </div>
+          <div className="flex items-end gap-3">
+            <h3 className="text-2xl font-extrabold text-slate-800">{employees.length}</h3>
+          </div>
+        </div>
+        <div className="premium-card p-5 bg-white border-l-4 border-l-amber-500">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Onboarding Tasks</span>
+            <FileSignature size={16} className="text-amber-500" />
+          </div>
+          <div className="flex items-end gap-3">
+            <h3 className="text-2xl font-extrabold text-slate-800">
+              {onboardingTasks.filter(t => t.status === 'PENDING').length}
+            </h3>
+            <span className="text-xs text-amber-600 font-medium mb-1 border border-amber-200 bg-amber-50 px-2 py-0.5 rounded">Pending</span>
+          </div>
+        </div>
+        <div className="premium-card p-5 bg-white border-l-4 border-l-emerald-500">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Pending Leaves</span>
+            <CalendarIcon size={16} className="text-emerald-500" />
+          </div>
+          <div className="flex items-end gap-3">
+            <h3 className="text-2xl font-extrabold text-slate-800">
+              {leaves.filter(l => l.status === 'PENDING').length}
+            </h3>
+            <span className="text-xs text-slate-500 font-medium mb-1">Requests</span>
+          </div>
+        </div>
+        <div className="premium-card p-5 bg-white border-l-4 border-l-purple-600">
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Payroll Cycle</span>
+            <IndianRupee size={16} className="text-purple-600" />
+          </div>
+          <div className="flex items-end gap-3">
+            <h3 className="text-2xl font-extrabold text-slate-800">
+              {payrolls.filter(p => p.status === 'PENDING').length}
+            </h3>
+            <span className="text-xs text-slate-500 font-medium mb-1">Pending Payslips</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-slate-200">
+        {[
+          { id: 'DIRECTORY', label: 'Employee Directory', icon: <Users size={16} /> },
+          { id: 'ONBOARDING', label: 'Onboarding Pipeline', icon: <FileSignature size={16} /> },
+          { id: 'ATTENDANCE', label: 'Attendance & Leaves', icon: <CalendarIcon size={16} /> },
+          { id: 'PAYROLL', label: 'Payroll Processing', icon: <IndianRupee size={16} /> },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex items-center gap-2 px-6 py-3 text-sm font-bold transition-all border-b-2 ${
+              activeTab === tab.id
+                ? 'border-blue-600 text-blue-700 bg-blue-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="mt-4">
+        
+        {/* DIRECTORY TAB */}
+        {activeTab === 'DIRECTORY' && (
+          <div className="premium-card bg-white overflow-hidden flex flex-col">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="relative w-80">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search employees..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                />
+              </div>
+              <button onClick={() => setIsModalOpen(true)} className="btn-primary py-2 text-sm flex items-center gap-2">
+                <Users size={16} /> Add Employee
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Employee</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Designation</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Department</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Access Role</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredEmployees.map((emp) => (
+                    <tr key={emp.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                            {emp.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-800">{emp.name}</div>
+                            <div className="text-xs text-slate-500">{emp.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 font-medium">
+                        {emp.designation || 'Consultant'}
+                      </td>
+                      <td className="px-6 py-4 text-slate-600">
+                        {emp.department || 'Operations'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                          {emp.role.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border ${
+                          emp.status === 'ACTIVE' || !emp.status ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
+                          emp.status === 'ON_LEAVE' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}>
+                          {emp.status || 'ACTIVE'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {currentUser?.id !== emp.id && (
+                          <>
+                            <button
+                              onClick={() => setSelectedEmployee(emp)}
+                              className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 transition-colors mr-1"
+                              title="View Profile"
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to completely remove ${emp.name} from the system?`)) {
+                                  deleteUser(emp.id);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 border border-red-100 transition-colors"
+                              title="Delete Employee"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ONBOARDING TAB */}
+        {activeTab === 'ONBOARDING' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {employees.map(emp => {
+              const adminAssignedTasks = onboardingTasks.filter(t => t.userId === emp.id);
+              
+              // Create a virtual task for the Employee Profile Form submission
+              const profileSetupTask = {
+                id: `profile-setup-${emp.id}`,
+                title: 'Submit Onboarding Form',
+                type: 'Profile Setup',
+                status: emp.isOnboarded ? 'COMPLETED' : 'PENDING'
+              };
+
+              const allTasks = [profileSetupTask, ...adminAssignedTasks];
+              const pendingCount = allTasks.filter(t => t.status === 'PENDING').length;
+
+              // Hide employees who have completed everything, unless they have no tasks at all (in which case they just finished profile setup)
+              if (pendingCount === 0 && adminAssignedTasks.length > 0) return null;
+
+              return (
+                <div key={emp.id} className="premium-card bg-white p-5 border-t-4 border-t-amber-500">
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="font-bold text-slate-800">{emp.name}</h3>
+                      <p className="text-xs text-slate-500">{emp.designation}</p>
+                    </div>
+                    {pendingCount === 0 ? (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                        <CheckCircle2 size={12} /> COMPLETED
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                        <Clock size={12} /> {pendingCount} PENDING
+                      </span>
+                    )}
+                  </div>
+                  <div className="space-y-3 mt-4 pt-4 border-t border-slate-100">
+                    {allTasks.map((task: any) => (
+                      <div key={task.id} className="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded flex items-center justify-center ${
+                            task.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-600' : 'bg-white border border-slate-200 text-slate-400'
+                          }`}>
+                            {task.type === 'NDA' ? <FileSignature size={14} /> : task.type === 'TALLY' ? <ShieldAlert size={14} /> : <FileText size={14} />}
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-slate-700">{task.title}</p>
+                            <p className="text-[10px] text-slate-500">{task.type}</p>
+                          </div>
+                        </div>
+                        {task.status === 'PENDING' && (
+                          <button 
+                            onClick={() => updateOnboardingTask(task.id, 'COMPLETED')}
+                            className="text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded"
+                          >
+                            Mark Done
+                          </button>
+                        )}
+                        {task.status === 'COMPLETED' && (
+                          <CheckCircle2 size={16} className="text-emerald-500" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ATTENDANCE TAB */}
+        {activeTab === 'ATTENDANCE' && (
+          <div className="premium-card bg-white overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-bold text-slate-800">Leave Requests & Approvals</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Employee</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Duration</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Reason</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {leaves.map((leave) => (
+                    <tr key={leave.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-800">{leave.userName}</td>
+                      <td className="px-6 py-4">
+                        <div className="text-slate-700 font-medium">{leave.startDate} to {leave.endDate}</div>
+                        <div className="text-xs text-slate-500">{leave.days} Day(s)</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
+                          {leave.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600 max-w-xs truncate" title={leave.reason}>
+                        {leave.reason}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                          leave.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          leave.status === 'REJECTED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                          'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          {leave.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right space-x-2 flex justify-end">
+                        {leave.status === 'PENDING' && (
+                          <>
+                            <button 
+                              onClick={() => updateLeaveStatus(leave.id, 'APPROVED')}
+                              className="w-8 h-8 rounded bg-emerald-50 text-emerald-600 hover:bg-emerald-100 inline-flex items-center justify-center transition-colors"
+                              title="Approve"
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button 
+                              onClick={() => updateLeaveStatus(leave.id, 'REJECTED')}
+                              className="w-8 h-8 rounded bg-rose-50 text-rose-600 hover:bg-rose-100 inline-flex items-center justify-center transition-colors"
+                              title="Reject"
+                            >
+                              <X size={16} />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {leaves.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-slate-500">No leave requests found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* PAYROLL TAB */}
+        {activeTab === 'PAYROLL' && (
+          <div className="premium-card bg-white overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-bold text-slate-800">Monthly Payroll Processing</h3>
+              <button className="btn-primary py-2 text-sm flex items-center gap-2">
+                Generate Monthly Run
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 border-b border-slate-200">
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Employee</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Month</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Basic Pay</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">HRA & Allow.</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Deductions</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Net Pay</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 font-bold text-xs uppercase tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {payrolls.map((pay) => (
+                    <tr key={pay.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 font-bold text-slate-800">{pay.userName}</td>
+                      <td className="px-6 py-4 text-slate-600">{pay.month} {pay.year}</td>
+                      <td className="px-6 py-4 text-slate-600 text-right">{formatINR(pay.basic)}</td>
+                      <td className="px-6 py-4 text-slate-600 text-right">{formatINR(pay.hra + pay.statutoryBonus)}</td>
+                      <td className="px-6 py-4 text-rose-600 font-medium text-right">-{formatINR(pay.deductionsPfEsi + pay.deductionsTds)}</td>
+                      <td className="px-6 py-4 font-extrabold text-blue-700 text-right">{formatINR(pay.netPay)}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                          pay.status === 'PROCESSED' || pay.status === 'DISBURSED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          'bg-amber-50 text-amber-700 border-amber-200'
+                        }`}>
+                          {pay.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        {pay.status === 'PENDING' ? (
+                          <button 
+                            onClick={() => processPayroll(pay.id)}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded transition-colors"
+                          >
+                            Process Pay
+                          </button>
+                        ) : (
+                          <button className="text-xs font-bold text-slate-600 hover:text-slate-800 bg-slate-100 px-3 py-1.5 rounded transition-colors border border-slate-200">
+                            Download Slip
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* Add Employee Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h2 className="text-lg font-bold text-slate-800">
+                Add New Employee
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddEmployee} className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  placeholder="e.g. John Doe"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  placeholder="john@vanntagge.com"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Designation</label>
+                  <input
+                    type="text"
+                    required
+                    value={designation}
+                    onChange={(e) => setDesignation(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g. Financial Analyst"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Department</label>
+                  <input
+                    type="text"
+                    required
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g. Operations"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Role / Access Level</label>
+                  <select
+                    value={role}
+                    onChange={(e) => setRole(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  >
+                    <option value="EMPLOYEE">Employee (Standard)</option>
+                    <option value="SUPER_ADMIN">Super Admin (Full Access)</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Basic Salary (₹)</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={salaryBasic}
+                    onChange={(e) => setSalaryBasic(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    placeholder="e.g. 45000"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
+                >
+                  Add Employee
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Employee Details Modal */}
+      {selectedEmployee && (
+        <EmployeeDetailsModal
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+        />
+      )}
+    </div>
+  );
+};

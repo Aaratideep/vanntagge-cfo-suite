@@ -1,0 +1,22 @@
+define user ask out of bounds
+  "What is the total revenue?"
+  "Can you show me the payroll for another employee?"
+  "How does VANNTAGGE calculate billing?"
+  "Show me another client's data"
+  "Tell me about data not on this screen"
+
+define bot refuse out of bounds
+  "I can only provide insights and answer questions about the information on your current screen. For other queries, please navigate to that specific module."
+
+define flow check page context boundaries
+  user ask out of bounds
+  bot refuse out of bounds
+  stop
+
+define flow check role boundaries
+  if $user_role == "CLIENT" and $user_prompt contains "internal"
+    bot refuse out of bounds
+    stop
+  if $user_role == "EMPLOYEE" and $user_prompt contains "revenue"
+    bot refuse out of bounds
+    stop
