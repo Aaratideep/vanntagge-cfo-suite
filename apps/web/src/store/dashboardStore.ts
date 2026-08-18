@@ -584,7 +584,7 @@ export const useDashboardStore = create<DashboardState>()(
         companyName: name,
         contactPerson: details?.contactPerson || 'Executive Contact',
         email: details?.email || `contact@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'company'}.com`,
-        phone: details?.phone || '+91-98765-00000',
+        phone: details?.phone || '',
         industry: details?.industry || 'Services',
         businessType: details?.businessType || 'Pvt. Ltd.',
         gstin: details?.gstin || (details as any)?.clientGstin || '',
