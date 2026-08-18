@@ -25,6 +25,7 @@ import { DocumentPreviewModal } from '../DocumentPreviewModal';
 
 export const BillingView: React.FC = () => {
   const {
+    clients,
     engagements,
     addInvoice,
     deleteInvoice,
@@ -63,8 +64,9 @@ export const BillingView: React.FC = () => {
   const selectedEngagement = engagements.find((e) => e.id === activeEngId);
 
   const handleDispatch = (type: 'whatsapp' | 'email', inv: Invoice, eng: any) => {
-    const clientPhone = eng?.clientContactPhone || '';
-    const clientEmail = eng?.clientContactEmail || '';
+    const client = clients?.find(c => c.id === eng?.clientId);
+    const clientPhone = client?.phone || eng?.clientContactPhone || '';
+    const clientEmail = client?.email || eng?.clientContactEmail || '';
     
     let text = '';
     if (inv.status === 'PENDING') {

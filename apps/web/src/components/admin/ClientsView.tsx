@@ -67,11 +67,11 @@ export const ClientsView: React.FC = () => {
     let text = `Hello ${client.companyName} team,\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
 
     if (type === 'whatsapp') {
-      const phone = client.contactPhone || '';
+      const phone = client.phone || '';
       if (!phone) { alert('No contact phone available for this client.'); return; }
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
     } else {
-      const email = client.contactEmail || (client as any).email || '';
+      const email = client.email || '';
       if (!email) { alert('No contact email available for this client.'); return; }
       window.open(`mailto:${email}?subject=${encodeURIComponent(`Checking in - ${adminSettings.companyName}`)}&body=${encodeURIComponent(text)}`, '_blank');
     }

@@ -1473,7 +1473,8 @@ export const useDashboardStore = create<DashboardState>()(
     quotations: state.quotations,
     engagementLetters: state.engagementLetters,
     auditLogs: state.auditLogs,
-    notifications: state.notifications
+    notifications: state.notifications,
+    adminSettings: state.adminSettings
   }),
   migrate: (persistedState: any, version: number) => {
     return persistedState;
