@@ -36,14 +36,24 @@ const STATUS_META: Record<LeadStatus, { label: string; color: string; bg: string
   NEW:               { label: 'New',              color: 'text-blue-700',    bg: 'bg-blue-50',    border: 'border-blue-200' },
   CONTACTED:         { label: 'Contacted',         color: 'text-indigo-700',  bg: 'bg-indigo-50',  border: 'border-indigo-200' },
   MEETING_SCHEDULED: { label: 'Meeting',           color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200' },
-  PROPOSAL_SENT:     { label: 'Proposal Sent',     color: 'text-purple-700',  bg: 'bg-purple-50',  border: 'border-purple-200' },
-  NEGOTIATION:       { label: 'Negotiation',       color: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-200' },
+  PROPOSAL_SENT:     { label: 'Quotation',         color: 'text-purple-700',  bg: 'bg-purple-50',  border: 'border-purple-200' },
+  NEGOTIATION:       { label: 'Agreement',         color: 'text-orange-700',  bg: 'bg-orange-50',  border: 'border-orange-200' },
   FOLLOW_UP:         { label: 'Follow-up',         color: 'text-cyan-700',    bg: 'bg-cyan-50',    border: 'border-cyan-200' },
   ON_HOLD:           { label: 'On Hold',           color: 'text-gray-700',    bg: 'bg-gray-50',    border: 'border-gray-200' },
   CONVERTED:         { label: 'Converted',         color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
   LOST:              { label: 'Lost',              color: 'text-red-700',     bg: 'bg-red-50',     border: 'border-red-200' },
   REJECTED:          { label: 'Rejected',          color: 'text-red-900',     bg: 'bg-red-100',    border: 'border-red-300' },
 };
+
+const ALLOWED_STATUS_KEYS: LeadStatus[] = [
+  'NEW',
+  'CONTACTED',
+  'PROPOSAL_SENT',
+  'NEGOTIATION',
+  'CONVERTED',
+  'LOST',
+  'REJECTED'
+];
 
 const PRIORITY_META: Record<Priority, { color: string; bg: string; border: string }> = {
   LOW:    { color: 'text-slate-600',  bg: 'bg-slate-50',  border: 'border-slate-200' },
@@ -55,9 +65,8 @@ const PRIORITY_META: Record<Priority, { color: string; bg: string; border: strin
 const PIPELINE_STAGES: { label: string; status: LeadStatus }[] = [
   { label: 'New',              status: 'NEW' },
   { label: 'Contacted',        status: 'CONTACTED' },
-  { label: 'Meeting',          status: 'MEETING_SCHEDULED' },
-  { label: 'Proposal Sent',    status: 'PROPOSAL_SENT' },
-  { label: 'Negotiation',      status: 'NEGOTIATION' },
+  { label: 'Quotation',        status: 'PROPOSAL_SENT' },
+  { label: 'Agreement',        status: 'NEGOTIATION' },
   { label: 'Converted',        status: 'CONVERTED' },
 ];
 
@@ -357,8 +366,8 @@ export const CRMView: React.FC = () => {
                 className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-600 outline-none"
               >
                 <option value="ALL">All Status</option>
-                {Object.entries(STATUS_META).map(([k, v]) => (
-                  <option key={k} value={k}>{v.label}</option>
+                {ALLOWED_STATUS_KEYS.map((k) => (
+                  <option key={k} value={k}>{STATUS_META[k].label}</option>
                 ))}
               </select>
             </div>
@@ -425,8 +434,8 @@ export const CRMView: React.FC = () => {
                               onChange={(e) => updateLead(lead.id, { status: e.target.value as LeadStatus })}
                               className={`px-2 py-1 rounded-lg text-[11px] font-semibold border outline-none cursor-pointer ${sm.bg} ${sm.color} ${sm.border}`}
                             >
-                              {Object.entries(STATUS_META).map(([k, v]) => (
-                                <option key={k} value={k}>{v.label}</option>
+                              {ALLOWED_STATUS_KEYS.map((k) => (
+                                <option key={k} value={k}>{STATUS_META[k].label}</option>
                               ))}
                             </select>
                           </td>

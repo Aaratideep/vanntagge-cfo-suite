@@ -34,7 +34,7 @@ export const EmployeesView: React.FC = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [designation, setDesignation] = useState('');
-  const [department, setDepartment] = useState('');
+  const [department, setDepartment] = useState('General');
   const [salaryBasic, setSalaryBasic] = useState<number>(0);
   const [role, setRole] = useState<'EMPLOYEE' | 'SUPER_ADMIN'>('EMPLOYEE');
 
@@ -55,7 +55,7 @@ export const EmployeesView: React.FC = () => {
     setName('');
     setEmail('');
     setDesignation('');
-    setDepartment('');
+    setDepartment('General');
     setSalaryBasic(0);
     setRole('EMPLOYEE');
   };
@@ -512,14 +512,20 @@ export const EmployeesView: React.FC = () => {
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-700">Department</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                    placeholder="e.g. Operations"
-                  />
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all cursor-pointer"
+                  >
+                    <option value="General">General</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Finance">Finance</option>
+                    <option value="HR">HR</option>
+                    <option value="Sales">Sales</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="IT">IT</option>
+                  </select>
                 </div>
               </div>
 

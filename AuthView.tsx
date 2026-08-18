@@ -783,26 +783,7 @@ export const AuthView: React.FC = () => {
                         <span>Aarati (Employee)</span>
                         <span className="font-bold underline">Auto-fill</span>
                       </div>
-                      <div
-                        onClick={() => {
-                          setEmail('sarah.jenkins@vanntagge.com');
-                          setPassword('demo');
-                        }}
-                        className="cursor-pointer hover:text-primary transition-all flex justify-between"
-                      >
-                        <span>Sarah Jenkins (Partner Admin)</span>
-                        <span className="font-bold underline">Auto-fill</span>
-                      </div>
-                      <div
-                        onClick={() => {
-                          setEmail('priya.sharma@vanntagge.com');
-                          setPassword('demo');
-                        }}
-                        className="cursor-pointer hover:text-primary transition-all flex justify-between"
-                      >
-                        <span>Priya Sharma (CFO Consultant)</span>
-                        <span className="font-bold underline">Auto-fill</span>
-                      </div>
+
                     </div>
                   </div>
                 )}

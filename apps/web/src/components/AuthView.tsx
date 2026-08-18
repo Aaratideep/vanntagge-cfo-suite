@@ -595,20 +595,25 @@ export const AuthView: React.FC = () => {
           </div>
 
           {/* Active Mode indicator badge */}
-          <div className="relative z-10 mt-auto">
-            <div className="w-full aspect-video rounded-2xl overflow-hidden border border-outline-variant/20 shadow-xl transform rotate-1 bg-white p-5 flex flex-col justify-between h-48">
-              <div className="flex justify-between items-center border-b border-outline-variant/20 pb-2">
-                <span className="text-[10px] font-bold text-primary uppercase">Workspace Status</span>
-                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${isFirebaseConfigured ? 'bg-green-50 text-green-700 border-green-150' : 'bg-amber-50 text-amber-700 border-amber-150'}`}>
+          <div className="relative z-10 mt-auto pb-4">
+            <div className="w-full rounded-2xl shadow-xl transform rotate-1 bg-white p-6 flex flex-col gap-5 border border-slate-100">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-bold text-blue-600 uppercase tracking-wide">Workspace Status</span>
+                <span className={`px-2 py-1 rounded-md text-[9px] font-bold border ${isFirebaseConfigured ? 'text-emerald-600 border-emerald-500' : 'text-orange-500 border-orange-500'}`}>
                   {isFirebaseConfigured ? 'FIREBASE SECURE' : 'SANDBOX DEMO MODE'}
                 </span>
               </div>
-              <div className="flex-1 py-3 text-xs text-on-surface-variant leading-relaxed">
-                {isFirebaseConfigured
-                  ? 'All auth state changes and project collections synchronize dynamically to your Cloud Firestore cluster in real-time.'
-                  : 'Running in Local Sandbox with mock CFO database accounts. Connecting Firebase credentials via .env.local launches Cloud Auth.'}
+              <div className="text-[13px] text-slate-700 leading-relaxed font-medium">
+                {isFirebaseConfigured ? (
+                  'All auth state changes and project collections synchronize dynamically to your Cloud Firestore cluster in real-time.'
+                ) : (
+                  <>
+                    Running in Local Sandbox with mock CFO database accounts.<br />
+                    Connecting Firebase credentials via .env.local launches Cloud Auth.
+                  </>
+                )}
               </div>
-              <div className="flex justify-between items-center text-[9px] text-outline">
+              <div className="flex justify-between items-center text-[11px] text-slate-400 pt-2">
                 <span>VANTAGE CFO Suite</span>
                 <span>Active Branch: main</span>
               </div>
@@ -837,26 +842,7 @@ export const AuthView: React.FC = () => {
                         <span>Aarati (Client)</span>
                         <span className="font-bold underline">Auto-fill</span>
                       </div>
-                      <div
-                        onClick={() => {
-                          setEmail('sarah.jenkins@vanntagge.com');
-                          setPassword('demo');
-                        }}
-                        className="cursor-pointer hover:text-primary transition-all flex justify-between"
-                      >
-                        <span>Sarah Jenkins (Partner Admin)</span>
-                        <span className="font-bold underline">Auto-fill</span>
-                      </div>
-                      <div
-                        onClick={() => {
-                          setEmail('priya.sharma@vanntagge.com');
-                          setPassword('demo');
-                        }}
-                        className="cursor-pointer hover:text-primary transition-all flex justify-between"
-                      >
-                        <span>Priya Sharma (CFO Consultant)</span>
-                        <span className="font-bold underline">Auto-fill</span>
-                      </div>
+
                     </div>
                   </div>
                 )}
