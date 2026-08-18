@@ -606,8 +606,9 @@ export const ClientsView: React.FC = () => {
                       <MessageCircle className="w-4 h-4 text-emerald-600"/>
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(`Are you sure you want to delete client "${client.companyName}"?`)) {
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Are you sure you want to delete client "${client.companyName}"? This will also remove associated engagements.`)) {
                           deleteClient(client.id, client.companyName);
                         }
                       }}

@@ -861,22 +861,36 @@ export const useDashboardStore = create<DashboardState>()(
 
   deleteClient: (id, companyName) => {
     const clientToDelete = get().clients.find((c) => c.id === id || (companyName && c.companyName.toLowerCase().trim() === companyName.toLowerCase().trim()));
-    const targetName = companyName || clientToDelete?.companyName;
+    const targetName = (companyName || clientToDelete?.companyName || '').toLowerCase().trim();
 
-    const engagementsToDelete = get().engagements.filter((e) => e.clientId === id || (targetName && e.clientCompanyName.toLowerCase().trim() === targetName.toLowerCase().trim()));
+    if (!targetName && !id) return;
+
+    const engagementsToDelete = get().engagements.filter((e) => e.clientId === id || (targetName && e.clientCompanyName.toLowerCase().trim() === targetName));
+    const invoicesToDelete = get().standaloneInvoices?.filter(inv => {
+      const rawName = inv.engagementName || (inv as any).clientName || '';
+      const name = rawName.replace(/CFO Advisory|Services|Virtual CFO/gi, '').trim().toLowerCase();
+      return name === targetName;
+    }) || [];
+    
+    const receiptsToDelete = get().standaloneReceipts?.filter(rec => rec.clientName?.trim().toLowerCase() === targetName) || [];
+    const quotationsToDelete = get().quotations?.filter(q => q.leadCompanyName?.trim().toLowerCase() === targetName) || [];
 
     set((state) => ({
-      clients: state.clients.filter((c) => c.id !== id && (!targetName || c.companyName.toLowerCase().trim() !== targetName.toLowerCase().trim())),
-      engagements: state.engagements.filter((e) => e.clientId !== id && (!targetName || e.clientCompanyName.toLowerCase().trim() !== targetName.toLowerCase().trim())),
+      clients: state.clients.filter((c) => c.id !== id && (!targetName || c.companyName.toLowerCase().trim() !== targetName)),
+      engagements: state.engagements.filter((e) => e.clientId !== id && (!targetName || e.clientCompanyName.toLowerCase().trim() !== targetName)),
+      standaloneInvoices: state.standaloneInvoices?.filter(inv => !invoicesToDelete.find(i => i.id === inv.id)) || [],
+      standaloneReceipts: state.standaloneReceipts?.filter(rec => !receiptsToDelete.find(r => r.id === rec.id)) || [],
+      quotations: state.quotations?.filter(q => !quotationsToDelete.find(qu => qu.id === q.id)) || [],
     }));
 
     if (clientToDelete?.id) {
       deleteRecordFromFirebase('clients', clientToDelete.id);
     }
     
-    engagementsToDelete.forEach(e => {
-      deleteRecordFromFirebase('engagements', e.id);
-    });
+    engagementsToDelete.forEach(e => deleteRecordFromFirebase('engagements', e.id));
+    invoicesToDelete.forEach(inv => deleteRecordFromFirebase('standaloneInvoices', inv.id));
+    receiptsToDelete.forEach(rec => deleteRecordFromFirebase('standaloneReceipts', rec.id));
+    quotationsToDelete.forEach(q => deleteRecordFromFirebase('quotations', q.id));
 
     get().addAuditLog('DELETE_CLIENT', `Deleted client ${targetName || id} and its engagements`);
   },
