@@ -80,7 +80,10 @@ export const ClientsView: React.FC = () => {
     };
 
     if (type === 'whatsapp') {
-      const phone = client.phone || '';
+      let phone = client.phone || '';
+      if (phone === '+91-00000-00000' || phone === '+91-98765-00000') {
+        phone = '';
+      }
       let sanitizedPhone = phone.replace(/\D/g, '');
       if (sanitizedPhone.length === 10) {
         sanitizedPhone = '91' + sanitizedPhone;

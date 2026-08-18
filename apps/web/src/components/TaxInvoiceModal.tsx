@@ -44,7 +44,10 @@ export const TaxInvoiceModal: React.FC = () => {
     const eng = engagements.find(e => e.id === inv.engagementId);
     const client = clients.find(c => c.id === eng?.clientId);
     
-    const clientPhone = client?.phone || (eng as any)?.clientContactPhone || '';
+    let clientPhone = client?.phone || (eng as any)?.clientContactPhone || '';
+    if (clientPhone === '+91-00000-00000' || clientPhone === '+91-98765-00000') {
+      clientPhone = '';
+    }
     const clientEmail = client?.email || (eng as any)?.clientContactEmail || '';
     const clientName = client?.contactPerson || client?.companyName || "Valued Client";
     const serviceName = eng?.name || "CFO Advisory & Statutory Governance";

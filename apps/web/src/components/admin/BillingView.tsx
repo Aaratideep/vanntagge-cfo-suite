@@ -67,7 +67,10 @@ export const BillingView: React.FC = () => {
     if (typeof window === 'undefined') return;
 
     const client = clients?.find(c => c.id === eng?.clientId);
-    const clientPhone = client?.phone || eng?.clientContactPhone || '';
+    let clientPhone = client?.phone || eng?.clientContactPhone || '';
+    if (clientPhone === '+91-00000-00000' || clientPhone === '+91-98765-00000') {
+      clientPhone = '';
+    }
     const clientEmail = client?.email || eng?.clientContactEmail || '';
     
     const amountStr = formatINR(Number((inv as any).finalAmount || (inv as any).totalAmount || inv.amount) || 0);
