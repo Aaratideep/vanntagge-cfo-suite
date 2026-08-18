@@ -16,6 +16,7 @@ import {
   Check,
   Clock,
   Mail,
+  MessageCircle,
   Trash2,
   User,
   UserCheck,
@@ -41,6 +42,7 @@ export const ClientsView: React.FC = () => {
     onboardNewClient,
     currentUser,
     users,
+    adminSettings,
   } = useDashboardStore();
 
   if (!currentUser) return null;
@@ -60,6 +62,20 @@ export const ClientsView: React.FC = () => {
     email: '',
   });
   const [generatedCredentials, setGeneratedCredentials] = useState<{username: string, password: string} | null>(null);
+
+  const handleDispatch = (type: 'whatsapp' | 'email', client: Client) => {
+    let text = `Hello ${client.companyName} team,\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
+
+    if (type === 'whatsapp') {
+      const phone = client.contactPhone || '';
+      if (!phone) { alert('No contact phone available for this client.'); return; }
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+    } else {
+      const email = client.contactEmail || (client as any).email || '';
+      if (!email) { alert('No contact email available for this client.'); return; }
+      window.open(`mailto:${email}?subject=${encodeURIComponent(`Checking in - ${adminSettings.companyName}`)}&body=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
 
   // Complete ERP Data Sync: Compute all clients from store + implied clients from all sections
   const clientMap = new Map<string, any>();
@@ -540,6 +556,12 @@ export const ClientsView: React.FC = () => {
                       className="flex-1 py-2 border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-xl text-center block transition-colors"
                     >
                       Onboarding Docs
+                    </button>
+                    <button onClick={() => handleDispatch('whatsapp', client)} className="w-10 flex items-center justify-center bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 rounded-xl transition-colors" title="WhatsApp Client">
+                      <MessageCircle size={16} />
+                    </button>
+                    <button onClick={() => handleDispatch('email', client)} className="w-10 flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 rounded-xl transition-colors" title="Email Client">
+                      <Mail size={16} />
                     </button>
                     <button
                       onClick={() => {

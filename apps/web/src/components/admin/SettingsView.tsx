@@ -8,7 +8,7 @@ import { isFirebaseConfigured } from '../../lib/firebase';
 import { pushRecordToFirebase } from '../../lib/firebaseSync';
 
 export const SettingsView: React.FC = () => {
-  const { currentUser, addAuditLog } = useDashboardStore();
+  const { currentUser, addAuditLog, adminSettings, setAdminSettings } = useDashboardStore();
 
   if (!currentUser) return null;
 
@@ -74,39 +74,48 @@ export const SettingsView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <div className="space-y-6 lg:col-span-1">
-          {/* Core Profile Parameters */}
+          {/* Admin Sender Identity */}
           <div className="premium-card p-5 space-y-4 bg-white">
             <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
               <Users size={14} className="text-blue-500" />
-              Active Organization
+              Admin Sender Identity
             </h3>
             
             <div className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1">Company Registered Name</label>
+                <label className="block text-slate-500 mb-1 font-semibold">Official Name</label>
                 <input
                   type="text"
-                  disabled
-                  value="VANNTAGGE CFO Services LLP"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none"
+                  value={adminSettings.adminName}
+                  onChange={(e) => setAdminSettings({ adminName: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">GSTIN (Tax Registry ID)</label>
+                <label className="block text-slate-500 mb-1 font-semibold">Official Email</label>
                 <input
-                  type="text"
-                  disabled
-                  value="27AAAFV8920C1ZA"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none"
+                  type="email"
+                  value={adminSettings.adminEmail}
+                  onChange={(e) => setAdminSettings({ adminEmail: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Corporate Registration (CIN)</label>
+                <label className="block text-slate-500 mb-1 font-semibold">WhatsApp Number (e.g. 919876543210)</label>
                 <input
                   type="text"
-                  disabled
-                  value="U74140MH2024PTC192837"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none"
+                  value={adminSettings.adminPhone}
+                  onChange={(e) => setAdminSettings({ adminPhone: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-500 mb-1 font-semibold">Firm Name</label>
+                <input
+                  type="text"
+                  value={adminSettings.companyName}
+                  onChange={(e) => setAdminSettings({ companyName: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
             </div>

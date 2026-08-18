@@ -60,6 +60,13 @@ import {
   OnboardingTask,
 } from '../types';
 
+export interface AdminSettings {
+  adminName: string;
+  adminEmail: string;
+  adminPhone: string;
+  companyName: string;
+}
+
 interface DashboardState {
   users: User[];
   leads: Lead[];
@@ -76,6 +83,8 @@ interface DashboardState {
   payrolls: PayrollRecord[];
   onboardingTasks: OnboardingTask[];
   currentUser: User | null;
+  adminSettings: AdminSettings;
+  setAdminSettings: (settings: Partial<AdminSettings>) => void;
   globalSuccessMsg: string | null;
   registrationCode: string;
   activeInvoiceForModal: Invoice | null;
@@ -183,6 +192,12 @@ export const useDashboardStore = create<DashboardState>()(
   standaloneInvoices: [],
   standaloneReceipts: [],
   currentUser: null,
+  adminSettings: {
+    adminName: "Aarati Mule",
+    adminEmail: "billing@vanntaggecfo.com",
+    adminPhone: "918668388715",
+    companyName: "VANNTAGGE CFO SERVICES LLP",
+  },
   globalSuccessMsg: null,
   registrationCode: 'VANTAGE2026',
   activeInvoiceForModal: null,
@@ -191,6 +206,7 @@ export const useDashboardStore = create<DashboardState>()(
 
 
   updateRegistrationCode: (code) => set({ registrationCode: code }),
+  setAdminSettings: (settings) => set((state) => ({ adminSettings: { ...state.adminSettings, ...settings } })),
 
   setGlobalSuccessMsg: (msg) => {
     set({ globalSuccessMsg: msg });

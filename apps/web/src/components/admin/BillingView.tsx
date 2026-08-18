@@ -31,6 +31,7 @@ export const BillingView: React.FC = () => {
     addCollection,
     addStandaloneReceipt,
     currentUser,
+    adminSettings,
   } = useDashboardStore();
 
   if (!currentUser) return null;
@@ -60,6 +61,30 @@ export const BillingView: React.FC = () => {
   });
 
   const selectedEngagement = engagements.find((e) => e.id === activeEngId);
+
+  const handleDispatch = (type: 'whatsapp' | 'email', inv: Invoice, eng: any) => {
+    const clientPhone = eng?.clientContactPhone || '';
+    const clientEmail = eng?.clientContactEmail || '';
+    
+    let text = '';
+    if (inv.status === 'PENDING') {
+      text = `Hello, this is a reminder regarding Invoice ${inv.invoiceNumber} for ${formatINR(Number((inv as any).finalAmount || (inv as any).totalAmount || inv.amount) || 0)}. Due date: ${new Date(inv.dueDate).toLocaleDateString()}.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
+    } else {
+      text = `Hello, thank you for the payment towards Invoice ${inv.invoiceNumber}.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
+    }
+
+    if (type === 'whatsapp') {
+      window.open(`https://wa.me/${clientPhone}?text=${encodeURIComponent(text)}`, '_blank');
+    } else {
+      const subject = inv.status === 'PENDING' ? `Invoice Reminder: ${inv.invoiceNumber}` : `Payment Received: ${inv.invoiceNumber}`;
+      window.open(`mailto:${clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`, '_blank');
+    }
+    
+    useDashboardStore.getState().addAuditLog(
+      'COMMUNICATION_DISPATCH',
+      `Sent ${type} to client regarding Invoice ${inv.invoiceNumber}`
+    );
+  };
 
   // Calculate global billing metrics
   let totalBilled = 0;
@@ -345,31 +370,25 @@ export const BillingView: React.FC = () => {
                                 >
                                   <Trash2 size={12} />
                                 </button>
-                                {inv.status !== 'PAID' ? (
-                                  <button
-                                    onClick={() => {
-                                      setSelectedInvoice(inv);
-                                      setShowPayModal(true);
-                                    }}
-                                    className="px-2 py-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-[10px] font-bold"
-                                  >
-                                    Log Payment
-                                  </button>
+                                {inv.status === 'PENDING' ? (
+                                  <>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedInvoice(inv);
+                                        setShowPayModal(true);
+                                      }}
+                                      className="px-2 py-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-[10px] font-bold"
+                                    >
+                                      Log Payment
+                                    </button>
+                                    <button onClick={() => handleDispatch('whatsapp', inv, selectedEngagement)} className="p-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 border border-green-100" title="WhatsApp Reminder"><MessageCircle size={12} /></button>
+                                    <button onClick={() => handleDispatch('email', inv, selectedEngagement)} className="p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 border border-blue-100" title="Email Reminder"><Mail size={12} /></button>
+                                  </>
                                 ) : (
-                                  <button
-                                    onClick={() => {
-                                      alert(`Simulated thank you email dispatched for Invoice: "${inv.invoiceNumber}" payment receipt!`);
-                                      useDashboardStore.getState().addAuditLog(
-                                        'SEND_THANK_YOU',
-                                        `Sent payment acknowledgement & thank you email for Invoice ${inv.invoiceNumber}`
-                                      );
-                                    }}
-                                    className="px-2 py-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg text-[10px] font-bold flex items-center gap-0.5"
-                                    title="Send Thank You Email"
-                                  >
-                                    <Mail size={10} />
-                                    Thank Client
-                                  </button>
+                                  <>
+                                    <button onClick={() => handleDispatch('whatsapp', inv, selectedEngagement)} className="p-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 border border-green-100" title="WhatsApp Thank You"><MessageCircle size={12} /></button>
+                                    <button onClick={() => handleDispatch('email', inv, selectedEngagement)} className="p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 border border-blue-100" title="Email Thank You"><Mail size={12} /></button>
+                                  </>
                                 )}
                               </div>
                             </td>
