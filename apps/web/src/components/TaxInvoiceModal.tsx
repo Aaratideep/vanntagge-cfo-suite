@@ -21,7 +21,14 @@ function numberToWords(num: number): string {
 }
 
 export const TaxInvoiceModal: React.FC = () => {
-  const { activeInvoiceForModal, setActiveInvoiceForModal, addStandaloneReceipt } = useDashboardStore();
+  const { 
+    activeInvoiceForModal, 
+    setActiveInvoiceForModal, 
+    addStandaloneReceipt,
+    clients,
+    engagements,
+    adminSettings
+  } = useDashboardStore();
   const printRef = useRef<HTMLDivElement>(null);
   const [additionalCharges, setAdditionalCharges] = useState<number>(0);
   const [chargesDesc, setChargesDesc] = useState<string>('Additional Service Charges');
@@ -33,19 +40,46 @@ export const TaxInvoiceModal: React.FC = () => {
   };
 
   const dispatchAction = async (channel: 'WHATSAPP' | 'EMAIL') => {
-    try {
-      const endpoint = channel === 'EMAIL' ? '/api/communications/email' : '/api/communications/whatsapp';
-      const payload = channel === 'EMAIL' 
-        ? { to: 'client@example.com', subject: `Invoice ${activeInvoiceForModal.invoiceNumber}`, content: `Your invoice is ready.` }
-        : { to: '+910000000000', message: `Your invoice ${activeInvoiceForModal.invoiceNumber} is ready.` };
-      await fetch(`http://localhost:4000${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      alert(`Dispatched via ${channel}`);
-    } catch (e) {
-      alert(`Failed to dispatch via ${channel}`);
+    const inv = activeInvoiceForModal;
+    const eng = engagements.find(e => e.id === inv.engagementId);
+    const client = clients.find(c => c.id === eng?.clientId);
+    
+    const clientPhone = client?.phone || (eng as any)?.clientContactPhone || '';
+    const clientEmail = client?.email || (eng as any)?.clientContactEmail || '';
+    const clientName = client?.contactPerson || client?.companyName || "Valued Client";
+    const serviceName = eng?.name || "CFO Advisory & Statutory Governance";
+    const amountStr = (inv.amount || 0).toLocaleString("en-IN");
+
+    const dispatchUrl = (url: string) => {
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    if (channel === 'WHATSAPP') {
+      const whatsappMsg = `*${adminSettings.companyName} - Official Invoice Notice*\n\nHello ${clientName},\nYour tax invoice *${inv.invoiceNumber}* for *₹${amountStr}* has been issued.\n\n• Service: ${serviceName}\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nPlease remit via Bank/UPI transfer. Reach out for any questions.`;
+      
+      let sanitizedPhone = clientPhone.replace(/\D/g, '');
+      if (sanitizedPhone.length === 10) {
+        sanitizedPhone = '91' + sanitizedPhone;
+      }
+
+      const url = sanitizedPhone 
+        ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(whatsappMsg)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMsg)}`;
+      dispatchUrl(url);
+    } else {
+      const subject = `Tax Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}`;
+      const body = `Dear ${clientName},\n\nPlease find the tax invoice details for ${serviceName} below:\n\n• Invoice No: ${inv.invoiceNumber}\n• Amount Payable: ₹${amountStr}\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`;
+      
+      const url = clientEmail 
+        ? `mailto:${clientEmail}?cc=${adminSettings.adminEmail}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+        : `mailto:?cc=${adminSettings.adminEmail}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      dispatchUrl(url);
     }
   };
 

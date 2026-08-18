@@ -90,7 +90,11 @@ export const BillingView: React.FC = () => {
         ? `*${adminSettings.companyName} - Official Invoice Notice*\n\nHello ${clientName},\nYour tax invoice *${inv.invoiceNumber}* for *${amountStr}* has been issued.\n\n• Service: ${serviceName}\n• Due Date: ${dueDateStr}\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nPlease remit via Bank/UPI transfer. Reach out for any questions.`
         : `*${adminSettings.companyName} - Official Receipt Notice*\n\nHello ${clientName},\nThank you for the payment towards Invoice *${inv.invoiceNumber}*.\n\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nReach out for any questions.`;
       
-      const sanitizedPhone = clientPhone.replace(/\D/g, '');
+      let sanitizedPhone = clientPhone.replace(/\D/g, '');
+      if (sanitizedPhone.length === 10) {
+        sanitizedPhone = '91' + sanitizedPhone;
+      }
+
       const url = sanitizedPhone 
         ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(whatsappMsg)}`
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMsg)}`;

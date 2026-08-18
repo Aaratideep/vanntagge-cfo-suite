@@ -80,7 +80,10 @@ export const ClientsView: React.FC = () => {
 
     if (type === 'whatsapp') {
       const phone = client.phone || '';
-      const sanitizedPhone = phone.replace(/\D/g, '');
+      let sanitizedPhone = phone.replace(/\D/g, '');
+      if (sanitizedPhone.length === 10) {
+        sanitizedPhone = '91' + sanitizedPhone;
+      }
       const url = sanitizedPhone 
         ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(text)}`
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
