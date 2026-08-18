@@ -40,7 +40,7 @@ export const EmployeeDashboardView: React.FC = () => {
   let myOpenTasks = 0;
   let myCompletedTasks = 0;
   let myOverdueTasks = 0;
-  let myAssignedClients = new Set<string>();
+  const myAssignedClients = new Set<string>();
   
   const myTasks: any[] = [];
   const myCompliances: any[] = [];

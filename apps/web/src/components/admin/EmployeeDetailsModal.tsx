@@ -7,32 +7,32 @@ interface EmployeeDetailsModalProps {
   onClose: () => void;
 }
 
+const DocumentPreview = ({ label, base64Data }: { label: string, base64Data?: string }) => {
+  if (!base64Data) return <div className="text-xs text-slate-400 italic py-2">Not provided</div>;
+  
+  const isPdf = base64Data.startsWith('data:application/pdf');
+  
+  return (
+    <div className="mt-2 border rounded-lg overflow-hidden bg-slate-50 relative group">
+      <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <a href={base64Data} download={`${label.replace(' ', '_')}`} className="text-xs bg-white text-slate-900 px-3 py-1.5 rounded-full font-bold shadow-md hover:bg-slate-100 transition-colors">
+          Download File
+        </a>
+      </div>
+      {isPdf ? (
+        <div className="h-32 flex flex-col items-center justify-center text-slate-400">
+          <FileText size={32} className="mb-2" />
+          <span className="text-xs font-bold">PDF Document</span>
+        </div>
+      ) : (
+        <img src={base64Data} alt={label} className="w-full h-32 object-cover object-top" />
+      )}
+    </div>
+  );
+};
+
 export const EmployeeDetailsModal: React.FC<EmployeeDetailsModalProps> = ({ employee, onClose }) => {
   const data = employee.onboardingData;
-
-  const DocumentPreview = ({ label, base64Data }: { label: string, base64Data?: string }) => {
-    if (!base64Data) return <div className="text-xs text-slate-400 italic py-2">Not provided</div>;
-    
-    const isPdf = base64Data.startsWith('data:application/pdf');
-    
-    return (
-      <div className="mt-2 border rounded-lg overflow-hidden bg-slate-50 relative group">
-        <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-          <a href={base64Data} download={`${label.replace(' ', '_')}`} className="text-xs bg-white text-slate-900 px-3 py-1.5 rounded-full font-bold shadow-md hover:bg-slate-100 transition-colors">
-            Download File
-          </a>
-        </div>
-        {isPdf ? (
-          <div className="h-32 flex flex-col items-center justify-center text-slate-400">
-            <FileText size={32} className="mb-2" />
-            <span className="text-xs font-bold">PDF Document</span>
-          </div>
-        ) : (
-          <img src={base64Data} alt={label} className="w-full h-32 object-cover object-top" />
-        )}
-      </div>
-    );
-  };
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">

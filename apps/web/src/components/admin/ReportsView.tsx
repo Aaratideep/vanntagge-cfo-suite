@@ -21,10 +21,8 @@ import { Report, ReportStatus, ReportType } from '../../types';
 export const ReportsView: React.FC = () => {
   const { engagements, addReport, updateReportStatus, currentUser } = useDashboardStore();
 
-  if (!currentUser) return null;
-
-  const isClient = currentUser.role === 'CLIENT';
-  const displayEngagements = isClient ? engagements.filter(e => e.clientId === currentUser.id) : engagements;
+  const isClient = currentUser?.role === 'CLIENT';
+  const displayEngagements = isClient ? engagements.filter(e => e.clientId === currentUser?.id) : engagements;
 
   const [activeEngId, setActiveEngId] = useState<string>(displayEngagements[0]?.id || '');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -32,6 +30,8 @@ export const ReportsView: React.FC = () => {
   // Form input
   const [reportType, setReportType] = useState<ReportType>('MIS');
   const [reportNotes, setReportNotes] = useState('');
+
+  if (!currentUser) return null;
 
   const selectedEngagement = displayEngagements.find((e) => e.id === activeEngId);
 

@@ -130,7 +130,7 @@ export const AuthView: React.FC = () => {
           const firebaseName = userCredential.user.displayName || firebaseEmail.split('@')[0];
           const firebasePhoto = userCredential.user.photoURL || '';
 
-          let finalUser: User = {
+          const finalUser: User = {
             id: uid,
             email: firebaseEmail,
             name: firebaseName,

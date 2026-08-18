@@ -28,8 +28,6 @@ export const ComplianceView: React.FC = () => {
     users,
   } = useDashboardStore();
 
-  if (!currentUser) return null;
-
   const [activeEngId, setActiveEngId] = useState<string>(engagements[0]?.id || '');
   const [complianceSubTab, setComplianceSubTab] = useState<'tracker' | 'audit' | 'reminders'>('tracker');
 
@@ -43,6 +41,8 @@ export const ComplianceView: React.FC = () => {
     { id: 'as-3', step: 'Inspect fixed asset physically and review depreciation journals', evidence: 'Fixed Asset Register', assigned: 'Priya Sharma', status: 'NOT_STARTED' },
     { id: 'as-4', step: 'Perform TDS/GST input tax credit cross reconciliation check', evidence: 'GST Portal ITC ledger summary', assigned: 'Amit Patel', status: 'NOT_STARTED' },
   ]);
+
+  if (!currentUser) return null;
 
   const selectedEngagement = engagements.find((e) => e.id === activeEngId);
 

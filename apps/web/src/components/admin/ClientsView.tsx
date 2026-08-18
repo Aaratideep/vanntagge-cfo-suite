@@ -46,11 +46,20 @@ export const ClientsView: React.FC = () => {
     adminSettings,
   } = useDashboardStore();
 
-  if (!currentUser) return null;
-
   const [activeClientTab, setActiveClientTab] = useState<'directory' | 'onboarding'>('directory');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [clientCategoryFilter, setClientCategoryFilter] = useState<'ALL' | 'BUSINESS' | 'PERSONAL'>('ALL');
+
+  const canReview = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
+
+  const handleMockUpload = (docId: string) => {
+    alert(`Mock upload initiated for document ${docId}`);
+  };
+
+  const handleReviewAction = (docId: string, action: 'VERIFIED' | 'REJECTED', note: string) => {
+    alert(`Mock review action: ${action} for document ${docId} with note: ${note}`);
+  };
 
   // Modal State
   const [showAddClientModal, setShowAddClientModal] = useState(false);
@@ -68,7 +77,9 @@ export const ClientsView: React.FC = () => {
   });
   const [generatedCredentials, setGeneratedCredentials] = useState<{username: string, password: string} | null>(null);
 
-  const handleDispatch = (type: 'whatsapp' | 'email', client: Client) => {
+  if (!currentUser) return null;
+
+  const handleDispatch = (type: 'whatsapp' | 'email', client: any) => {
     if (typeof window === 'undefined') return;
 
     const dispatchUrl = (url: string) => {
@@ -198,8 +209,6 @@ export const ClientsView: React.FC = () => {
     seenIds.add(uniqueId);
     return { ...c, id: uniqueId };
   });
-
-  const [clientCategoryFilter, setClientCategoryFilter] = useState<'ALL' | 'BUSINESS' | 'PERSONAL'>('ALL');
 
   // Filter clients
   const filteredClients = allSyncedClients.filter((c) => {

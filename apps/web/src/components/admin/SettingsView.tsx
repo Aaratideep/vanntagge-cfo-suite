@@ -10,8 +10,6 @@ import { pushRecordToFirebase } from '../../lib/firebaseSync';
 export const SettingsView: React.FC = () => {
   const { currentUser, addAuditLog, adminSettings, setAdminSettings } = useDashboardStore();
 
-  if (!currentUser) return null;
-
   const [tallyEnabled, setTallyEnabled] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
@@ -20,6 +18,8 @@ export const SettingsView: React.FC = () => {
   const [seeding, setSeeding] = useState(false);
   const [seedSuccess, setSeedSuccess] = useState(false);
   const [seedError, setSeedError] = useState('');
+
+  if (!currentUser) return null;
 
   const handleSeedFirebase = async () => {
     setSeeding(true);

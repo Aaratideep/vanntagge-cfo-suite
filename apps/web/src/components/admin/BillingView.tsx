@@ -35,8 +35,6 @@ export const BillingView: React.FC = () => {
     adminSettings,
   } = useDashboardStore();
 
-  if (!currentUser) return null;
-
   const [activeEngId, setActiveEngId] = useState<string>(engagements[0]?.id || '');
   const [billingSubTab, setBillingSubTab] = useState<'invoices' | 'collections' | 'ageing'>('invoices');
 
@@ -60,6 +58,8 @@ export const BillingView: React.FC = () => {
     paymentMethod: 'NetBanking',
     transactionId: '',
   });
+
+  if (!currentUser) return null;
 
   const selectedEngagement = engagements.find((e) => e.id === activeEngId);
 
@@ -89,7 +89,7 @@ export const BillingView: React.FC = () => {
     };
 
     if (type === 'whatsapp') {
-      const whatsappMsg = inv.status === 'PENDING' 
+      const whatsappMsg = inv.status === 'DRAFT' 
         ? `*${adminSettings.companyName} - Official Invoice Notice*\n\nHello ${clientName},\nYour tax invoice *${inv.invoiceNumber}* for *${amountStr}* has been issued.\n\n• Service: ${serviceName}\n• Due Date: ${dueDateStr}\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nPlease remit via Bank/UPI transfer. Reach out for any questions.`
         : `*${adminSettings.companyName} - Official Receipt Notice*\n\nHello ${clientName},\nThank you for the payment towards Invoice *${inv.invoiceNumber}*.\n\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nReach out for any questions.`;
       
@@ -103,11 +103,11 @@ export const BillingView: React.FC = () => {
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMsg)}`;
       dispatchUrl(url);
     } else {
-      const subject = inv.status === 'PENDING' 
+      const subject = inv.status === 'DRAFT' 
         ? `Tax Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}` 
         : `Payment Received: Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}`;
         
-      const body = inv.status === 'PENDING'
+      const body = inv.status === 'DRAFT'
         ? `Dear ${clientName},\n\nPlease find the tax invoice details for ${serviceName} below:\n\n• Invoice No: ${inv.invoiceNumber}\n• Amount Payable: ${amountStr}\n• Due Date: ${dueDateStr}\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`
         : `Dear ${clientName},\n\nThank you for the payment towards Invoice ${inv.invoiceNumber}.\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`;
 
@@ -387,7 +387,7 @@ export const BillingView: React.FC = () => {
                                 >
                                   <Trash2 size={12} />
                                 </button>
-                                {inv.status === 'PENDING' ? (
+                                {inv.status === 'DRAFT' ? (
                                   <>
                                     <button
                                       onClick={() => {
