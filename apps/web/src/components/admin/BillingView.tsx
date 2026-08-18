@@ -340,27 +340,7 @@ export const BillingView: React.FC = () => {
                                 >
                                   <FileText size={12} />
                                 </button>
-                                <button
-                                  onClick={() => {
-                                    const subject = encodeURIComponent(`Invoice ${inv.invoiceNumber} from Vanntagge CFO Suite`);
-                                    const body = encodeURIComponent(`Hello team,\n\nPlease find attached the invoice ${inv.invoiceNumber} for the milestone "${inv.milestone}" amounting to ${formatINR(inv.finalAmount)}.\n\nThank you,\nVanntagge CFO Suite`);
-                                    window.open(`mailto:?subject=${subject}&body=${body}`, '_blank');
-                                  }}
-                                  className="p-1 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-600"
-                                  title="Send Email"
-                                >
-                                  <Mail size={12} />
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    const text = encodeURIComponent(`Hello,\n\nPlease note that your invoice ${inv.invoiceNumber} for "${inv.milestone}" amounting to ${formatINR(inv.finalAmount)} has been generated.\n\nRegards,\nVanntagge CFO Suite`);
-                                    window.open(`https://wa.me/?text=${text}`, '_blank');
-                                  }}
-                                  className="p-1 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 text-green-600"
-                                  title="Send WhatsApp"
-                                >
-                                  <MessageCircle size={12} />
-                                </button>
+
                                 <button
                                   onClick={() => {
                                     if (window.confirm(`Are you sure you want to delete Invoice ${inv.invoiceNumber}? This action cannot be undone.`)) {
