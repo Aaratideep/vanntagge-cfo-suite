@@ -64,29 +64,50 @@ export const BillingView: React.FC = () => {
   const selectedEngagement = engagements.find((e) => e.id === activeEngId);
 
   const handleDispatch = (type: 'whatsapp' | 'email', inv: Invoice, eng: any) => {
+    if (typeof window === 'undefined') return;
+
     const client = clients?.find(c => c.id === eng?.clientId);
     const clientPhone = client?.phone || eng?.clientContactPhone || '';
     const clientEmail = client?.email || eng?.clientContactEmail || '';
     
-    let text = '';
-    if (inv.status === 'PENDING') {
-      text = `Hello, this is a reminder regarding Invoice ${inv.invoiceNumber} for ${formatINR(Number((inv as any).finalAmount || (inv as any).totalAmount || inv.amount) || 0)}. Due date: ${new Date(inv.dueDate).toLocaleDateString()}.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
-    } else {
-      text = `Hello, thank you for the payment towards Invoice ${inv.invoiceNumber}.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
-    }
+    const amountStr = formatINR(Number((inv as any).finalAmount || (inv as any).totalAmount || inv.amount) || 0);
+    const dueDateStr = new Date(inv.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const clientName = client?.contactPerson || client?.companyName || "Valued Client";
+    const serviceName = eng?.name || "CFO Advisory & Statutory Governance";
+
+    const dispatchUrl = (url: string) => {
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
 
     if (type === 'whatsapp') {
+      const whatsappMsg = inv.status === 'PENDING' 
+        ? `*${adminSettings.companyName} - Official Invoice Notice*\n\nHello ${clientName},\nYour tax invoice *${inv.invoiceNumber}* for *${amountStr}* has been issued.\n\n• Service: ${serviceName}\n• Due Date: ${dueDateStr}\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nPlease remit via Bank/UPI transfer. Reach out for any questions.`
+        : `*${adminSettings.companyName} - Official Receipt Notice*\n\nHello ${clientName},\nThank you for the payment towards Invoice *${inv.invoiceNumber}*.\n\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nReach out for any questions.`;
+      
       const sanitizedPhone = clientPhone.replace(/\D/g, '');
       const url = sanitizedPhone 
-        ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(text)}`
-        : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
+        ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(whatsappMsg)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMsg)}`;
+      dispatchUrl(url);
     } else {
-      const subject = inv.status === 'PENDING' ? `Invoice Reminder: ${inv.invoiceNumber}` : `Payment Received: ${inv.invoiceNumber}`;
+      const subject = inv.status === 'PENDING' 
+        ? `Tax Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}` 
+        : `Payment Received: Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}`;
+        
+      const body = inv.status === 'PENDING'
+        ? `Dear ${clientName},\n\nPlease find the tax invoice details for ${serviceName} below:\n\n• Invoice No: ${inv.invoiceNumber}\n• Amount Payable: ${amountStr}\n• Due Date: ${dueDateStr}\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`
+        : `Dear ${clientName},\n\nThank you for the payment towards Invoice ${inv.invoiceNumber}.\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`;
+
       const url = clientEmail 
-        ? `mailto:${clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
-        : `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
+        ? `mailto:${clientEmail}?cc=${adminSettings.adminEmail}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+        : `mailto:?cc=${adminSettings.adminEmail}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      dispatchUrl(url);
     }
     
     useDashboardStore.getState().addAuditLog(
@@ -370,13 +391,53 @@ export const BillingView: React.FC = () => {
                                     >
                                       Log Payment
                                     </button>
-                                    <button onClick={() => handleDispatch('whatsapp', inv, selectedEngagement)} className="p-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 border border-green-100" title="WhatsApp Reminder"><MessageCircle size={12} /></button>
-                                    <button onClick={() => handleDispatch('email', inv, selectedEngagement)} className="p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 border border-blue-100" title="Email Reminder"><Mail size={12} /></button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDispatch('email', inv, selectedEngagement);
+                                      }}
+                                      title="Send Email"
+                                      className="p-2 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition cursor-pointer"
+                                    >
+                                      <Mail className="w-4 h-4 text-blue-600"/>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDispatch('whatsapp', inv, selectedEngagement);
+                                      }}
+                                      title="Send WhatsApp"
+                                      className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition cursor-pointer"
+                                    >
+                                      <MessageCircle className="w-4 h-4 text-emerald-600"/>
+                                    </button>
                                   </>
                                 ) : (
                                   <>
-                                    <button onClick={() => handleDispatch('whatsapp', inv, selectedEngagement)} className="p-1.5 bg-green-50 text-green-600 rounded-md hover:bg-green-100 border border-green-100" title="WhatsApp Thank You"><MessageCircle size={12} /></button>
-                                    <button onClick={() => handleDispatch('email', inv, selectedEngagement)} className="p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 border border-blue-100" title="Email Thank You"><Mail size={12} /></button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDispatch('email', inv, selectedEngagement);
+                                      }}
+                                      title="Send Email"
+                                      className="p-2 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition cursor-pointer"
+                                    >
+                                      <Mail className="w-4 h-4 text-blue-600"/>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDispatch('whatsapp', inv, selectedEngagement);
+                                      }}
+                                      title="Send WhatsApp"
+                                      className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition cursor-pointer"
+                                    >
+                                      <MessageCircle className="w-4 h-4 text-emerald-600"/>
+                                    </button>
                                   </>
                                 )}
                               </div>

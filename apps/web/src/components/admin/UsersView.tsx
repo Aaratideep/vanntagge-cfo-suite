@@ -320,7 +320,19 @@ export const UsersView = () => {
                   <label className="text-xs font-bold text-on-surface uppercase tracking-wide">
                     {targetRole === 'CLIENT' ? 'Company Name' : 'Department'}
                   </label>
-                  <input type="text" value={linkedEntity} onChange={e => setLinkedEntity(e.target.value)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder={targetRole === 'CLIENT' ? "TechNova Solutions" : "Taxation / Advisory"} />
+                  {targetRole === 'CLIENT' ? (
+                    <input type="text" value={linkedEntity} onChange={e => setLinkedEntity(e.target.value)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="TechNova Solutions" />
+                  ) : (
+                    <select value={linkedEntity || 'General'} onChange={e => setLinkedEntity(e.target.value)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none bg-white">
+                      <option value="General">General</option>
+                      <option value="Operations">Operations</option>
+                      <option value="Finance">Finance</option>
+                      <option value="HR">HR</option>
+                      <option value="Sales">Sales</option>
+                      <option value="Marketing">Marketing</option>
+                      <option value="IT">IT</option>
+                    </select>
+                  )}
                 </div>
               </div>
 

@@ -70,24 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Active User Session Block */}
-      <div className={`mb-4 p-2 border-b border-outline-variant/30 ${collapsed ? 'text-center' : ''}`}>
-        {!collapsed ? (
-          <div className="bg-surface-container rounded-xl p-3 border border-outline-variant/20">
-            <div className="text-xs font-bold text-on-surface leading-tight">{currentUser.name}</div>
-            <div className="text-[10px] text-outline mt-0.5 capitalize">
-              {currentUser.role.replace('_', ' ').toLowerCase()}
-            </div>
-          </div>
-        ) : (
-          <div
-            className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary font-bold text-xs mx-auto border border-outline-variant/20"
-            title={currentUser.name}
-          >
-            {currentUser.name.split(' ').map((n) => n[0]).join('')}
-          </div>
-        )}
-      </div>
+
 
       {/* Quick Create Action Button */}
       {!collapsed && currentUser.role === 'SUPER_ADMIN' && (

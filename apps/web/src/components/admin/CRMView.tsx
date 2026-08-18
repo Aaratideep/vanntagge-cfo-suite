@@ -244,7 +244,11 @@ export const CRMView: React.FC = () => {
     e.preventDefault();
     if (!selectedLead) return;
     const quote = quotations.find((q) => q.leadId === selectedLead.id && ['APPROVED', 'CONVERTED', 'SENT'].includes(q.status));
-    if (!quote) { showSuccess('No approved/converted quotation found for this lead.'); return; }
+    if (!quote) { 
+      alert('You must generate and approve a Quotation for this lead before drafting an Agreement.');
+      setShowLetterModal(false);
+      return; 
+    }
     createEngagementLetter({
       leadId: selectedLead.id, quotationId: quote.id, leadCompanyName: selectedLead.companyName,
       serviceScope: letterForm.serviceScope, deliverables: letterForm.deliverables,

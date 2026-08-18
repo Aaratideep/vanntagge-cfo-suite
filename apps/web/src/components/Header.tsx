@@ -167,16 +167,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Active Profile Info */}
           <div className="flex items-center gap-3">
             <div className="text-right hidden md:block leading-tight">
-              <button 
-                onClick={() => {
-                  setEditName(currentUser.name);
-                  setEditAvatar(currentUser.avatar || '');
-                  setIsProfileModalOpen(true);
-                }}
-                className="text-xs font-bold text-on-surface hover:text-primary transition-colors block w-full text-right"
-              >
-                {currentUser.name}
-              </button>
+
               <div className="flex items-center gap-2 mt-0.5 justify-end">
                 <button
                   onClick={() => {

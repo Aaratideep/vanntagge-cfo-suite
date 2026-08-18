@@ -64,7 +64,19 @@ export const ClientsView: React.FC = () => {
   const [generatedCredentials, setGeneratedCredentials] = useState<{username: string, password: string} | null>(null);
 
   const handleDispatch = (type: 'whatsapp' | 'email', client: Client) => {
+    if (typeof window === 'undefined') return;
+
     let text = `Hello ${client.companyName} team,\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
+
+    const dispatchUrl = (url: string) => {
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
 
     if (type === 'whatsapp') {
       const phone = client.phone || '';
@@ -72,14 +84,14 @@ export const ClientsView: React.FC = () => {
       const url = sanitizedPhone 
         ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(text)}`
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
+      dispatchUrl(url);
     } else {
       const email = client.email || '';
       const subject = `Checking in - ${adminSettings.companyName}`;
       const url = email 
         ? `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
         : `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
+      dispatchUrl(url);
     }
   };
 
@@ -563,11 +575,28 @@ export const ClientsView: React.FC = () => {
                     >
                       Onboarding Docs
                     </button>
-                    <button onClick={() => handleDispatch('whatsapp', client)} className="w-10 flex items-center justify-center bg-green-50 hover:bg-green-100 text-green-600 border border-green-100 rounded-xl transition-colors" title="WhatsApp Client">
-                      <MessageCircle size={16} />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDispatch('email', client);
+                      }}
+                      title="Send Email"
+                      className="p-2 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition cursor-pointer"
+                    >
+                      <Mail className="w-4 h-4 text-blue-600"/>
                     </button>
-                    <button onClick={() => handleDispatch('email', client)} className="w-10 flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-100 rounded-xl transition-colors" title="Email Client">
-                      <Mail size={16} />
+
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDispatch('whatsapp', client);
+                      }}
+                      title="Send WhatsApp"
+                      className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition cursor-pointer"
+                    >
+                      <MessageCircle className="w-4 h-4 text-emerald-600"/>
                     </button>
                     <button
                       onClick={() => {
