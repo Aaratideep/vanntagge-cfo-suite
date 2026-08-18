@@ -60,6 +60,7 @@ export const ClientsView: React.FC = () => {
     pan: '',
     gstin: '',
     email: '',
+    phone: '',
   });
   const [generatedCredentials, setGeneratedCredentials] = useState<{username: string, password: string} | null>(null);
 
@@ -412,7 +413,7 @@ export const ClientsView: React.FC = () => {
       setGeneratedCredentials(result.credentials);
     } else {
       setShowAddClientModal(false);
-      setNewClientData({ companyName: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '' });
+      setNewClientData({ companyName: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '', phone: '' });
     }
   };
 
@@ -703,8 +704,17 @@ export const ClientsView: React.FC = () => {
                       placeholder="founder@acme.com"
                     />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">WhatsApp Phone (10 digits)</label>
+                    <input
+                      required
+                      type="text"
+                      value={newClientData.phone}
+                      onChange={(e) => setNewClientData({...newClientData, phone: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      placeholder="9876543210"
+                    />
+                  </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">PAN Number</label>
                     <input

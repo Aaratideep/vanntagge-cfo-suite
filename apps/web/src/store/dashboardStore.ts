@@ -637,9 +637,9 @@ export const useDashboardStore = create<DashboardState>()(
     const newClient: Client = {
       id: `client-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       companyName: clientData.companyName,
-      contactPerson: 'Admin',
+      contactPerson: clientData.contactPerson || 'Admin',
       email: clientData.email,
-      phone: '+91-00000-00000',
+      phone: clientData.phone || '+91-00000-00000',
       industry: 'Services',
       businessType: clientData.entityType,
       gstin: clientData.gstin,
