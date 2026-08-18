@@ -36,6 +36,7 @@ export const ClientsView: React.FC = () => {
     quotations = [],
     engagementLetters = [],
     updateClientStatus,
+    updateClient,
     deleteClient,
     updateChecklistDocStatus,
     uploadDocumentFile,
@@ -53,6 +54,7 @@ export const ClientsView: React.FC = () => {
 
   // Modal State
   const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [isLegacyImport, setIsLegacyImport] = useState(false);
   const [newClientData, setNewClientData] = useState({
     companyName: '',
@@ -80,9 +82,9 @@ export const ClientsView: React.FC = () => {
     };
 
     if (type === 'whatsapp') {
-      let phone = client.phone || '';
+      let phone = client.phone || adminSettings.adminPhone || '918668388715';
       if (phone === '+91-00000-00000' || phone === '+91-98765-00000') {
-        phone = '';
+        phone = adminSettings.adminPhone || '918668388715';
       }
       let sanitizedPhone = phone.replace(/\D/g, '');
       if (sanitizedPhone.length === 10) {
@@ -93,7 +95,7 @@ export const ClientsView: React.FC = () => {
         : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
       dispatchUrl(url);
     } else {
-      const email = client.email || '';
+      const email = client.email || adminSettings.adminEmail || 'billing@vanntaggecfo.com';
       const subject = `Checking in - ${adminSettings.companyName}`;
       const url = email 
         ? `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
@@ -411,6 +413,20 @@ export const ClientsView: React.FC = () => {
 
   const handleAddClientSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingClientId) {
+      updateClient(editingClientId, {
+        companyName: newClientData.companyName,
+        businessType: newClientData.entityType,
+        email: newClientData.email,
+        phone: newClientData.phone,
+        pan: newClientData.pan,
+        gstin: newClientData.gstin,
+      });
+      setShowAddClientModal(false);
+      setEditingClientId(null);
+      setNewClientData({ companyName: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '', phone: '' });
+      return;
+    }
     const result = onboardNewClient(newClientData, isLegacyImport);
     if (result.success && result.credentials) {
       setGeneratedCredentials(result.credentials);
@@ -586,6 +602,26 @@ export const ClientsView: React.FC = () => {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setEditingClientId(client.id);
+                        setNewClientData({
+                          companyName: client.companyName || '',
+                          entityType: client.businessType || 'Pvt. Ltd.',
+                          pan: client.pan || '',
+                          gstin: client.gstin || '',
+                          email: client.email || '',
+                          phone: client.phone || '',
+                        });
+                        setShowAddClientModal(true);
+                      }}
+                      title="Edit Client"
+                      className="p-2 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition cursor-pointer"
+                    >
+                      <Building className="w-4 h-4 text-purple-600"/>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         handleDispatch('email', client);
                       }}
                       title="Send Email"
@@ -631,10 +667,10 @@ export const ClientsView: React.FC = () => {
           <div className="bg-white rounded-2xl shadow-premium w-full max-w-lg overflow-hidden border border-slate-100">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                <Building className="text-blue-600" /> Client Onboarding
+                <Building className="text-blue-600" /> {editingClientId ? "Edit Client Profile" : "Client Onboarding"}
               </h2>
               <button 
-                onClick={() => setShowAddClientModal(false)}
+                onClick={() => { setShowAddClientModal(false); setEditingClientId(null); }}
                 className="text-slate-400 hover:text-slate-600 p-1 hover:bg-slate-200 rounded-lg transition-colors"
               >
                 <X size={20} />
@@ -758,7 +794,7 @@ export const ClientsView: React.FC = () => {
                 <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
                   <button
                     type="button"
-                    onClick={() => setShowAddClientModal(false)}
+                    onClick={() => { setShowAddClientModal(false); setEditingClientId(null); }}
                     className="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                   >
                     Cancel

@@ -125,6 +125,7 @@ interface DashboardState {
   convertLeadToClient: (leadId: string, quotationId: string) => void;
   convertQuotationToInvoice: (quotationId: string) => void;
   updateClientStatus: (id: string, status: ClientStatus) => void;
+  updateClient: (id: string, updates: Partial<Client>) => void;
   deleteClient: (id: string, companyName?: string) => void;
   updateChecklistDocStatus: (
     engagementId: string,
@@ -842,6 +843,17 @@ export const useDashboardStore = create<DashboardState>()(
     get().updateQuotationStatus(quotationId, 'CONVERTED');
     get().addAuditLog('CONVERT_QUOTATION_INVOICE', `Converted quotation ${quotation.quotationNumber} into Invoice ${invoiceNumber}`);
     get().setGlobalSuccessMsg(`Quotation converted to Invoice: ${invoiceNumber}`);
+  },
+
+  updateClient: (id, updates) => {
+    set((state) => ({
+      clients: state.clients.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+    }));
+    const updatedClient = get().clients.find((c) => c.id === id);
+    if (updatedClient) {
+      pushRecordToFirebase('clients', id, updatedClient);
+      get().addAuditLog('UPDATE_CLIENT', `Updated client ${updatedClient.companyName}`);
+    }
   },
 
   updateClientStatus: (id, status) => {
