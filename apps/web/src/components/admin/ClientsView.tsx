@@ -68,12 +68,18 @@ export const ClientsView: React.FC = () => {
 
     if (type === 'whatsapp') {
       const phone = client.phone || '';
-      if (!phone) { alert('No contact phone available for this client.'); return; }
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
+      const sanitizedPhone = phone.replace(/\D/g, '');
+      const url = sanitizedPhone 
+        ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(text)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
     } else {
       const email = client.email || '';
-      if (!email) { alert('No contact email available for this client.'); return; }
-      window.open(`mailto:${email}?subject=${encodeURIComponent(`Checking in - ${adminSettings.companyName}`)}&body=${encodeURIComponent(text)}`, '_blank');
+      const subject = `Checking in - ${adminSettings.companyName}`;
+      const url = email 
+        ? `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
+        : `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
     }
   };
 

@@ -76,10 +76,17 @@ export const BillingView: React.FC = () => {
     }
 
     if (type === 'whatsapp') {
-      window.open(`https://wa.me/${clientPhone}?text=${encodeURIComponent(text)}`, '_blank');
+      const sanitizedPhone = clientPhone.replace(/\D/g, '');
+      const url = sanitizedPhone 
+        ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(text)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
     } else {
       const subject = inv.status === 'PENDING' ? `Invoice Reminder: ${inv.invoiceNumber}` : `Payment Received: ${inv.invoiceNumber}`;
-      window.open(`mailto:${clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`, '_blank');
+      const url = clientEmail 
+        ? `mailto:${clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
+        : `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+      window.open(url, '_blank');
     }
     
     useDashboardStore.getState().addAuditLog(
