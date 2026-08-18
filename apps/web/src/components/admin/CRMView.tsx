@@ -243,8 +243,8 @@ export const CRMView: React.FC = () => {
   const handleGenerateLetter = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLead) return;
-    const quote = quotations.find((q) => q.leadId === selectedLead.id && q.status === 'APPROVED');
-    if (!quote) { showSuccess('No approved quotation found for this lead.'); return; }
+    const quote = quotations.find((q) => q.leadId === selectedLead.id && ['APPROVED', 'CONVERTED', 'SENT'].includes(q.status));
+    if (!quote) { showSuccess('No approved/converted quotation found for this lead.'); return; }
     createEngagementLetter({
       leadId: selectedLead.id, quotationId: quote.id, leadCompanyName: selectedLead.companyName,
       serviceScope: letterForm.serviceScope, deliverables: letterForm.deliverables,
@@ -982,9 +982,9 @@ export const CRMView: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        const approvedQuote = quotations.find(q => q.leadId === selectedLead.id && q.status === 'APPROVED');
-                        if (approvedQuote) setShowLetterModal(true);
-                        else showSuccess('Approve a quotation first before drafting a letter.');
+                        const validQuote = quotations.find(q => q.leadId === selectedLead.id && ['APPROVED', 'CONVERTED', 'SENT'].includes(q.status));
+                        if (validQuote) setShowLetterModal(true);
+                        else showSuccess('Approve or convert a quotation first before drafting an agreement.');
                       }}
                       className="flex flex-col items-center gap-1 p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-xl text-emerald-700 transition-all text-[10px] font-bold"
                     >
