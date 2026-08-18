@@ -225,6 +225,8 @@ export interface Client {
   contactPerson: string;
   email: string;
   phone: string;
+  ownerName?: string;
+  ownerContact?: string;
   industry?: string;
   businessType?: string;
   gstin?: string;

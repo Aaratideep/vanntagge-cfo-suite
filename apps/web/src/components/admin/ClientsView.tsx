@@ -58,6 +58,8 @@ export const ClientsView: React.FC = () => {
   const [isLegacyImport, setIsLegacyImport] = useState(false);
   const [newClientData, setNewClientData] = useState({
     companyName: '',
+    ownerName: '',
+    ownerContact: '',
     entityType: 'Pvt. Ltd.',
     pan: '',
     gstin: '',
@@ -68,8 +70,6 @@ export const ClientsView: React.FC = () => {
 
   const handleDispatch = (type: 'whatsapp' | 'email', client: Client) => {
     if (typeof window === 'undefined') return;
-
-    let text = `Hello ${client.companyName} team,\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
 
     const dispatchUrl = (url: string) => {
       const link = document.createElement("a");
@@ -82,24 +82,19 @@ export const ClientsView: React.FC = () => {
     };
 
     if (type === 'whatsapp') {
-      let phone = client.phone || adminSettings.adminPhone || '918668388715';
-      if (phone === '+91-00000-00000' || phone === '+91-98765-00000') {
-        phone = adminSettings.adminPhone || '918668388715';
-      }
+      const phone = client.ownerContact || client.phone || adminSettings.adminPhone || '918668388715';
       let sanitizedPhone = phone.replace(/\D/g, '');
       if (sanitizedPhone.length === 10) {
         sanitizedPhone = '91' + sanitizedPhone;
       }
-      const url = sanitizedPhone 
-        ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(text)}`
-        : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      const text = `Hello ${client.ownerName || 'team'},\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}`;
+      const url = `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(text)}`;
       dispatchUrl(url);
     } else {
       const email = client.email || adminSettings.adminEmail || 'billing@vanntaggecfo.com';
       const subject = `Checking in - ${adminSettings.companyName}`;
-      const url = email 
-        ? `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`
-        : `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+      const text = `Hello ${client.ownerName || 'team'},\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
+      const url = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
       dispatchUrl(url);
     }
   };
@@ -397,20 +392,6 @@ export const ClientsView: React.FC = () => {
     }
   };
 
-  const handleMockUpload = (docId: string) => {
-    if (!selectedEngagement) return;
-    const mockFilePath = `/uploads/${selectedEngagement.clientCompanyName.toLowerCase().replace(/\s+/g, '-')}-${docId}.pdf`;
-    uploadDocumentFile(selectedEngagement.id, docId, mockFilePath, currentUser.id);
-  };
-
-  const handleReviewAction = (docId: string, status: DocStatus, remarks: string) => {
-    if (!selectedEngagement) return;
-    updateChecklistDocStatus(selectedEngagement.id, docId, status, remarks, currentUser.id);
-  };
-
-  // Helper checking if user has review permissions (Admin or reviewer)
-  const canReview = true;
-
   const handleAddClientSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingClientId) {
@@ -419,12 +400,14 @@ export const ClientsView: React.FC = () => {
         businessType: newClientData.entityType,
         email: newClientData.email,
         phone: newClientData.phone,
+        ownerName: newClientData.ownerName,
+        ownerContact: newClientData.ownerContact,
         pan: newClientData.pan,
         gstin: newClientData.gstin,
       });
       setShowAddClientModal(false);
       setEditingClientId(null);
-      setNewClientData({ companyName: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '', phone: '' });
+      setNewClientData({ companyName: '', ownerName: '', ownerContact: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '', phone: '' });
       return;
     }
     const result = onboardNewClient(newClientData, isLegacyImport);
@@ -432,7 +415,7 @@ export const ClientsView: React.FC = () => {
       setGeneratedCredentials(result.credentials);
     } else {
       setShowAddClientModal(false);
-      setNewClientData({ companyName: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '', phone: '' });
+      setNewClientData({ companyName: '', ownerName: '', ownerContact: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '', phone: '' });
     }
   };
 
@@ -605,6 +588,8 @@ export const ClientsView: React.FC = () => {
                         setEditingClientId(client.id);
                         setNewClientData({
                           companyName: client.companyName || '',
+                          ownerName: client.ownerName || '',
+                          ownerContact: client.ownerContact || '',
                           entityType: client.businessType || 'Pvt. Ltd.',
                           pan: client.pan || '',
                           gstin: client.gstin || '',
@@ -697,7 +682,7 @@ export const ClientsView: React.FC = () => {
                   onClick={() => {
                     setGeneratedCredentials(null);
                     setShowAddClientModal(false);
-                    setNewClientData({ companyName: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '' });
+                    setNewClientData({ companyName: '', ownerName: '', ownerContact: '', entityType: 'Pvt. Ltd.', pan: '', gstin: '', email: '', phone: '' });
                   }}
                   className="btn-primary w-full mt-4"
                 >
@@ -718,6 +703,24 @@ export const ClientsView: React.FC = () => {
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Owner Name</label>
+                    <input
+                      type="text"
+                      value={newClientData.ownerName}
+                      onChange={(e) => setNewClientData({...newClientData, ownerName: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Owner Contact</label>
+                    <input
+                      type="text"
+                      value={newClientData.ownerContact}
+                      onChange={(e) => setNewClientData({...newClientData, ownerContact: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Entity Type</label>
                     <select
