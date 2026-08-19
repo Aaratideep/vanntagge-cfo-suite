@@ -53,36 +53,42 @@ export const TaxInvoiceModal: React.FC = () => {
     const serviceName = eng?.name || "CFO Advisory & Statutory Governance";
     const amountStr = (inv.amount || 0).toLocaleString("en-IN");
 
-    const dispatchUrl = (url: string) => {
-      const link = document.createElement("a");
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
+    try {
+      if (channel === 'WHATSAPP') {
+        const whatsappMsg = `*${adminSettings.companyName} - Official Invoice Notice*\n\nHello ${clientName},\nYour tax invoice *${inv.invoiceNumber}* for *₹${amountStr}* has been issued.\n\n• Service: ${serviceName}\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nPlease remit via Bank/UPI transfer. Reach out for any questions.`;
+        
+        let sanitizedPhone = clientPhone.replace(/\D/g, '');
+        if (sanitizedPhone.length === 10) {
+          sanitizedPhone = '91' + sanitizedPhone;
+        }
 
-    if (channel === 'WHATSAPP') {
-      const whatsappMsg = `*${adminSettings.companyName} - Official Invoice Notice*\n\nHello ${clientName},\nYour tax invoice *${inv.invoiceNumber}* for *₹${amountStr}* has been issued.\n\n• Service: ${serviceName}\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nPlease remit via Bank/UPI transfer. Reach out for any questions.`;
-      
-      let sanitizedPhone = clientPhone.replace(/\D/g, '');
-      if (sanitizedPhone.length === 10) {
-        sanitizedPhone = '91' + sanitizedPhone;
+        const res = await fetch('/api/dispatch/whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: sanitizedPhone || '0000000000', text: whatsappMsg })
+        });
+        if (!res.ok) throw new Error('WhatsApp Dispatch Failed');
+        useDashboardStore.getState().setGlobalSuccessMsg('WhatsApp invoice dispatched successfully');
+      } else {
+        const subject = `Tax Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}`;
+        const body = `Dear ${clientName},\n\nPlease find the tax invoice details for ${serviceName} below:\n\n• Invoice No: ${inv.invoiceNumber}\n• Amount Payable: ₹${amountStr}\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`;
+        
+        const res = await fetch('/api/dispatch/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: clientEmail || 'client@example.com',
+            subject,
+            html: `<p>${body.replace(/\n/g, '<br/>')}</p>`,
+            adminDetails: adminSettings
+          })
+        });
+        if (!res.ok) throw new Error('Email Dispatch Failed');
+        useDashboardStore.getState().setGlobalSuccessMsg('Email invoice dispatched successfully');
       }
-
-      const url = sanitizedPhone 
-        ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(whatsappMsg)}`
-        : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMsg)}`;
-      dispatchUrl(url);
-    } else {
-      const subject = `Tax Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}`;
-      const body = `Dear ${clientName},\n\nPlease find the tax invoice details for ${serviceName} below:\n\n• Invoice No: ${inv.invoiceNumber}\n• Amount Payable: ₹${amountStr}\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`;
-      
-      const url = clientEmail 
-        ? `mailto:${clientEmail}?cc=${adminSettings.adminEmail}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-        : `mailto:?cc=${adminSettings.adminEmail}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      dispatchUrl(url);
+    } catch (error) {
+      console.error(error);
+      alert('Failed to dispatch background message.');
     }
   };
 

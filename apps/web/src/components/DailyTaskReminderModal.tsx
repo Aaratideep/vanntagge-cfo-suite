@@ -81,16 +81,32 @@ export const DailyTaskReminderModal: React.FC = () => {
     setRemindersSent((prev) => ({ ...prev, [empId]: true }));
   };
 
-  const handleSendEmailReminder = (user: User, tasks: Task[]) => {
-    const subject = encodeURIComponent('Action Required: Pending Tasks Reminder');
-    const taskList = tasks.map(t => `- ${t.title} (${t.priority})`).join('%0D%0A');
-    const body = encodeURIComponent(
-      `Hi ${user.name},%0D%0A%0D%0AThis is a quick reminder regarding your pending tasks on the Vantage CFO Suite.%0D%0A%0D%0AYou currently have ${tasks.length} incomplete tasks:%0D%0A${taskList}%0D%0A%0D%0APlease review and update their progress on the dashboard.%0D%0A%0D%0AThanks!`
-    );
+  const handleSendEmailReminder = async (user: User, tasks: Task[]) => {
+    const subject = 'Action Required: Pending Tasks Reminder';
+    const taskList = tasks.map(t => `- ${t.title} (${t.priority})`).join('<br/>');
+    const body = `Hi ${user.name},<br/><br/>This is a quick reminder regarding your pending tasks on the Vantage CFO Suite.<br/><br/>You currently have ${tasks.length} incomplete tasks:<br/>${taskList}<br/><br/>Please review and update their progress on the dashboard.<br/><br/>Thanks!`;
     
     // Fallback if user email is dummy or missing
     const emailToUse = user.email || 'employee@vanntagge.com';
-    window.location.href = `mailto:${emailToUse}?subject=${subject}&body=${body}`;
+    const { adminSettings, setGlobalSuccessMsg } = useDashboardStore.getState();
+
+    try {
+      const res = await fetch('/api/dispatch/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: emailToUse,
+          subject,
+          html: `<p>${body}</p>`,
+          adminDetails: adminSettings
+        })
+      });
+      if (!res.ok) throw new Error('Email Dispatch Failed');
+      setGlobalSuccessMsg(`Reminder sent to ${user.name}`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to send reminder email');
+    }
   };
 
   if (!show) return null;

@@ -63,7 +63,7 @@ export const BillingView: React.FC = () => {
 
   const selectedEngagement = engagements.find((e) => e.id === activeEngId);
 
-  const handleDispatch = (type: 'whatsapp' | 'email', inv: Invoice, eng: any) => {
+  const handleDispatch = async (type: 'whatsapp' | 'email', inv: Invoice, eng: any) => {
     if (typeof window === 'undefined') return;
 
     const client = clients?.find(c => c.id === eng?.clientId);
@@ -78,43 +78,49 @@ export const BillingView: React.FC = () => {
     const clientName = client?.contactPerson || client?.companyName || "Valued Client";
     const serviceName = eng?.name || "CFO Advisory & Statutory Governance";
 
-    const dispatchUrl = (url: string) => {
-      const link = document.createElement("a");
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-
-    if (type === 'whatsapp') {
-      const whatsappMsg = inv.status === 'DRAFT' 
-        ? `*${adminSettings.companyName} - Official Invoice Notice*\n\nHello ${clientName},\nYour tax invoice *${inv.invoiceNumber}* for *${amountStr}* has been issued.\n\n• Service: ${serviceName}\n• Due Date: ${dueDateStr}\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nPlease remit via Bank/UPI transfer. Reach out for any questions.`
-        : `*${adminSettings.companyName} - Official Receipt Notice*\n\nHello ${clientName},\nThank you for the payment towards Invoice *${inv.invoiceNumber}*.\n\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nReach out for any questions.`;
-      
-      let sanitizedPhone = clientPhone.replace(/\D/g, '');
-      if (sanitizedPhone.length === 10) {
-        sanitizedPhone = '91' + sanitizedPhone;
-      }
-
-      const url = sanitizedPhone 
-        ? `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(whatsappMsg)}`
-        : `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsappMsg)}`;
-      dispatchUrl(url);
-    } else {
-      const subject = inv.status === 'DRAFT' 
-        ? `Tax Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}` 
-        : `Payment Received: Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}`;
+    try {
+      if (type === 'whatsapp') {
+        const whatsappMsg = inv.status === 'DRAFT' 
+          ? `*${adminSettings.companyName} - Official Invoice Notice*\n\nHello ${clientName},\nYour tax invoice *${inv.invoiceNumber}* for *${amountStr}* has been issued.\n\n• Service: ${serviceName}\n• Due Date: ${dueDateStr}\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nPlease remit via Bank/UPI transfer. Reach out for any questions.`
+          : `*${adminSettings.companyName} - Official Receipt Notice*\n\nHello ${clientName},\nThank you for the payment towards Invoice *${inv.invoiceNumber}*.\n\n• Signatory: ${adminSettings.adminName} (${adminSettings.adminPhone})\n\nReach out for any questions.`;
         
-      const body = inv.status === 'DRAFT'
-        ? `Dear ${clientName},\n\nPlease find the tax invoice details for ${serviceName} below:\n\n• Invoice No: ${inv.invoiceNumber}\n• Amount Payable: ${amountStr}\n• Due Date: ${dueDateStr}\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`
-        : `Dear ${clientName},\n\nThank you for the payment towards Invoice ${inv.invoiceNumber}.\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`;
+        let sanitizedPhone = clientPhone.replace(/\D/g, '');
+        if (sanitizedPhone.length === 10) {
+          sanitizedPhone = '91' + sanitizedPhone;
+        }
 
-      const url = clientEmail 
-        ? `mailto:${clientEmail}?cc=${adminSettings.adminEmail}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-        : `mailto:?cc=${adminSettings.adminEmail}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      dispatchUrl(url);
+        const res = await fetch('/api/dispatch/whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: sanitizedPhone || '0000000000', text: whatsappMsg })
+        });
+        if (!res.ok) throw new Error('WhatsApp Dispatch Failed');
+        useDashboardStore.getState().setGlobalSuccessMsg('WhatsApp dispatched successfully');
+      } else {
+        const subject = inv.status === 'DRAFT' 
+          ? `Tax Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}` 
+          : `Payment Received: Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}`;
+          
+        const body = inv.status === 'DRAFT'
+          ? `Dear ${clientName},\n\nPlease find the tax invoice details for ${serviceName} below:\n\n• Invoice No: ${inv.invoiceNumber}\n• Amount Payable: ${amountStr}\n• Due Date: ${dueDateStr}\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`
+          : `Dear ${clientName},\n\nThank you for the payment towards Invoice ${inv.invoiceNumber}.\n\nFor clarifications, reply directly to ${adminSettings.adminEmail}.\n\nWarm regards,\n${adminSettings.adminName}\n${adminSettings.companyName}`;
+
+        const res = await fetch('/api/dispatch/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: clientEmail || 'client@example.com',
+            subject,
+            html: `<p>${body.replace(/\n/g, '<br/>')}</p>`,
+            adminDetails: adminSettings
+          })
+        });
+        if (!res.ok) throw new Error('Email Dispatch Failed');
+        useDashboardStore.getState().setGlobalSuccessMsg('Email dispatched successfully');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to dispatch message.');
     }
     
     useDashboardStore.getState().addAuditLog(

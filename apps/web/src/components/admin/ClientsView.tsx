@@ -79,34 +79,46 @@ export const ClientsView: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const handleDispatch = (type: 'whatsapp' | 'email', client: any) => {
+  const handleDispatch = async (type: 'whatsapp' | 'email', client: any) => {
     if (typeof window === 'undefined') return;
 
-    const dispatchUrl = (url: string) => {
-      const link = document.createElement("a");
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-
-    if (type === 'whatsapp') {
-      const phone = client.ownerContact || client.phone || adminSettings.adminPhone || '918668388715';
-      let sanitizedPhone = phone.replace(/\D/g, '');
-      if (sanitizedPhone.length === 10) {
-        sanitizedPhone = '91' + sanitizedPhone;
+    try {
+      if (type === 'whatsapp') {
+        const phone = client.ownerContact || client.phone || adminSettings.adminPhone || '918668388715';
+        let sanitizedPhone = phone.replace(/\D/g, '');
+        if (sanitizedPhone.length === 10) {
+          sanitizedPhone = '91' + sanitizedPhone;
+        }
+        const text = `Hello ${client.ownerName || 'team'},\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}`;
+        
+        const res = await fetch('/api/dispatch/whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: sanitizedPhone || '0000000000', text })
+        });
+        if (!res.ok) throw new Error('WhatsApp Dispatch Failed');
+        useDashboardStore.getState().setGlobalSuccessMsg('WhatsApp dispatched successfully');
+      } else {
+        const email = client.email || adminSettings.adminEmail || 'billing@vanntaggecfo.com';
+        const subject = `Checking in - ${adminSettings.companyName}`;
+        const text = `Hello ${client.ownerName || 'team'},\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
+        
+        const res = await fetch('/api/dispatch/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: email,
+            subject,
+            html: `<p>${text.replace(/\n/g, '<br/>')}</p>`,
+            adminDetails: adminSettings
+          })
+        });
+        if (!res.ok) throw new Error('Email Dispatch Failed');
+        useDashboardStore.getState().setGlobalSuccessMsg('Email dispatched successfully');
       }
-      const text = `Hello ${client.ownerName || 'team'},\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}`;
-      const url = `https://api.whatsapp.com/send?phone=${sanitizedPhone}&text=${encodeURIComponent(text)}`;
-      dispatchUrl(url);
-    } else {
-      const email = client.email || adminSettings.adminEmail || 'billing@vanntaggecfo.com';
-      const subject = `Checking in - ${adminSettings.companyName}`;
-      const text = `Hello ${client.ownerName || 'team'},\n\nJust checking in to see if you have any questions or require support regarding our ongoing services.\n\nRegards,\n${adminSettings.adminName}\n${adminSettings.companyName}\n${adminSettings.adminEmail} | ${adminSettings.adminPhone}`;
-      const url = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-      dispatchUrl(url);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to dispatch message.');
     }
   };
 

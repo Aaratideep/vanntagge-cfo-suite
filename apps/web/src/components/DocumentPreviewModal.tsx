@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { X, Printer, ShieldCheck, CheckCircle2, CreditCard, Download, Mail, MessageCircle } from 'lucide-react';
 import { formatINR } from '../lib/currency';
+import { useDashboardStore } from '../store/dashboardStore';
 
 export type DocType = 'invoice' | 'receipt' | 'quotation' | 'agreement' | 'vendor_agreement' | 'mou' | 'employee_agreement';
 
@@ -208,7 +209,6 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       const subject = `${docTitle} - ${docRefNo} - VANNTAGGE CFO SERVICES LLP`;
       const body = getDraftedMessage();
 
-      // Check if browser supports Web Share API with files
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
           await navigator.share({
@@ -222,28 +222,52 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         }
       } else {
         // Fallback for desktop browsers
-        alert(`Direct file attachments via web links are not supported by your browser.\n\nThe PDF will be downloaded now. Please attach it manually to the ${method === 'email' ? 'email' : 'WhatsApp'} message.`);
+        alert(`Direct file attachments via web links are not supported by your browser.\n\nThe PDF will be downloaded now. We will dispatch the text summary in the background.`);
         pdf.save(file.name);
         
-        if (method === 'whatsapp') {
-          window.open(`https://wa.me/?text=${encodeURIComponent(body)}`, '_blank');
-        } else {
-          window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        }
+        await dispatchBackgroundMsg(method, subject, body);
       }
     } catch (err: any) {
       console.error('Failed to generate and share document:', err);
       if (err?.name === 'AbortError') return;
       
-      alert(`Could not generate PDF automatically. Opening text-only sharing.`);
       const subject = `${docTitle} - ${docRefNo}`;
       const body = getDraftedMessage();
-      
+      await dispatchBackgroundMsg(method, subject, body);
+    }
+  };
+
+  const dispatchBackgroundMsg = async (method: 'email' | 'whatsapp', subject: string, body: string) => {
+    const { setGlobalSuccessMsg, adminSettings } = useDashboardStore.getState();
+    const toEmail = data.clientEmail || data.email || 'client@example.com';
+    const toPhone = data.clientPhone || data.phone || '+910000000000';
+
+    try {
       if (method === 'whatsapp') {
-        window.open(`https://wa.me/?text=${encodeURIComponent(body)}`, '_blank');
+        const res = await fetch('/api/dispatch/whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: toPhone, text: body })
+        });
+        if (!res.ok) throw new Error('WhatsApp Dispatch Failed');
+        setGlobalSuccessMsg('WhatsApp message dispatched successfully');
       } else {
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        const res = await fetch('/api/dispatch/email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: toEmail,
+            subject,
+            html: `<p>${body.replace(/\n/g, '<br/>')}</p>`,
+            adminDetails: adminSettings
+          })
+        });
+        if (!res.ok) throw new Error('Email Dispatch Failed');
+        setGlobalSuccessMsg('Email dispatched successfully');
       }
+    } catch (error) {
+      console.error(error);
+      alert('Failed to dispatch background message.');
     }
   };
 
