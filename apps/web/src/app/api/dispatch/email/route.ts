@@ -16,7 +16,7 @@ export async function POST(req: Request) {
       secure: true,
       auth: {
         user: process.env.SMTP_USER || adminDetails?.adminEmail,
-        pass: process.env.SMTP_PASSWORD || process.env.EMAIL_APP_PASSWORD,
+        pass: process.env.SMTP_PASSWORD || process.env.EMAIL_APP_PASSWORD || adminDetails?.smtpPassword,
       },
     });
 

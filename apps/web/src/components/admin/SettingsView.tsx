@@ -118,6 +118,16 @@ export const SettingsView: React.FC = () => {
                   className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
                 />
               </div>
+              <div>
+                <label className="block text-slate-500 mb-1 font-semibold">SMTP App Password (For Email Dispatch)</label>
+                <input
+                  type="password"
+                  placeholder="16-digit App Password"
+                  value={adminSettings.smtpPassword || ''}
+                  onChange={(e) => setAdminSettings({ smtpPassword: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                />
+              </div>
             </div>
           </div>
 

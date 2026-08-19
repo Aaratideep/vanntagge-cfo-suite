@@ -65,6 +65,7 @@ export interface AdminSettings {
   adminEmail: string;
   adminPhone: string;
   companyName: string;
+  smtpPassword?: string;
 }
 
 interface DashboardState {
