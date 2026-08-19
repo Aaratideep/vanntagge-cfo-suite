@@ -801,19 +801,21 @@ export const ClientsView: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <input
-                    type="checkbox"
-                    id="legacyToggle"
-                    checked={isLegacyImport}
-                    onChange={(e) => setIsLegacyImport(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                  />
-                  <div>
-                    <label htmlFor="legacyToggle" className="text-sm font-bold text-slate-800 cursor-pointer">Legacy Client Import</label>
-                    <p className="text-xs text-slate-500">Skips welcome email and credential generation.</p>
+                {!editingClientId && (
+                  <div className="flex items-center gap-2 mt-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <input
+                      type="checkbox"
+                      id="legacyToggle"
+                      checked={isLegacyImport}
+                      onChange={(e) => setIsLegacyImport(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                    />
+                    <div>
+                      <label htmlFor="legacyToggle" className="text-sm font-bold text-slate-800 cursor-pointer">Legacy Client Import</label>
+                      <p className="text-xs text-slate-500">Skips welcome email and credential generation.</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
                   <button
@@ -827,7 +829,7 @@ export const ClientsView: React.FC = () => {
                     type="submit"
                     className="btn-primary px-6 py-2 text-sm"
                   >
-                    {isLegacyImport ? 'Import Legacy Client' : 'Onboard & Send Details'}
+                    {editingClientId ? 'Save Changes' : (isLegacyImport ? 'Import Legacy Client' : 'Onboard & Send Details')}
                   </button>
                 </div>
               </form>
