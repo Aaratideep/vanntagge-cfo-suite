@@ -274,12 +274,12 @@ export const AuthView: React.FC = () => {
           }
           // Pull collection data in background
           // pullDatabaseFromFirebase().catch((err) => {
-            if (err.message?.includes('offline')) {
-              console.warn('[Auth] Firestore is offline. Skipping full sync.');
-            } else {
-              console.error(err);
-            }
-          });
+          //   if (err.message?.includes('offline')) {
+          //     console.warn('[Auth] Firestore is offline. Skipping full sync.');
+          //   } else {
+          //     console.error(err);
+          //   }
+          // });
         }).catch((err) => {
           if (err.message?.includes('offline')) {
             console.warn('[Auth] Firestore is offline. Continuing with default/local state.');
