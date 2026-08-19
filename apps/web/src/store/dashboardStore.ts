@@ -66,6 +66,9 @@ export interface AdminSettings {
   adminPhone: string;
   companyName: string;
   smtpPassword?: string;
+  twilioAccountSid?: string;
+  twilioAuthToken?: string;
+  twilioWhatsAppNumber?: string;
 }
 
 interface DashboardState {

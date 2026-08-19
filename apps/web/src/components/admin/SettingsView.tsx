@@ -263,25 +263,62 @@ export const SettingsView: React.FC = () => {
             </div>
 
             {/* WhatsApp Integration */}
-            <div className="py-3 flex items-center justify-between text-xs">
-              <div className="space-y-1 pr-4">
-                <span className="font-bold text-slate-800 block">WhatsApp Automation API</span>
-                <p className="text-[10px] text-slate-400 leading-normal">
-                  Send compliance calendar filing alerts and collection payment invoices directly to client CFO whatsapp lines.
-                </p>
+            <div className="py-3 flex flex-col text-xs border-b border-slate-50 last:border-0">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1 pr-4">
+                  <span className="font-bold text-slate-800 block">WhatsApp Automation API (Twilio)</span>
+                  <p className="text-[10px] text-slate-400 leading-normal">
+                    Send compliance calendar filing alerts and collection payment invoices directly to client CFO whatsapp lines.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={whatsappEnabled}
+                    onChange={(e) => {
+                      setWhatsappEnabled(e.target.checked);
+                      handleToggleFeature('WhatsApp Alerts', e.target.checked);
+                    }}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+                </label>
               </div>
-              <label className="relative inline-flex items-center cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={whatsappEnabled}
-                  onChange={(e) => {
-                    setWhatsappEnabled(e.target.checked);
-                    handleToggleFeature('WhatsApp Alerts', e.target.checked);
-                  }}
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-              </label>
+              
+              {whatsappEnabled && (
+                <div className="mt-4 p-4 bg-slate-50 rounded-xl space-y-3 border border-slate-100">
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Twilio Account SID</label>
+                    <input
+                      type="text"
+                      placeholder="ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+                      value={adminSettings.twilioAccountSid || ''}
+                      onChange={(e) => setAdminSettings({ twilioAccountSid: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Twilio Auth Token</label>
+                    <input
+                      type="password"
+                      placeholder="Your Auth Token"
+                      value={adminSettings.twilioAuthToken || ''}
+                      onChange={(e) => setAdminSettings({ twilioAuthToken: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Twilio WhatsApp Number</label>
+                    <input
+                      type="text"
+                      placeholder="+14155238886"
+                      value={adminSettings.twilioWhatsAppNumber || ''}
+                      onChange={(e) => setAdminSettings({ twilioWhatsAppNumber: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Power BI Dashboard sync */}

@@ -247,7 +247,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
         const res = await fetch('/api/dispatch/whatsapp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: toPhone, text: body })
+          body: JSON.stringify({ to: toPhone, text: body, adminDetails: adminSettings })
         });
         if (!res.ok) throw new Error('WhatsApp Dispatch Failed');
         setGlobalSuccessMsg('WhatsApp message dispatched successfully');

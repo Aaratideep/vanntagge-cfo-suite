@@ -3,19 +3,19 @@ import twilio from 'twilio';
 
 export async function POST(req: Request) {
   try {
-    const { to, text } = await req.json();
+    const { to, text, adminDetails } = await req.json();
 
     if (!to || !text) {
       return NextResponse.json({ error: 'Recipient phone number and text are required' }, { status: 400 });
     }
 
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+    const accountSid = process.env.TWILIO_ACCOUNT_SID || adminDetails?.twilioAccountSid;
+    const authToken = process.env.TWILIO_AUTH_TOKEN || adminDetails?.twilioAuthToken;
+    const twilioNumber = process.env.TWILIO_WHATSAPP_NUMBER || adminDetails?.twilioWhatsAppNumber;
 
     if (!accountSid || !authToken || !twilioNumber) {
       return NextResponse.json(
-        { error: 'Twilio API credentials (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER) are not configured.' },
+        { error: 'Twilio API credentials (Account SID, Auth Token, WhatsApp Number) are not configured.' },
         { status: 500 }
       );
     }

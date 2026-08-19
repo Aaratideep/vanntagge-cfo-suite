@@ -92,7 +92,11 @@ export const BillingView: React.FC = () => {
         const res = await fetch('/api/dispatch/whatsapp', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: sanitizedPhone || '0000000000', text: whatsappMsg })
+          body: JSON.stringify({ 
+            to: sanitizedPhone || '0000000000', 
+            text: whatsappMsg,
+            adminDetails: adminSettings 
+          })
         });
         if (!res.ok) throw new Error('WhatsApp Dispatch Failed');
         useDashboardStore.getState().setGlobalSuccessMsg('WhatsApp dispatched successfully');
