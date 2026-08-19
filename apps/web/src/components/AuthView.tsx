@@ -118,7 +118,7 @@ export const AuthView: React.FC = () => {
             });
           }
 
-          pullDatabaseFromFirebase().catch(console.error);
+          // pullDatabaseFromFirebase().catch(console.error);
         }
       });
 
@@ -165,7 +165,7 @@ export const AuthView: React.FC = () => {
             console.warn('[Auth] Firestore profile fetch/write failed on redirect.', firestoreError);
           });
 
-          pullDatabaseFromFirebase().catch(console.error);
+          // pullDatabaseFromFirebase().catch(console.error);
         }
       }).catch((error) => {
         console.error('[Auth] Redirect result error:', error);
@@ -273,7 +273,7 @@ export const AuthView: React.FC = () => {
             useDashboardStore.getState().addAuditLog('FIREBASE_LOGIN', `User ${immediateUser.name} logged in (new profile created).`);
           }
           // Pull collection data in background
-          pullDatabaseFromFirebase().catch((err) => {
+          // pullDatabaseFromFirebase().catch((err) => {
             if (err.message?.includes('offline')) {
               console.warn('[Auth] Firestore is offline. Skipping full sync.');
             } else {
@@ -370,7 +370,7 @@ export const AuthView: React.FC = () => {
         setLoading(false);
 
         // Pull database in background after login — non-blocking
-        pullDatabaseFromFirebase().catch(console.error);
+        // pullDatabaseFromFirebase().catch(console.error);
       } catch (error: any) {
         // Log as warning — these are handled auth errors (duplicate email, weak password, etc.)
         console.warn('[Auth] Firebase register error:', error.code, error.message);
@@ -524,7 +524,7 @@ export const AuthView: React.FC = () => {
             console.warn('[Auth] Firestore profile fetch/write failed.', firestoreError);
           });
           
-          pullDatabaseFromFirebase().catch(console.error);
+          // pullDatabaseFromFirebase().catch(console.error);
         }
 
       } catch (error: any) {

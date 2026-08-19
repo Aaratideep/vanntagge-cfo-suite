@@ -12,7 +12,7 @@ export const SettingsView: React.FC = () => {
 
   const [tallyEnabled, setTallyEnabled] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
-  const [whatsappEnabled, setWhatsappEnabled] = useState(false);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(!!adminSettings?.twilioAccountSid);
   const [powerBiEnabled, setPowerBiEnabled] = useState(true);
 
   const [seeding, setSeeding] = useState(false);

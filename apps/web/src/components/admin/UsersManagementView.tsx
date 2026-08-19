@@ -17,7 +17,7 @@ export const UsersManagementView: React.FC = () => {
   
   // Refresh latest users when visiting this tab
   useEffect(() => {
-    pullDatabaseFromFirebase().catch(console.error);
+    // pullDatabaseFromFirebase().catch(console.error);
   }, []);
   
   // Form State

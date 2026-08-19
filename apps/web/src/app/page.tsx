@@ -12,7 +12,7 @@ export default function Home() {
 
   useEffect(() => {
     if (currentUser) {
-      pullDatabaseFromFirebase().catch(console.error);
+      // pullDatabaseFromFirebase().catch(console.error);
 
       // Ensure cookies are set BEFORE navigating to protected routes
       document.cookie = `userRole=${currentUser.role}; path=/; max-age=${60 * 60 * 24 * 7}`;
