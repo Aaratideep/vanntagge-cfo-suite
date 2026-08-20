@@ -116,19 +116,19 @@ export const Header: React.FC<HeaderProps> = ({
 
             {/* Notification Dropdown Panel */}
             {notifDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-80 bg-surface-container-lowest border border-outline-variant/45 rounded-xl shadow-xl z-50 overflow-hidden">
-                <div className="px-4 py-3 bg-surface-container border-b border-outline-variant/30 flex items-center justify-between">
-                  <span className="text-xs font-bold text-on-surface">Notifications ({unreadCount} new)</span>
+              <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden">
+                <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800">Notifications ({unreadCount} new)</span>
                   <button
                     onClick={clearNotifications}
-                    className="text-[10px] text-primary hover:underline font-semibold"
+                    className="text-[10px] text-blue-600 hover:underline font-semibold"
                   >
                     Clear All
                   </button>
                 </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-outline-variant/20">
+                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white">
                   {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-outline text-xs">
+                    <div className="p-6 text-center text-slate-500 text-xs">
                       No notifications to display.
                     </div>
                   ) : (
@@ -136,22 +136,22 @@ export const Header: React.FC<HeaderProps> = ({
                       <div
                         key={n.id}
                         onClick={() => handleNotificationClick(n)}
-                        className={`p-3 text-left hover:bg-surface-variant cursor-pointer transition-colors ${
-                          !n.isRead ? 'bg-primary/5' : ''
+                        className={`p-3 text-left hover:bg-slate-50 cursor-pointer transition-colors ${
+                          !n.isRead ? 'bg-blue-50/50' : 'bg-white'
                         }`}
                       >
                         <div className="flex items-start justify-between gap-1">
-                          <span className={`text-xs font-semibold block ${!n.isRead ? 'text-primary' : 'text-on-surface'}`}>
+                          <span className={`text-xs font-semibold block ${!n.isRead ? 'text-blue-600' : 'text-slate-800'}`}>
                             {n.title}
                           </span>
                           {!n.isRead && (
-                            <span className="w-1.5 h-1.5 bg-primary rounded-full shrink-0 mt-1" />
+                            <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shrink-0 mt-1" />
                           )}
                         </div>
-                        <p className="text-[10px] text-on-surface-variant mt-1 leading-normal">
+                        <p className={`text-[10px] mt-1 ${!n.isRead ? 'text-slate-700' : 'text-slate-500'}`}>
                           {n.message}
                         </p>
-                        <span className="text-[9px] text-outline mt-1 block">
+                        <span className="text-[9px] text-slate-400 mt-2 block">
                           {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
