@@ -1549,7 +1549,10 @@ export const useDashboardStore = create<DashboardState>()(
     engagementLetters: state.engagementLetters,
     auditLogs: state.auditLogs,
     notifications: state.notifications,
-    adminSettings: state.adminSettings
+    adminSettings: state.adminSettings,
+    leaves: state.leaves,
+    payrolls: state.payrolls,
+    onboardingTasks: state.onboardingTasks
   }),
   migrate: (persistedState: any, version: number) => {
     return persistedState;
