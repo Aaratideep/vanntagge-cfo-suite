@@ -35,7 +35,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   if (!currentUser) return null;
 
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const isTarget = (n: any) => (n.targetRoles || ['SUPER_ADMIN', 'ADMIN']).includes(currentUser.role);
+  const unreadCount = notifications.filter((n) => !n.isRead && isTarget(n)).length;
+  const displayNotifications = notifications.filter(isTarget);
 
   const handleNotificationClick = (n: any) => {
     markNotificationRead(n.id);
@@ -127,12 +129,12 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
                 <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 bg-white">
-                  {notifications.length === 0 ? (
+                  {displayNotifications.length === 0 ? (
                     <div className="p-6 text-center text-slate-500 text-xs">
                       No notifications to display.
                     </div>
                   ) : (
-                    notifications.map((n) => (
+                    displayNotifications.map((n) => (
                       <div
                         key={n.id}
                         onClick={() => handleNotificationClick(n)}

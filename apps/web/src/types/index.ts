@@ -416,6 +416,7 @@ export interface Notification {
   isRead: boolean;
   link?: string;
   createdAt: string;
+  targetRoles?: string[];
 }
 
 export interface AuditLog {

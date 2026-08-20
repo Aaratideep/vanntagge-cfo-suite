@@ -158,7 +158,7 @@ interface DashboardState {
   addCollection: (engagementId: string, collection: Omit<Collection, 'id' | 'createdAt'>) => void;
   addReport: (engagementId: string, report: Omit<Report, 'id' | 'createdAt' | 'version'>) => void;
   updateReportStatus: (engagementId: string, reportId: string, status: ReportStatus) => void;
-  addNotification: (title: string, message: string, link?: string) => void;
+  addNotification: (title: string, message: string, link?: string, targetRoles?: string[]) => void;
   markNotificationRead: (id: string) => void;
   clearNotifications: () => void;
   addAuditLog: (action: string, details: string) => void;
@@ -1449,7 +1449,7 @@ export const useDashboardStore = create<DashboardState>()(
     }
   },
 
-  addNotification: (title, message, link) => {
+  addNotification: (title, message, link, targetRoles = ['SUPER_ADMIN', 'ADMIN']) => {
     const newNotification: Notification = {
       id: `n-${Date.now()}`,
       title,
@@ -1457,6 +1457,7 @@ export const useDashboardStore = create<DashboardState>()(
       isRead: false,
       link,
       createdAt: new Date().toISOString(),
+      targetRoles,
     };
     set((state) => ({
       notifications: [newNotification, ...state.notifications],
