@@ -102,6 +102,7 @@ interface DashboardState {
   applyLeave: (leave: Omit<LeaveRequest, 'id' | 'status'>) => void;
   updateLeaveStatus: (id: string, status: 'APPROVED' | 'REJECTED') => void;
   processPayroll: (id: string) => void;
+  generateMonthlyPayroll: () => void;
   updateOnboardingTask: (id: string, status: 'COMPLETED') => void;
 
   // Actions
@@ -233,6 +234,50 @@ export const useDashboardStore = create<DashboardState>()(
     get().addNotification('New Leave Request', `${leave.userName} applied for leave.`, '/hr');
   },
   processPayroll: (id) => set((state) => ({ payrolls: state.payrolls.map(p => p.id === id ? { ...p, status: 'PROCESSED' } : p) })),
+  generateMonthlyPayroll: () => {
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const currentMonth = monthNames[new Date().getMonth()];
+    const currentYear = new Date().getFullYear();
+    
+    set((state) => {
+      const newPayrolls = [...state.payrolls];
+      let generatedCount = 0;
+      
+      state.users.filter(u => u.role === 'EMPLOYEE' || u.role === 'SUPER_ADMIN').forEach(employee => {
+        const alreadyExists = newPayrolls.find(p => p.userId === employee.id && p.month === currentMonth && p.year === currentYear);
+        if (!alreadyExists) {
+          const basic = employee.salaryBasic || 50000;
+          const hra = basic * 0.4;
+          const pf = basic * 0.12;
+          const netPay = basic + hra - pf;
+          
+          newPayrolls.push({
+            id: `pr-${Date.now()}-${employee.id}`,
+            userId: employee.id,
+            userName: employee.name,
+            month: currentMonth,
+            year: currentYear,
+            basic,
+            hra,
+            statutoryBonus: 0,
+            deductionsTds: 0,
+            deductionsPfEsi: pf,
+            netPay,
+            status: 'PENDING',
+            createdAt: new Date().toISOString()
+          });
+          generatedCount++;
+        }
+      });
+      
+      if (generatedCount > 0) {
+        get().addAuditLog('PAYROLL_RUN', `Generated ${generatedCount} payroll records for ${currentMonth} ${currentYear}`);
+      }
+      
+      return { payrolls: newPayrolls };
+    });
+    get().setGlobalSuccessMsg(`Monthly payroll run generated successfully!`);
+  },
   updateOnboardingTask: (id, status) => set((state) => ({ onboardingTasks: state.onboardingTasks.map(t => t.id === id ? { ...t, status } : t) })),
 
   loginUser: (email) => {

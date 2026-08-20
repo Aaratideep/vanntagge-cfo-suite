@@ -24,6 +24,7 @@ export const EmployeesView: React.FC = () => {
     updateLeaveStatus, 
     processPayroll, 
     updateOnboardingTask,
+    generateMonthlyPayroll,
     addUser,
     deleteUser
   } = useDashboardStore();
@@ -401,7 +402,10 @@ export const EmployeesView: React.FC = () => {
           <div className="premium-card bg-white overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-bold text-slate-800">Monthly Payroll Processing</h3>
-              <button className="btn-primary py-2 text-sm flex items-center gap-2">
+              <button 
+                onClick={() => generateMonthlyPayroll()}
+                className="btn-primary py-2 text-sm flex items-center gap-2"
+              >
                 Generate Monthly Run
               </button>
             </div>
