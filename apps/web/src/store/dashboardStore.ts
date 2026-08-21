@@ -102,6 +102,7 @@ interface DashboardState {
   applyLeave: (leave: Omit<LeaveRequest, 'id' | 'status'>) => void;
   updateLeaveStatus: (id: string, status: 'APPROVED' | 'REJECTED') => void;
   processPayroll: (id: string) => void;
+  updatePayrollRecord: (id: string, updates: Partial<PayrollRecord>) => void;
   generateMonthlyPayroll: () => void;
   updateOnboardingTask: (id: string, status: 'COMPLETED') => void;
 
@@ -234,6 +235,16 @@ export const useDashboardStore = create<DashboardState>()(
     get().addNotification('New Leave Request', `${leave.userName} applied for leave.`, '/hr');
   },
   processPayroll: (id) => set((state) => ({ payrolls: state.payrolls.map(p => p.id === id ? { ...p, status: 'PROCESSED' } : p) })),
+  updatePayrollRecord: (id, updates) => set((state) => ({ 
+    payrolls: state.payrolls.map(p => {
+      if (p.id === id) {
+        const updated = { ...p, ...updates };
+        updated.netPay = updated.basic + updated.hra + updated.statutoryBonus - updated.deductionsTds - updated.deductionsPfEsi;
+        return updated;
+      }
+      return p;
+    }) 
+  })),
   generateMonthlyPayroll: () => {
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const currentMonth = monthNames[new Date().getMonth()];
