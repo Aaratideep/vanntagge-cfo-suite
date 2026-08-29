@@ -130,7 +130,7 @@ export const CRMView: React.FC = () => {
     companyName: '', contactPerson: '', email: '', phone: '',
     industry: 'Technology', businessType: 'Pvt. Ltd.', leadSource: 'Website',
     expectedRevenue: 0, priority: 'MEDIUM' as Priority, remarks: '',
-    ownerName: '', ownerContact: '',
+    ownerName: '', ownerContact: '', assignedExecutiveId: '',
   };
   const [newLeadForm, setNewLeadForm] = useState({ ...EMPTY_LEAD });
   const [editLeadForm, setEditLeadForm] = useState({ ...EMPTY_LEAD });
@@ -1112,6 +1112,17 @@ export const CRMView: React.FC = () => {
                     onChange={e => setNewLeadForm({ ...newLeadForm, ownerContact: e.target.value })}
                     placeholder="+91-98765-43210"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:border-blue-400 outline-none transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-slate-600 font-semibold mb-1">Allocate To</label>
+                  <select value={newLeadForm.assignedExecutiveId || ''}
+                    onChange={e => setNewLeadForm({ ...newLeadForm, assignedExecutiveId: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none">
+                    <option value="">Unassigned</option>
+                    {users.map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Email Address *</label>

@@ -208,13 +208,21 @@ export const EmployeeOnboardingModal: React.FC = () => {
                 </div>
 
                 {/* Passport Row */}
-                <div className="grid grid-cols-12 p-3 items-center">
+                <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center">
                   <div className="col-span-4 text-sm font-bold text-slate-800">Passport <span className="text-slate-400 font-normal text-xs ml-1">(Optional)</span></div>
                   <div className="col-span-4 pr-4">
                     <input type="text" name="passportNo" placeholder="Opt..." value={formData.passportNo} onChange={handleChange} className="w-full border-b border-slate-300 py-1 focus:outline-none focus:border-purple-600 uppercase text-xs font-medium" />
                   </div>
                   <div className="col-span-4">
                     <input type="file" accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, 'passportBase64')} className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-xs file:font-bold hover:file:bg-slate-50 cursor-pointer transition-colors" />
+                  </div>
+                </div>
+
+                {/* Bank Details Proof Row */}
+                <div className="grid grid-cols-12 p-3 items-center">
+                  <div className="col-span-8 text-sm font-bold text-slate-800">Bank Details Proof (Cancelled Cheque / Passbook) *</div>
+                  <div className="col-span-4">
+                    <input required type="file" accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, 'bankDetailsProofBase64')} className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-xs file:font-bold hover:file:bg-slate-50 cursor-pointer transition-colors" />
                   </div>
                 </div>
               </div>

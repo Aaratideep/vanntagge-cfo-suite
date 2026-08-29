@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatINR } from '../../lib/currency';
 import {
   FileText,
@@ -36,7 +36,14 @@ export const BillingView: React.FC = () => {
   } = useDashboardStore();
 
   const [activeEngId, setActiveEngId] = useState<string>(engagements[0]?.id || '');
-  const [billingSubTab, setBillingSubTab] = useState<'invoices' | 'collections' | 'ageing'>('invoices');
+  const [billingSubTab, setBillingSubTab] = useState<'invoices' | 'collections' | 'ageing' | 'projections'>('invoices');
+
+  // Auto-select first engagement if available and none selected
+  useEffect(() => {
+    if (!activeEngId && engagements.length > 0) {
+      setActiveEngId(engagements[0].id);
+    }
+  }, [activeEngId, engagements]);
 
   // Modal / Form States
   const [showRaiseInvModal, setShowRaiseInvModal] = useState(false);
@@ -52,6 +59,9 @@ export const BillingView: React.FC = () => {
     invoiceType: 'Milestone' as 'Milestone' | 'Retainer' | 'Hourly',
     sacCode: '998311',
     gstType: 'Intrastate' as 'Intrastate' | 'Interstate',
+    issueDate: new Date().toISOString().split('T')[0],
+    status: 'SENT' as InvoiceStatus,
+    billingEntity: 'Vanntagge CFO Services LLP',
   });
 
   const [payForm, setPayForm] = useState({
@@ -190,6 +200,33 @@ export const BillingView: React.FC = () => {
     }
   });
 
+  // Calculate Projections
+  let projNext30 = 0;
+  let projNext60 = 0;
+  let projNext90 = 0;
+  const upcomingInvoices: { invoice: Invoice; daysUntilDue: number; clientName: string }[] = [];
+
+  engagements.forEach((e) => {
+    (e.invoices || []).forEach((inv) => {
+      if (inv.status !== 'PAID') {
+        const dueDate = new Date(inv.dueDate);
+        const today = new Date();
+        const amt = Number((inv as any).finalAmount || (inv as any).totalAmount || inv.amount || 0);
+        
+        const diffTime = dueDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays >= 0) {
+          upcomingInvoices.push({ invoice: inv, daysUntilDue: diffDays, clientName: e.clientCompanyName });
+          if (diffDays <= 30) projNext30 += amt;
+          else if (diffDays <= 60) projNext60 += amt;
+          else if (diffDays <= 90) projNext90 += amt;
+        }
+      }
+    });
+  });
+  upcomingInvoices.sort((a, b) => a.daysUntilDue - b.daysUntilDue);
+
   const handleRaiseInvoice = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEngagement) return;
@@ -206,8 +243,10 @@ export const BillingView: React.FC = () => {
       gst: invForm.amount * 0.18,
       finalAmount,
       dueDate: new Date(invForm.dueDate).toISOString(),
-      status: 'SENT',
+      createdAt: new Date(invForm.issueDate).toISOString(),
+      status: invForm.status,
       paymentTerms: invForm.terms,
+      billingEntity: invForm.billingEntity,
       invoiceType: invForm.invoiceType,
       sacCode: invForm.sacCode,
       gstType: invForm.gstType,
@@ -222,6 +261,9 @@ export const BillingView: React.FC = () => {
       invoiceType: 'Milestone',
       sacCode: '998311',
       gstType: 'Intrastate',
+      issueDate: new Date().toISOString().split('T')[0],
+      status: 'SENT',
+      billingEntity: 'Vanntagge CFO Services LLP',
     });
   };
 
@@ -305,6 +347,14 @@ export const BillingView: React.FC = () => {
             }`}
           >
             Ageing Reports
+          </button>
+          <button
+            onClick={() => setBillingSubTab('projections')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              billingSubTab === 'projections' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Cashflow Projections
           </button>
         </div>
       </div>
@@ -578,6 +628,65 @@ export const BillingView: React.FC = () => {
         </div>
       )}
 
+      {/* Sub view 4: Cashflow Projections (Global across engagements) */}
+      {billingSubTab === 'projections' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-2 gap-4">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Company Cashflow Projections</h1>
+              <p className="text-xs text-slate-500">Track all upcoming bills and expected inflows automatically generated from engagements.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div className="premium-card p-4 bg-white text-center space-y-1 border-l-4 border-l-emerald-500">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Expected In 30 Days</span>
+              <span className="text-xl font-bold text-emerald-600">{formatINR(projNext30)}</span>
+            </div>
+            <div className="premium-card p-4 bg-white text-center space-y-1 border-l-4 border-l-blue-500">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Expected In 60 Days</span>
+              <span className="text-xl font-bold text-blue-600">{formatINR(projNext60)}</span>
+            </div>
+            <div className="premium-card p-4 bg-white text-center space-y-1 border-l-4 border-l-indigo-500">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Expected In 90 Days</span>
+              <span className="text-xl font-bold text-indigo-600">{formatINR(projNext90)}</span>
+            </div>
+            <div className="premium-card p-4 bg-white text-center space-y-1 border-l-4 border-l-purple-500 bg-purple-50/30">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Projected</span>
+              <span className="text-xl font-bold text-purple-600">{formatINR(projNext30 + projNext60 + projNext90)}</span>
+            </div>
+          </div>
+
+          <div className="premium-card p-5 bg-white">
+            <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wide mb-3">Auto-Tracked Bills Due</h4>
+            <div className="space-y-3">
+              {upcomingInvoices.map((item, idx) => (
+                <div key={idx} className="p-3 border border-slate-100 rounded-xl flex items-center justify-between text-xs hover:bg-slate-50 transition-colors">
+                  <div>
+                    <span className="font-bold text-slate-800">{item.clientName}</span>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
+                      <span>Invoice Ref: {item.invoice.invoiceNumber}</span>
+                      <span>&bull;</span>
+                      <span>Milestone: {item.invoice.milestone}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-bold text-emerald-600 block">+{formatINR(item.invoice.finalAmount)}</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded inline-block mt-1 bg-blue-50 text-blue-600">
+                      {item.daysUntilDue === 0 ? 'Due Today' : `Due in ${item.daysUntilDue} Days`}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {upcomingInvoices.length === 0 && (
+                <div className="text-center py-6 text-slate-400">
+                  No upcoming bills projected for the tracked engagements.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Raise Invoice Modal */}
       {showRaiseInvModal && selectedEngagement && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -585,6 +694,20 @@ export const BillingView: React.FC = () => {
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 relative z-10 shadow-2xl">
             <h3 className="font-bold text-slate-800 text-sm mb-4">Raise Milestone Invoice</h3>
             <form onSubmit={handleRaiseInvoice} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-500 mb-1">Billing Entity</label>
+                <select
+                  value={invForm.billingEntity}
+                  onChange={(e) => setInvForm({ ...invForm, billingEntity: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none focus:bg-white mb-4"
+                >
+                  <option value="CA Tejashri Sachin Pawar">CA Tejashri Sachin Pawar</option>
+                  <option value="Sachin Pawar (HUF)">Sachin Pawar (HUF)</option>
+                  <option value="Vanntagge CFO Services LLP">Vanntagge CFO Services LLP</option>
+                  <option value="Ajit Shinde & CO">Ajit Shinde & CO</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-slate-500 mb-1">Billing Milestone Description</label>
                 <input
@@ -595,6 +718,31 @@ export const BillingView: React.FC = () => {
                   onChange={(e) => setInvForm({ ...invForm, milestone: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:bg-white"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-500 mb-1">Issue Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={invForm.issueDate}
+                    onChange={(e) => setInvForm({ ...invForm, issueDate: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none focus:bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 mb-1">Payment Status</label>
+                  <select
+                    value={invForm.status}
+                    onChange={(e) => setInvForm({ ...invForm, status: e.target.value as any })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none focus:bg-white"
+                  >
+                    <option value="DRAFT">Draft</option>
+                    <option value="SENT">Sent / Unpaid</option>
+                    <option value="PAID">Paid</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

@@ -62,6 +62,7 @@ export const WorkView: React.FC = () => {
   const [timeSpentInput, setTimeSpentInput] = useState<string>('0');
   const [progressInput, setProgressInput] = useState<number>(0);
   const [commentsInput, setCommentsInput] = useState<string>('');
+  const [taskNoteModal, setTaskNoteModal] = useState<{isOpen: boolean; taskId: string; engagementId: string; currentNote: string}>({isOpen: false, taskId: '', engagementId: '', currentNote: ''});
   
   // Follow-up Input
   const [followUpInput, setFollowUpInput] = useState<string>('');
@@ -626,6 +627,13 @@ export const WorkView: React.FC = () => {
                                     <Trash2 size={13} />
                                   </button>
                                 )}
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setTaskNoteModal({ isOpen: true, taskId: task.id, engagementId: getTaskEngagement(task.id)?.id || '', currentNote: task.notes || '' }); }}
+                                  className="text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-200 rounded px-1.5 py-0.5 hover:bg-blue-100 transition-colors ml-1"
+                                  title="Add/Edit Note"
+                                >
+                                  Note
+                                </button>
                               </div>
                             </div>
 
@@ -768,6 +776,13 @@ export const WorkView: React.FC = () => {
                               <Trash2 size={16} />
                             </button>
                           )}
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setTaskNoteModal({ isOpen: true, taskId: task.id, engagementId: getTaskEngagement(task.id)?.id || '', currentNote: task.notes || '' }); }}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 bg-blue-50 border border-blue-200 rounded-lg transition-all shrink-0 ml-1 text-[10px] font-bold"
+                            title="Add/Edit Note"
+                          >
+                            Note
+                          </button>
                         </div>
                       </div>
                     );
@@ -1179,6 +1194,37 @@ export const WorkView: React.FC = () => {
                 </div>
               )}
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {taskNoteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+            <h3 className="text-xl font-bold font-outfit text-slate-800 mb-4">Task Note</h3>
+            <textarea
+              className="w-full h-32 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              placeholder="Add your progress note or findings here..."
+              value={taskNoteModal.currentNote}
+              onChange={(e) => setTaskNoteModal(prev => ({ ...prev, currentNote: e.target.value }))}
+            />
+            <div className="mt-4 flex justify-end gap-3">
+              <button 
+                className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
+                onClick={() => setTaskNoteModal({ isOpen: false, taskId: '', engagementId: '', currentNote: '' })}
+              >
+                Cancel
+              </button>
+              <button 
+                className="px-6 py-2 text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md transition-colors"
+                onClick={() => {
+                  updateTask(taskNoteModal.engagementId, taskNoteModal.taskId, { notes: taskNoteModal.currentNote });
+                  setTaskNoteModal({ isOpen: false, taskId: '', engagementId: '', currentNote: '' });
+                }}
+              >
+                Save Note
+              </button>
             </div>
           </div>
         </div>

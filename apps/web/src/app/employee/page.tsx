@@ -61,7 +61,7 @@ export default function EmployeePage() {
     }
   };
 
-  const spacingClass = sidebarCollapsed ? 'ml-20' : 'ml-[280px]';
+  const spacingClass = 'ml-16 peer-hover:ml-60';
 
   return (
     <div className="min-h-screen bg-background text-on-surface">

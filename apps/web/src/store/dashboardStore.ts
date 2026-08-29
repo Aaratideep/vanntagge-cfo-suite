@@ -44,6 +44,7 @@ import {
   TaskStatus,
   ReviewSeverity,
   ReviewStatus,
+
   DocCategory,
   DocStatus,
   ComplianceType,
@@ -58,6 +59,8 @@ import {
   LeaveRequest,
   PayrollRecord,
   OnboardingTask,
+  Meeting,
+  AvailabilityBlock,
 } from '../types';
 
 export interface AdminSettings {
@@ -86,6 +89,8 @@ interface DashboardState {
   leaves: LeaveRequest[];
   payrolls: PayrollRecord[];
   onboardingTasks: OnboardingTask[];
+  meetings: Meeting[];
+  availabilityBlocks: AvailabilityBlock[];
   currentUser: User | null;
   adminSettings: AdminSettings;
   setAdminSettings: (settings: Partial<AdminSettings>) => void;
@@ -112,6 +117,11 @@ interface DashboardState {
   deleteUser: (id: string) => void;
   submitEmployeeOnboarding: (userId: string, data: EmployeeOnboardingData) => void;
   submitClientOnboarding: (userId: string, data: ClientOnboardingData) => void;
+  addReceipt: (receipt: Omit<Receipt, 'id' | 'createdAt'>) => void;
+  updateReceipt: (id: string, updates: Partial<Receipt>) => void;
+  addMeeting: (meeting: Omit<Meeting, 'id' | 'createdAt'>) => void;
+  addAvailabilityBlock: (block: Omit<AvailabilityBlock, 'id'>) => void;
+  removeAvailabilityBlock: (id: string) => void;
   addLead: (lead: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateLead: (id: string, updates: Partial<Lead>) => void;
   deleteLead: (id: string) => void;
@@ -188,6 +198,8 @@ export const useDashboardStore = create<DashboardState>()(
   leaves: [],
   payrolls: [],
   onboardingTasks: [],
+  meetings: [],
+  availabilityBlocks: [],
   leads: [],
   followUps: [],
   quotations: [],
@@ -443,6 +455,40 @@ export const useDashboardStore = create<DashboardState>()(
     });
     get().addAuditLog('CLIENT_ONBOARDED', `Onboarding completed for client user ${userId}.`);
   },
+
+  addReceipt: (receipt) => {
+    const newReceipt = { ...receipt, id: `rec-${Date.now()}`, createdAt: new Date().toISOString() };
+    set((state) => ({ standaloneReceipts: [...state.standaloneReceipts, newReceipt as Receipt] }));
+  },
+
+  updateReceipt: (id, updates) =>
+    set((state) => ({
+      standaloneReceipts: state.standaloneReceipts.map((r) =>
+        r.id === id ? { ...r, ...updates } : r
+      ),
+    })),
+
+  addMeeting: (m) => {
+    const newMeeting: Meeting = {
+      ...m,
+      id: Math.random().toString(36).substr(2, 9),
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({ meetings: [...state.meetings, newMeeting] }));
+  },
+
+  addAvailabilityBlock: (b) => {
+    const newBlock: AvailabilityBlock = {
+      ...b,
+      id: Math.random().toString(36).substr(2, 9),
+    };
+    set((state) => ({ availabilityBlocks: [...state.availabilityBlocks, newBlock] }));
+  },
+
+  removeAvailabilityBlock: (id) =>
+    set((state) => ({
+      availabilityBlocks: state.availabilityBlocks.filter((b) => b.id !== id),
+    })),
 
   logoutUser: async () => {
     const user = get().currentUser;

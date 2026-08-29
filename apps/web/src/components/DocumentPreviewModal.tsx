@@ -145,15 +145,18 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   const gstAmount = Number(data.gst || (taxableAmount * 0.18));
   const finalTotal = Number(data.finalAmount || (taxableAmount + gstAmount));
 
+  const billingEntityName = data.billingEntity || 'Vanntagge CFO Services LLP';
+  const upperBillingEntityName = billingEntityName.toUpperCase();
+
   const getDraftedMessage = () => {
     if (isInvoice) {
-      return `Hello ${clientName},\n\nPlease find attached the invoice ${docRefNo} from VANNTAGGE CFO SERVICES LLP for the amount of ${formatINR(finalTotal)}. The due date for this invoice is ${dueDate}.\n\nThank you for your business!`;
+      return `Hello ${clientName},\n\nPlease find attached the invoice ${docRefNo} from ${upperBillingEntityName} for the amount of ${formatINR(finalTotal)}. The due date for this invoice is ${dueDate}.\n\nThank you for your business!`;
     } else if (isQuotation) {
       return `Hello ${clientName},\n\nPlease find attached our commercial quotation ${docRefNo} for CFO advisory services. The total proposed amount is ${formatINR(finalTotal)}, valid until ${dueDate}.\n\nLooking forward to working with you!`;
     } else if (isReceipt) {
       return `Hello ${clientName},\n\nWe have received your payment. Please find attached your official payment receipt ${docRefNo} for the amount of ${formatINR(finalTotal)}.\n\nThank you!`;
     } else {
-      return `Hello ${clientName},\n\nPlease find the attached document ${docRefNo} from VANNTAGGE CFO SERVICES LLP.\n\nThank you!`;
+      return `Hello ${clientName},\n\nPlease find the attached document ${docRefNo} from ${upperBillingEntityName}.\n\nThank you!`;
     }
   };
 
@@ -206,7 +209,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       const fileName = `${docTitle.replace(/ /g, '_')}_${docRefNo}.pdf`;
       const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
       
-      const subject = `${docTitle} - ${docRefNo} - VANNTAGGE CFO SERVICES LLP`;
+      const subject = `${docTitle} - ${docRefNo} - ${upperBillingEntityName}`;
       const body = getDraftedMessage();
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -349,8 +352,8 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 </p>
                 <div className="my-6 space-y-4">
                   <div className="pl-6 border-l-4 border-slate-300">
-                    <p className="font-bold text-base uppercase">VANNTAGGE CFO SERVICES LLP</p>
-                    <p className="text-slate-600">A Limited Liability Partnership incorporated under the provisions of the LLP Act, 2008, having its principal place of business at Level 8, Corporate Tower B, BKC Financial Hub, Bandra East, Mumbai, MH - 400051 (hereinafter referred to as the <strong>"Service Provider"</strong> or <strong>"First Party"</strong>).</p>
+                    <p className="font-bold text-base uppercase">{upperBillingEntityName}</p>
+                    <p className="text-slate-600">A registered entity having its principal place of business at Level 8, Corporate Tower B, BKC Financial Hub, Bandra East, Mumbai, MH - 400051 (hereinafter referred to as the <strong>"Service Provider"</strong> or <strong>"First Party"</strong>).</p>
                   </div>
                   <div className="text-center italic text-slate-500 font-bold">AND</div>
                   <div className="pl-6 border-l-4 border-slate-300">
@@ -424,11 +427,11 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 </div>
 
                 <div className="space-y-12 text-right flex flex-col items-end">
-                  <p className="font-bold uppercase tracking-wider text-sm">For VANNTAGGE CFO SERVICES LLP</p>
+                  <p className="font-bold uppercase tracking-wider text-sm">For {upperBillingEntityName}</p>
                   <div className="relative">
-                    {/* Placeholder for actual digital signature image if needed */}
-                    <div className="border-b border-slate-400 w-48 text-center italic text-emerald-700 font-medium pb-2 text-sm">
-                      Digitally Signed / E-Verified
+                    <div className="flex flex-col items-end border-b border-slate-400 pb-2 w-48 text-center">
+                      <img src="/signature.png" alt="Signature" className="h-12 w-auto object-contain opacity-80" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      <span className="italic text-emerald-700 font-medium text-[10px] mt-1 block">Digitally Signed / E-Verified</span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -445,12 +448,12 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
             <div className="flex items-center gap-4">
               <img
                 src="/vanntagge-logo.png"
-                alt="VANNTAGGE CFO SERVICES LLP"
+                alt={upperBillingEntityName}
                 className="h-12 w-auto object-contain shrink-0"
               />
               <div>
-                <h1 className="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight font-outfit">
-                  VANNTAGGE CFO SERVICES LLP
+                <h1 className="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight font-outfit uppercase">
+                  {upperBillingEntityName}
                 </h1>
                 <p className="text-[11px] text-slate-500 font-medium">
                   Corporate Financial Consultants & Virtual CFO Advisors
@@ -492,7 +495,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
                 Issued By (Service Provider)
               </span>
-              <p className="font-bold text-slate-800 text-sm">VANNTAGGE CFO SERVICES LLP</p>
+              <p className="font-bold text-slate-800 text-sm uppercase">{upperBillingEntityName}</p>
               <p className="text-slate-600">Level 8, Corporate Tower B, BKC Financial Hub</p>
               <p className="text-slate-600">Bandra East, Mumbai, MH - 400051</p>
               <p className="text-slate-600">Email: billing@vanntaggecfo.com | Phone: +91 22 6789 0000</p>
@@ -681,7 +684,8 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
             </div>
 
             <div className="text-right space-y-1">
-              <div className="inline-block border-b border-slate-300 pb-1 px-4 mb-1">
+              <div className="inline-block border-b border-slate-300 pb-1 px-4 mb-1 relative text-right flex flex-col items-end">
+                <img src="/signature.png" alt="Signature" className="h-8 w-auto object-contain opacity-80 mb-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 <span 
                   className="font-serif italic font-semibold text-slate-800 text-xs block focus:outline-none hover:bg-slate-100 cursor-text rounded px-1 -mx-1 transition-colors"
                   contentEditable
@@ -705,7 +709,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 suppressContentEditableWarning
                 title="Click to edit company name"
               >
-                For VANNTAGGE CFO SERVICES LLP
+                For {upperBillingEntityName}
               </span>
               <span 
                 className="text-[9px] text-slate-400 block focus:outline-none hover:bg-slate-100 cursor-text rounded px-1 -mx-1 transition-colors"

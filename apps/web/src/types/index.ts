@@ -79,6 +79,7 @@ export interface EmployeeOnboardingData {
   aadharCardBase64?: string;
   passportNo?: string;
   passportBase64?: string;
+  bankDetailsProofBase64?: string;
   previousApptLetterBase64?: string;
   relievingLetterBase64?: string;
   educationDegreeBase64?: string;
@@ -95,6 +96,7 @@ export interface ClientOnboardingData {
   companyName: string;
   entityType: string;
   industry: string;
+  billingEntity?: string;
   contactPerson: string;
   mobileNo: string;
   email: string;
@@ -325,6 +327,7 @@ export interface Invoice {
   dueDate: string;
   status: InvoiceStatus;
   paymentTerms?: string;
+  billingEntity?: string;
   invoiceType?: 'Milestone' | 'Retainer' | 'Hourly';
   sacCode?: string;
   gstType?: 'Intrastate' | 'Interstate';
@@ -466,4 +469,21 @@ export interface OnboardingTask {
   type: 'DOCUMENT' | 'NDA' | 'SYSTEM_ACCESS' | 'TALLY' | 'OTHER';
   status: 'PENDING' | 'COMPLETED';
   createdAt: string;
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  attendees: string;
+  meetLink: string;
+  createdAt: string;
+}
+
+export interface AvailabilityBlock {
+  id: string;
+  date: string;
+  type: 'AVAILABLE' | 'BUSY';
+  notes?: string;
 }

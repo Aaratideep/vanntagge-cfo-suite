@@ -129,6 +129,7 @@ export const ClientOnboardingModal: React.FC = () => {
     registeredAddress: '',
     gstin: '',
     panCardNo: '',
+    billingEntity: 'Vanntagge CFO Services LLP',
     requiredServices: {}
   });
 
@@ -306,6 +307,15 @@ export const ClientOnboardingModal: React.FC = () => {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Industry *</label>
                   <input required type="text" name="industry" value={formData.industry} onChange={handleChange} className="w-full border-b border-slate-300 py-2 focus:outline-none focus:border-blue-600 transition-colors text-sm font-medium text-slate-800 bg-transparent" placeholder="e.g. Technology, Retail, Manufacturing" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Billing Entity *</label>
+                  <select required name="billingEntity" value={formData.billingEntity} onChange={handleChange} className="w-full border-b border-slate-300 py-2 focus:outline-none focus:border-blue-600 transition-colors text-sm font-medium text-slate-800 bg-transparent">
+                    <option value="CA Tejashri Sachin Pawar">CA Tejashri Sachin Pawar</option>
+                    <option value="Sachin Pawar (HUF)">Sachin Pawar (HUF)</option>
+                    <option value="Vanntagge CFO Services LLP">Vanntagge CFO Services LLP</option>
+                    <option value="Ajit Shinde & CO">Ajit Shinde & CO</option>
+                  </select>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Registered Address *</label>

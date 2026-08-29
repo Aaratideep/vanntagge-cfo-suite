@@ -287,6 +287,13 @@ export const EmployeeDashboardView: React.FC = () => {
               <CalendarIcon size={16} className="text-purple-600" /> My Leave Management
             </h3>
             <p className="text-[10px] text-slate-500 mt-0.5">Track your balances, past and upcoming time off</p>
+            <div className="text-[10px] text-purple-600 mt-1 bg-purple-50 inline-block px-2 py-1.5 rounded border border-purple-100">
+              <p className="font-bold mb-0.5">Policy:</p>
+              <ul className="list-disc pl-4 space-y-0.5 font-medium">
+                <li>12 CL (Casual Leaves)</li>
+                <li>Festivals permitted as holidays</li>
+              </ul>
+            </div>
           </div>
           <button 
             onClick={() => setShowLeaveModal(true)}

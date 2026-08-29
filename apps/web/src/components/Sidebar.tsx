@@ -49,42 +49,37 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-full bg-surface-container-low border-r border-outline-variant flex flex-col p-4 overflow-y-auto z-50 transition-all duration-300 ${
-        collapsed ? 'w-20' : 'w-[280px]'
-      }`}
+      className={`fixed left-0 top-0 h-full bg-slate-50 text-slate-800 border-r border-slate-200 flex flex-col items-center py-4 overflow-y-auto z-50 transition-all duration-300 w-16 group hover:w-60 shadow-xl peer`}
     >
       {/* Branding Header */}
-      <div className={`mb-6 px-2 flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="bg-white p-1 rounded-xl shadow-md border border-slate-200 shrink-0">
+      <div className="mb-6 flex flex-col items-center w-full px-2">
+        <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 shrink-0 w-10 h-10 flex items-center justify-center">
           <img
             src="/vanntagge-logo.png"
-            alt="VANNTAGGE CFO SERVICES LLP"
-            className="h-9 w-auto object-contain"
+            alt="Logo"
+            className="w-8 h-8 object-contain"
           />
         </div>
-        {!collapsed && (
-          <div>
-            <h1 className="text-sm font-extrabold text-slate-900 tracking-tight font-outfit leading-tight">VANNTAGGE</h1>
-            <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold -mt-0.5">CFO SERVICES LLP</p>
-          </div>
-        )}
+        <div className="hidden group-hover:block mt-3 text-center">
+          <h1 className="text-sm font-extrabold text-slate-900 tracking-tight font-outfit leading-tight">VANNTAGGE</h1>
+          <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold -mt-0.5">CFO SERVICES LLP</p>
+        </div>
       </div>
 
-
-
       {/* Quick Create Action Button */}
-      {!collapsed && currentUser.role === 'SUPER_ADMIN' && (
+      {currentUser.role === 'SUPER_ADMIN' && (
         <button
           onClick={() => setCurrentTab('crm')}
-          className="mb-6 w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-3 rounded-lg font-semibold shadow-sm hover:opacity-90 active:scale-[0.98] transition-all text-xs"
+          className="mb-6 flex items-center justify-center bg-blue-600 text-white rounded-xl w-10 h-10 group-hover:w-11/12 hover:bg-blue-700 shadow-sm transition-all"
+          title="Quick Create / Lead"
         >
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          <span>Quick Create / Lead</span>
+          <span className="material-symbols-outlined text-[20px]">add</span>
+          <span className="hidden group-hover:block ml-2 text-xs font-bold">Quick Create / Lead</span>
         </button>
       )}
 
       {/* Navigation Links */}
-      <nav className="flex-1 space-y-1">
+      <nav className="flex-1 w-full flex flex-col space-y-1.5 px-2">
         {navItems.map((item) => {
           const isActive = currentTab === item.id;
           const iconFillSettings = isActive ? "'FILL' 1" : "'FILL' 0";
@@ -93,44 +88,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               key={item.id}
               onClick={() => setCurrentTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 transition-all text-xs duration-200 rounded-lg ${
+              className={`w-full flex items-center p-2.5 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-primary text-on-primary font-semibold shadow-sm'
-                  : 'text-on-surface-variant hover:bg-surface-variant hover:text-on-surface'
+                  ? 'bg-blue-600 text-white font-bold shadow-md'
+                  : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 font-medium'
               }`}
+              title={item.label}
             >
-              <span
-                className="material-symbols-outlined text-[20px] shrink-0"
-                style={{ fontVariationSettings: iconFillSettings }}
-              >
-                {item.icon}
-              </span>
-              {!collapsed && <span>{item.label}</span>}
+              <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                <span
+                  className="material-symbols-outlined text-[20px]"
+                  style={{ fontVariationSettings: iconFillSettings }}
+                >
+                  {item.icon}
+                </span>
+              </div>
+              <span className="hidden group-hover:block ml-3 text-sm whitespace-nowrap">{item.label}</span>
             </button>
           );
         })}
       </nav>
 
       {/* Settings & Notifications at Bottom */}
-      <div className="mt-auto pt-4 border-t border-outline-variant/30 space-y-1">
+      <div className="mt-auto w-full pt-4 border-t border-slate-200 flex flex-col items-center space-y-1.5 px-2">
         <button
           onClick={() => setCurrentTab('notifications')}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs text-on-surface-variant hover:bg-surface-variant rounded-lg transition-colors ${
-            currentTab === 'notifications' ? 'bg-primary/10 text-primary font-semibold' : ''
+          className={`w-full flex items-center p-2.5 rounded-xl transition-all duration-200 ${
+            currentTab === 'notifications' ? 'bg-blue-600 text-white font-bold shadow-md' : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 font-medium'
           }`}
+          title="Notifications"
         >
-          <span className="material-symbols-outlined text-[20px]">notifications</span>
-          {!collapsed && <span>Notifications</span>}
+          <div className="w-6 h-6 flex items-center justify-center shrink-0">
+             <span className="material-symbols-outlined text-[20px]">notifications</span>
+          </div>
+          <span className="hidden group-hover:block ml-3 text-sm whitespace-nowrap">Notifications</span>
         </button>
         {currentUser.role === 'SUPER_ADMIN' && (
           <button
             onClick={() => setCurrentTab('settings')}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs text-on-surface-variant hover:bg-surface-variant rounded-lg transition-colors ${
-              currentTab === 'settings' ? 'bg-primary/10 text-primary font-semibold' : ''
+            className={`w-full flex items-center p-2.5 rounded-xl transition-all duration-200 ${
+              currentTab === 'settings' ? 'bg-blue-600 text-white font-bold shadow-md' : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 font-medium'
             }`}
+            title="Settings"
           >
-            <span className="material-symbols-outlined text-[20px]">settings</span>
-            {!collapsed && <span>Settings</span>}
+            <div className="w-6 h-6 flex items-center justify-center shrink-0">
+               <span className="material-symbols-outlined text-[20px]">settings</span>
+            </div>
+            <span className="hidden group-hover:block ml-3 text-sm whitespace-nowrap">Settings</span>
           </button>
         )}
       </div>
