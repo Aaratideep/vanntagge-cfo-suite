@@ -293,17 +293,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <Bar 
                   dataKey="Billed" 
                   fill="#3b82f6" 
-                  stroke="#000000" 
-                  strokeWidth={2} 
                   name="Billed Amount" 
                   stackId="a" 
                   radius={[0, 0, 4, 4]} 
                 />
                 <Bar 
                   dataKey="Collected" 
-                  fill="rgba(0, 0, 0, 0.03)" 
-                  stroke="#000000" 
-                  strokeWidth={2} 
+                  fill="#e2e8f0" 
                   name="Collected Amount" 
                   stackId="a" 
                   radius={[6, 6, 0, 0]} 

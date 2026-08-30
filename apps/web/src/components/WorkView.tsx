@@ -325,9 +325,9 @@ export const WorkView: React.FC = () => {
     <div className="space-y-6">
       
       {/* View Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-outline-variant/30 pb-2 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/30 pb-2 gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-on-surface font-outfit">Task Management</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Task Management</h1>
           <p className="text-xs text-outline">Manage active client engagement checklists, track progress metrics, and complete reviews.</p>
         </div>
         
@@ -350,7 +350,7 @@ export const WorkView: React.FC = () => {
             <select
               value={activeEngId}
               onChange={(e) => setActiveEngId(e.target.value)}
-              className="bg-surface border border-outline-variant/50 rounded-xl px-3 py-1.5 font-semibold text-on-surface outline-none"
+              className="bg-surface border border-slate-200/50 rounded-xl px-3 py-1.5 font-semibold text-slate-800 outline-none"
             >
               <option value="ALL">All Engagements ({currentUser.role === 'SUPER_ADMIN' ? 'All Tasks' : 'My Assigned Tasks'})</option>
               {engagements.map((eng) => (
@@ -362,7 +362,7 @@ export const WorkView: React.FC = () => {
           </div>
         ) : (
           <div className="flex gap-2 items-center text-xs">
-            <span className="bg-primary/10 text-primary px-3 py-1.5 rounded-xl font-bold border border-primary/20 flex items-center gap-1.5">
+            <span className="bg-primary/10 text-blue-600 px-3 py-1.5 rounded-xl font-bold border border-primary/20 flex items-center gap-1.5">
               <ShieldCheck size={14} />
               Global Firm-Wide Analytics
             </span>
@@ -370,14 +370,14 @@ export const WorkView: React.FC = () => {
         )}
 
         {/* View Mode Toggle Toolbar matching template */}
-        <div className="flex items-center bg-surface-container-high rounded-xl p-1 border border-outline-variant/20 shadow-inner">
+        <div className="flex items-center bg-slate-200 rounded-xl p-1 border border-slate-100 shadow-inner">
           {currentUser.role === 'SUPER_ADMIN' && (
             <button
               onClick={() => setViewMode('dashboard')}
               className={`px-4 py-2 font-semibold rounded-lg flex items-center gap-2 transition-all text-xs ${
                 viewMode === 'dashboard'
-                  ? 'bg-surface-container-lowest text-primary shadow-sm'
-                  : 'text-on-surface-variant hover:text-on-surface'
+                  ? 'bg-slate-50est text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">monitoring</span>
@@ -388,8 +388,8 @@ export const WorkView: React.FC = () => {
             onClick={() => setViewMode('kanban')}
             className={`px-4 py-2 font-semibold rounded-lg flex items-center gap-2 transition-all text-xs ${
               viewMode === 'kanban'
-                ? 'bg-surface-container-lowest text-primary shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface'
+                ? 'bg-slate-50est text-blue-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">view_kanban</span>
@@ -399,8 +399,8 @@ export const WorkView: React.FC = () => {
             onClick={() => setViewMode('list')}
             className={`px-4 py-2 font-semibold rounded-lg flex items-center gap-2 transition-all text-xs ${
               viewMode === 'list'
-                ? 'bg-surface-container-lowest text-primary shadow-sm'
-                : 'text-on-surface-variant hover:text-on-surface'
+                ? 'bg-slate-50est text-blue-600 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             <span className="material-symbols-outlined text-[18px]">table_rows</span>
@@ -413,7 +413,7 @@ export const WorkView: React.FC = () => {
         <div className="space-y-6">
           {/* Top KPI row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="premium-card bg-surface-container-lowest p-6 border border-outline-variant/30 flex items-center gap-6">
+            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30 flex items-center gap-6">
               <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                   <circle cx="50" cy="50" r="40" className="stroke-surface-container-highest fill-none" strokeWidth="12" />
@@ -427,22 +427,22 @@ export const WorkView: React.FC = () => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-xl font-bold text-on-surface font-outfit">{globalCompletionRate}%</span>
+                  <span className="text-xl font-bold text-slate-800 font-outfit">{globalCompletionRate}%</span>
                 </div>
               </div>
               <div>
-                <h3 className="font-bold text-on-surface text-lg">Overall Completion</h3>
+                <h3 className="font-bold text-slate-800 text-lg">Overall Completion</h3>
                 <p className="text-xs text-outline mt-1">{completedGlobalTasks} of {totalGlobalTasks} tasks completed across all active firm engagements.</p>
               </div>
             </div>
 
-            <div className="premium-card bg-surface-container-lowest p-6 border border-outline-variant/30">
+            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30">
                <h3 className="text-xs font-bold text-outline uppercase tracking-wider mb-4">Total Firm Workload</h3>
                <div className="flex items-end gap-3 mb-2">
-                 <span className="text-4xl font-black text-on-surface font-outfit">{totalGlobalTasks}</span>
-                 <span className="text-sm font-medium text-on-surface-variant mb-1">Active Tasks</span>
+                 <span className="text-4xl font-black text-slate-800 font-outfit">{totalGlobalTasks}</span>
+                 <span className="text-sm font-medium text-slate-500 mb-1">Active Tasks</span>
                </div>
-               <div className="h-2 w-full bg-surface-container-high rounded-full overflow-hidden flex">
+               <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden flex">
                  <div className="bg-primary h-full" style={{ width: `${globalCompletionRate}%` }}></div>
                  <div className="bg-amber-400 h-full" style={{ width: `${30}%` }}></div>
                </div>
@@ -452,15 +452,15 @@ export const WorkView: React.FC = () => {
                </div>
             </div>
 
-            <div className="premium-card bg-surface-container-lowest p-6 border border-outline-variant/30 bg-gradient-to-br from-surface-container-lowest to-surface-container-high">
+            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30 bg-gradient-to-br from-surface-container-lowest to-surface-container-high">
                <h3 className="text-xs font-bold text-outline uppercase tracking-wider mb-4">Quality & Efficiency</h3>
-               <div className="flex justify-between items-center border-b border-outline-variant/30 pb-3 mb-3">
-                 <span className="text-xs font-bold text-on-surface-variant">Global Logged Hours</span>
-                 <span className="text-sm font-black text-primary">{employeeData.reduce((acc, curr) => acc + curr.logHours, 0)}h</span>
+               <div className="flex justify-between items-center border-b border-slate-200/30 pb-3 mb-3">
+                 <span className="text-xs font-bold text-slate-500">Global Logged Hours</span>
+                 <span className="text-sm font-black text-blue-600">{employeeData.reduce((acc, curr) => acc + curr.logHours, 0)}h</span>
                </div>
                <div className="flex justify-between items-center">
-                 <span className="text-xs font-bold text-on-surface-variant">Active Review Issues</span>
-                 <span className="text-sm font-black text-error animate-pulse flex items-center gap-1">
+                 <span className="text-xs font-bold text-slate-500">Active Review Issues</span>
+                 <span className="text-sm font-black text-red-600 animate-pulse flex items-center gap-1">
                    <AlertTriangle size={14} />
                    {employeeData.reduce((acc, curr) => acc + curr.pendingPoints, 0)}
                  </span>
@@ -472,18 +472,18 @@ export const WorkView: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Custom Bar Graph */}
-            <div className="premium-card bg-surface-container-lowest p-6 border border-outline-variant/30">
-              <h3 className="font-bold text-on-surface text-sm mb-6">All Employees Task Graph</h3>
+            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30">
+              <h3 className="font-bold text-slate-800 text-sm mb-6">All Employees Task Graph</h3>
               <div className="space-y-5">
                 {employeeData.map((emp) => {
                   const compPct = emp.total === 0 ? 0 : Math.round((emp.completed / emp.total) * 100);
                   return (
                     <div key={emp.name} className="relative">
                       <div className="flex justify-between text-xs font-bold mb-1.5">
-                        <span className="text-on-surface">{emp.name}</span>
+                        <span className="text-slate-800">{emp.name}</span>
                         <span className="text-outline">{emp.completed} / {emp.total} Tasks ({compPct}%)</span>
                       </div>
-                      <div className="w-full h-3 bg-surface-container-high rounded-full overflow-hidden flex relative">
+                      <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden flex relative">
                         {/* Background representing total tasks relative to max */}
                         <div className="absolute inset-0 bg-primary/10" style={{ width: `${Math.max(10, (emp.total / Math.max(...employeeData.map(e => e.total))) * 100)}%` }}></div>
                         {/* Foreground representing completed relative to assigned */}
@@ -502,12 +502,12 @@ export const WorkView: React.FC = () => {
             </div>
 
             {/* Assessment & Monitoring */}
-            <div className="premium-card bg-surface-container-lowest p-6 border border-outline-variant/30">
-              <h3 className="font-bold text-on-surface text-sm mb-6">Employee Wise Assessment & Monitoring</h3>
+            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30">
+              <h3 className="font-bold text-slate-800 text-sm mb-6">Employee Wise Assessment & Monitoring</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-outline-variant/30 text-outline">
+                    <tr className="border-b border-slate-200/30 text-outline">
                       <th className="pb-3 font-semibold">Consultant Name</th>
                       <th className="pb-3 font-semibold text-center">Efficiency (Log/Est)</th>
                       <th className="pb-3 font-semibold text-center">Review Quality</th>
@@ -523,8 +523,8 @@ export const WorkView: React.FC = () => {
                       
                       return (
                         <tr key={emp.name} className="hover:bg-surface-container/30 transition-colors">
-                          <td className="py-3 font-bold text-on-surface flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[9px]">
+                          <td className="py-3 font-bold text-slate-800 flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-primary/10 text-blue-600 flex items-center justify-center text-[9px]">
                               {emp.name.split(' ').map(n => n[0]).join('')}
                             </div>
                             {emp.name}
@@ -549,7 +549,7 @@ export const WorkView: React.FC = () => {
                             ) : emp.completed === emp.total ? (
                               <span className="text-green-600 text-[10px] font-bold">Available</span>
                             ) : (
-                              <span className="text-primary text-[10px] font-bold">Loaded</span>
+                              <span className="text-blue-600 text-[10px] font-bold">Loaded</span>
                             )}
                           </td>
                         </tr>
@@ -579,17 +579,17 @@ export const WorkView: React.FC = () => {
                     <div className="flex items-center justify-between px-2">
                       <div className="flex items-center gap-2">
                         <span className={`w-2.5 h-2.5 rounded-full ${col.bulletColor}`}></span>
-                        <h3 className="font-bold text-on-surface-variant uppercase tracking-wider text-[11px]">
+                        <h3 className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">
                           {col.label}
                         </h3>
-                        <span className="bg-surface-container-high text-on-surface text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        <span className="bg-slate-200 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
                           {colTasks.length}
                         </span>
                       </div>
                     </div>
 
                     {/* Column Container */}
-                    <div className="kanban-column flex flex-col gap-4 bg-surface-container-low/30 p-2 rounded-2xl border border-outline-variant/20">
+                    <div className="kanban-column flex flex-col gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
                       {colTasks.map((task) => {
                         const pendingPoints = task.reviewPoints.filter((rp) => rp.status === 'PENDING').length;
                         const isUrgent = task.priority === 'URGENT';
@@ -602,16 +602,16 @@ export const WorkView: React.FC = () => {
                               setProgressInput(task.progress);
                               setTimeSpentInput('0');
                             }}
-                            className="bg-surface-container-lowest border border-outline-variant/40 p-4 rounded-xl shadow-[0px_1px_3px_rgba(0,0,0,0.05)] hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group"
+                            className="bg-white border border-slate-200 p-4 rounded-xl shadow-[0px_1px_3px_rgba(0,0,0,0.05)] hover:shadow-lg hover:border-primary/30 transition-all cursor-pointer group"
                           >
                             <div className="flex justify-between items-start mb-3">
-                              <span className="bg-surface-variant text-on-surface-variant text-[9px] font-bold px-2 py-1 rounded uppercase tracking-tighter">
+                              <span className="bg-slate-100 text-slate-500 text-[9px] font-bold px-2 py-1 rounded uppercase tracking-tighter">
                                 {(task.milestone || 'General').split(' ')[0]}
                               </span>
                               <div className="flex items-center gap-1">
                                 <span
                                   className={`flex items-center gap-0.5 font-bold text-[9px] uppercase ${
-                                    isUrgent ? 'text-error' : 'text-on-surface-variant'
+                                    isUrgent ? 'text-red-600' : 'text-slate-500'
                                   }`}
                                 >
                                   {isUrgent && <span className="material-symbols-outlined text-[12px]">priority_high</span>}
@@ -637,18 +637,18 @@ export const WorkView: React.FC = () => {
                               </div>
                             </div>
 
-                            <h4 className="font-bold text-on-surface text-xs mb-1 group-hover:text-primary transition-colors leading-tight">
+                            <h4 className="font-bold text-slate-800 text-xs mb-1 group-hover:text-blue-600 transition-colors leading-tight">
                               {task.title}
                             </h4>
                             <p className="text-outline text-[11px] mb-4">
-                              Assignee: <span className="text-on-surface-variant font-medium">{task.employeeName || 'Unassigned'}</span>
+                              Assignee: <span className="text-slate-500 font-medium">{task.employeeName || 'Unassigned'}</span>
                             </p>
 
                             {/* Subtask Progress indicator */}
                             <div className="mb-4 space-y-1.5">
                               <div className="flex justify-between text-[10px] font-bold">
                                 <span className="text-outline">Progress</span>
-                                <span className="text-on-surface">{task.progress}%</span>
+                                <span className="text-slate-800">{task.progress}%</span>
                               </div>
                               <div className="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
                                 <div
@@ -660,7 +660,7 @@ export const WorkView: React.FC = () => {
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between border-t border-outline-variant/20 pt-3">
+                            <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                               <div className="flex items-center gap-1.5 text-outline">
                                 <span className="material-symbols-outlined text-[14px]">event</span>
                                 <span className="text-[10px] font-mono">
@@ -669,7 +669,7 @@ export const WorkView: React.FC = () => {
                               </div>
                               
                               {pendingPoints > 0 ? (
-                                <div className="text-error flex items-center gap-0.5 font-bold text-[9px] uppercase animate-pulse">
+                                <div className="text-red-600 flex items-center gap-0.5 font-bold text-[9px] uppercase animate-pulse">
                                   <span className="material-symbols-outlined text-[14px]">priority_high</span>
                                   {pendingPoints} Issues
                                 </div>
@@ -699,9 +699,9 @@ export const WorkView: React.FC = () => {
           {/* View mode 2: List Board */}
           {viewMode === 'list' && (
             <div className="premium-card p-5 space-y-4 bg-white">
-              <div className="flex items-center justify-between border-b border-outline-variant/20 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="font-bold text-on-surface text-sm">Milestone Delivery Board</h3>
+                  <h3 className="font-bold text-slate-800 text-sm">Milestone Delivery Board</h3>
                   <p className="text-[10px] text-outline">Allocated workloads and progress ratios</p>
                 </div>
               </div>
@@ -724,11 +724,11 @@ export const WorkView: React.FC = () => {
                           setProgressInput(task.progress);
                           setTimeSpentInput('0');
                         }}
-                        className="p-3 border border-outline-variant/40 rounded-xl hover:border-primary/30 hover:shadow-xs transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white"
+                        className="p-3 border border-slate-200 rounded-xl hover:border-primary/30 hover:shadow-xs transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white"
                       >
                         <div className="space-y-1.5 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-on-surface text-xs">{task.title}</span>
+                            <span className="font-bold text-slate-800 text-xs">{task.title}</span>
                             <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold border ${getPriorityColor(task.priority)}`}>
                               {task.priority}
                             </span>
@@ -747,7 +747,7 @@ export const WorkView: React.FC = () => {
                         <div className="flex items-center gap-6 text-xs text-right shrink-0">
                           <div className="space-y-0.5">
                             <span className="text-[10px] text-outline block">Hours (Log/Est)</span>
-                            <span className="font-bold text-on-surface">
+                            <span className="font-bold text-slate-800">
                               {task.timeSpent}h / {task.estimatedHours}h
                             </span>
                           </div>
@@ -756,7 +756,7 @@ export const WorkView: React.FC = () => {
                             <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                               <div className="bg-primary h-1.5" style={{ width: `${task.progress}%` }} />
                             </div>
-                            <span className="text-[9px] font-bold text-primary block">{task.progress}% Done</span>
+                            <span className="text-[9px] font-bold text-blue-600 block">{task.progress}% Done</span>
                           </div>
                           
                           {pendingPointsCount > 0 && (
