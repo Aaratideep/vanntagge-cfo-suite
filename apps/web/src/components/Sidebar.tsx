@@ -21,6 +21,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const allNavItems = [
     { id: 'dashboard', label: 'Dashboard Overview', icon: 'dashboard' },
     { id: 'crm', label: 'CRM & Proposals', icon: 'contact_page' },
+    { id: 'service_master', label: 'Service Master Configuration', icon: 'settings_applications' },
     { id: 'work', label: 'Workloads & Tasks', icon: 'assignment' },
     { id: 'hr_payroll', label: 'HR & Payroll', icon: 'groups' },
     { id: 'client_management', label: 'Client Management', icon: 'handshake' },

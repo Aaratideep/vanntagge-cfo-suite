@@ -24,6 +24,7 @@ import { StaleLeadsModal } from '../../components/StaleLeadsModal';
 import { DailyTaskReminderModal } from '../../components/DailyTaskReminderModal';
 import { UsersManagementView } from '../../components/admin/UsersManagementView';
 import { UsersView } from '../../components/admin/UsersView';
+import { ServiceMasterView } from '../../components/admin/ServiceMasterView';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -49,6 +50,7 @@ export default function AdminPage() {
   const tabTitles: { [key: string]: string } = {
     dashboard: 'Dashboard Overview',
     crm: 'Consultancy CRM & Proposals',
+    service_master: 'Service Master Configuration',
     work: 'Workloads & Tasks',
     calendar: 'Operations Calendar',
     hr_payroll: 'HR & Payroll Management',
@@ -198,6 +200,8 @@ export default function AdminPage() {
         );
       case 'crm':
         return <CRMView />;
+      case 'service_master':
+        return <ServiceMasterView />;
       case 'work':
         return <WorkView />;
       case 'calendar':
