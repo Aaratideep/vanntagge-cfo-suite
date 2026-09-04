@@ -15,6 +15,7 @@ import {
   Plus
 } from 'lucide-react';
 import { formatINR } from '../../lib/currency';
+import { EngagementServicesModal } from './EngagementServicesModal';
 
 export const EngagementsView: React.FC = () => {
   const { engagements, clients, addDirectEngagement, currentUser } = useDashboardStore();
@@ -23,6 +24,7 @@ export const EngagementsView: React.FC = () => {
   
   const [showNewModal, setShowNewModal] = useState(false);
   const [newEngForm, setNewEngForm] = useState({ clientName: '', engagementName: '' });
+  const [selectedEngagement, setSelectedEngagement] = useState<Engagement | null>(null);
 
   const handleCreateEngagement = (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,7 +211,7 @@ export const EngagementsView: React.FC = () => {
               </div>
 
               {/* Card Footer / Stats */}
-              <div className="bg-surface-container-lowest p-4 grid grid-cols-4 divide-x divide-outline-variant/20 rounded-b-2xl">
+              <div className="bg-surface-container-lowest p-4 grid grid-cols-4 divide-x divide-outline-variant/20">
                 <div className="flex flex-col items-center justify-center">
                   <span className="text-[10px] text-outline uppercase font-bold mb-1">Tasks</span>
                   <span className="text-xs font-black text-on-surface">{cTasks}/{tTasks}</span>
@@ -233,6 +235,20 @@ export const EngagementsView: React.FC = () => {
                   )}
                 </div>
               </div>
+              
+              {!isEmployee && (
+                <div className="p-3 border-t border-outline-variant/20 bg-slate-50/50 rounded-b-2xl">
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedEngagement(eng);
+                    }}
+                    className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-xl transition-colors border border-blue-100/50"
+                  >
+                    Configure Services
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
@@ -299,6 +315,14 @@ export const EngagementsView: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Engagement Services Configuration Modal */}
+      {selectedEngagement && (
+        <EngagementServicesModal
+          engagement={selectedEngagement}
+          onClose={() => setSelectedEngagement(null)}
+        />
       )}
     </div>
   );

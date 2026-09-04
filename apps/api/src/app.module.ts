@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AiModule } from './ai/ai.module';
 import { CommunicationsModule } from './communications/communications.module';
 import { ServicesModule } from './services/services.module';
+import { EngagementsModule } from './engagements/engagements.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { ServicesModule } from './services/services.module';
     AiModule,
     CommunicationsModule,
     ServicesModule,
+    EngagementsModule,
   ],
   controllers: [],
   providers: [],
