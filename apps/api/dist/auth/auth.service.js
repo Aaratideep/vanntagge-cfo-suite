@@ -32,6 +32,12 @@ let AuthService = class AuthService {
         if (existingUser) {
             throw new common_1.ConflictException('Email already exists');
         }
+        let org = await this.prisma.organization.findFirst();
+        if (!org) {
+            org = await this.prisma.organization.create({
+                data: { name: 'Default Organization' }
+            });
+        }
         const passwordHash = await this.hashPassword(registerDto.password);
         const user = await this.prisma.user.create({
             data: {
@@ -39,6 +45,7 @@ let AuthService = class AuthService {
                 name: registerDto.name || 'User',
                 passwordHash,
                 role: registerDto.role || 'EMPLOYEE',
+                organizationId: org.id
             },
         });
         return this.login(user);

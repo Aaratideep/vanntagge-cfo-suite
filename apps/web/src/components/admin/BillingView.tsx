@@ -243,7 +243,6 @@ export const BillingView: React.FC = () => {
       gst: invForm.amount * 0.18,
       finalAmount,
       dueDate: new Date(invForm.dueDate).toISOString(),
-      createdAt: new Date(invForm.issueDate).toISOString(),
       status: invForm.status,
       paymentTerms: invForm.terms,
       billingEntity: invForm.billingEntity,

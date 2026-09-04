@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, XCircle, Briefcase, UserCircle, Send, CheckCircle2, Mail, Video, Share2, Clock, X } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { Task, Compliance, Meeting, AvailabilityBlock } from '../types';
+import { LeaveApplicationModal } from './LeaveApplicationModal';
 
 export const CalendarView: React.FC = () => {
   const { engagements, updateTask, addNotification, addAuditLog, currentUser, meetings, availabilityBlocks, addMeeting, addAvailabilityBlock, removeAvailabilityBlock } = useDashboardStore();
@@ -16,6 +17,7 @@ export const CalendarView: React.FC = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isAvailabilityMode, setIsAvailabilityMode] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
   
   const [newMeeting, setNewMeeting] = useState({ title: '', date: '', time: '', attendees: '' });
   const [shareEmails, setShareEmails] = useState('');
@@ -83,6 +85,36 @@ export const CalendarView: React.FC = () => {
   const month = currentDate.getMonth();
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
+
+  // Inject Employee Policy: Festivals / Holidays
+  const HOLIDAYS = [
+    { md: '01-01', title: "New Year's Day" },
+    { md: '01-26', title: 'Republic Day' },
+    { md: '03-25', title: 'Holi' },
+    { md: '04-10', title: 'Eid-ul-Fitr' },
+    { md: '05-01', title: 'Labour Day' },
+    { md: '08-15', title: 'Independence Day' },
+    { md: '08-26', title: 'Janmashtami' },
+    { md: '10-02', title: 'Gandhi Jayanti' },
+    { md: '10-12', title: 'Dussehra' },
+    { md: '11-01', title: 'Diwali' },
+    { md: '11-15', title: 'Guru Nanak Jayanti' },
+    { md: '12-25', title: 'Christmas' },
+  ];
+
+  HOLIDAYS.forEach((fest, idx) => {
+    // Only push if it belongs to the current month to optimize rendering
+    if (parseInt(fest.md.split('-')[0], 10) === month + 1) {
+      events.push({
+        id: `fest-${idx}`,
+        title: fest.title,
+        date: `${year}-${fest.md}`,
+        type: 'holiday',
+        status: 'HOLIDAY',
+        raw: null
+      });
+    }
+  });
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -178,8 +210,9 @@ export const CalendarView: React.FC = () => {
           {visibleEvents.map((ev, idx) => {
             const isTask = ev.type === 'task';
             const isMeeting = ev.type === 'meeting';
+            const isHoliday = ev.type === 'holiday';
             const isCompleted = ev.status === 'COMPLETED';
-            const isOverdue = new Date(dayStr) < new Date(new Date().setHours(0,0,0,0)) && !isCompleted;
+            const isOverdue = new Date(dayStr) < new Date(new Date().setHours(0,0,0,0)) && !isCompleted && !isHoliday;
             
             let statusColor = 'bg-blue-500';
             let bgColor = 'bg-blue-50/50 hover:bg-blue-100/50 text-blue-700 border-blue-100';
@@ -192,7 +225,7 @@ export const CalendarView: React.FC = () => {
               bgColor = 'bg-rose-50/50 hover:bg-rose-100/50 text-rose-700 border-rose-100';
             }
 
-            if (!isTask && !isMeeting) {
+            if (!isTask && !isMeeting && !isHoliday) {
               bgColor = 'bg-amber-50/50 hover:bg-amber-100/50 text-amber-700 border-amber-100';
               statusColor = 'bg-amber-500';
             }
@@ -200,6 +233,11 @@ export const CalendarView: React.FC = () => {
             if (isMeeting) {
               bgColor = 'bg-purple-50/50 hover:bg-purple-100/50 text-purple-700 border-purple-100';
               statusColor = 'bg-purple-500';
+            }
+
+            if (isHoliday) {
+              bgColor = 'bg-pink-50/50 hover:bg-pink-100/50 text-pink-700 border-pink-100';
+              statusColor = 'bg-pink-500';
             }
 
             return (
@@ -231,6 +269,12 @@ export const CalendarView: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  const totalCells = firstDay + daysInMonth;
+  const trailingBlanks = (7 - (totalCells % 7)) % 7;
+  for (let i = 0; i < trailingBlanks; i++) {
+    dayCells.push(<div key={`blank-end-${i}`} className="min-h-32 border border-slate-100 bg-slate-50/50" />);
   }
 
   const markTaskComplete = () => {
@@ -275,6 +319,13 @@ export const CalendarView: React.FC = () => {
             Operations Calendar
           </h1>
           <p className="text-[11px] text-slate-500 font-medium">Manage schedules, availability, and communications.</p>
+          <button 
+            onClick={() => setShowLeaveModal(true)}
+            className="mt-2 inline-flex items-center gap-1.5 bg-blue-50/80 hover:bg-blue-100 px-2 py-1 rounded text-[10px] font-bold text-blue-700 border border-blue-100 transition-colors cursor-pointer"
+          >
+            <CheckCircle2 size={12} className="text-blue-600" />
+            <span>Employee Policy: 12 CL &amp; festivals to be permitted as holidays</span>
+          </button>
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
@@ -553,6 +604,8 @@ export const CalendarView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {showLeaveModal && <LeaveApplicationModal onClose={() => setShowLeaveModal(false)} />}
     </div>
   );
 };

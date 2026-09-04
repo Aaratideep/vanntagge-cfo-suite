@@ -283,6 +283,7 @@ export const CRMView: React.FC = () => {
       businessType: lead.businessType, leadSource: lead.leadSource,
       expectedRevenue: lead.expectedRevenue, priority: lead.priority, remarks: lead.remarks || '',
       ownerName: lead.ownerName || '', ownerContact: lead.ownerContact || '',
+      assignedExecutiveId: lead.assignedExecutiveId || '',
     });
     setEditingLead(false);
   };
