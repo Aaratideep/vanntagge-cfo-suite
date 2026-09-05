@@ -237,15 +237,31 @@ export const EngagementsView: React.FC = () => {
               </div>
               
               {!isEmployee && (
-                <div className="p-3 border-t border-outline-variant/20 bg-slate-50/50 rounded-b-2xl">
+                <div className="p-3 border-t border-outline-variant/20 bg-slate-50/50 rounded-b-2xl flex gap-2">
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedEngagement(eng);
                     }}
-                    className="w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-xl transition-colors border border-blue-100/50"
+                    className="flex-1 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold rounded-xl transition-colors border border-blue-100/50"
                   >
                     Configure Services
+                  </button>
+                  <button 
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        const res = await fetch(`/api/engagements/${eng.id}/generate-tasks`, { method: 'POST' });
+                        if (res.ok) {
+                          alert('Workload generated successfully!');
+                        }
+                      } catch (err) {
+                        console.error('Failed to generate workload', err);
+                      }
+                    }}
+                    className="flex-1 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+                  >
+                    Generate Workload
                   </button>
                 </div>
               )}

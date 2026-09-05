@@ -253,6 +253,8 @@ model TaskTemplate {
   recurringFrequency String? // e.g. "Monthly"
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
+
+  tasks              Task[]
 }
 
 // ==========================================
@@ -446,6 +448,8 @@ model Task {
   dependencies   String? // Comma separated task IDs
   notes          String?
   dueDate        DateTime?
+  taskTemplateId String?
+  taskTemplate   TaskTemplate? @relation(fields: [taskTemplateId], references: [id])
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 

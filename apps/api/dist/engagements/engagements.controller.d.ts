@@ -1,7 +1,9 @@
 import { EngagementsService } from './engagements.service';
+import { TasksService } from '../tasks/tasks.service';
 export declare class EngagementsController {
     private readonly engagementsService;
-    constructor(engagementsService: EngagementsService);
+    private readonly tasksService;
+    constructor(engagementsService: EngagementsService, tasksService: TasksService);
     getClientServices(engagementId: string): Promise<({
         serviceMaster: {
             id: string;
@@ -62,5 +64,9 @@ export declare class EngagementsController {
         clientServiceId: string;
         serviceParameterId: string;
         value: string;
+    }>;
+    generateTasks(engagementId: string): Promise<{
+        success: boolean;
+        generatedTasks: number;
     }>;
 }

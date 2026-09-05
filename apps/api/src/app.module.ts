@@ -6,6 +6,7 @@ import { AiModule } from './ai/ai.module';
 import { CommunicationsModule } from './communications/communications.module';
 import { ServicesModule } from './services/services.module';
 import { EngagementsModule } from './engagements/engagements.module';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { EngagementsModule } from './engagements/engagements.module';
     CommunicationsModule,
     ServicesModule,
     EngagementsModule,
+    TasksModule,
   ],
   controllers: [],
   providers: [],

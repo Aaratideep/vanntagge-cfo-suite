@@ -6,20 +6,20 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.EngagementsModule = void 0;
+exports.TasksModule = void 0;
 const common_1 = require("@nestjs/common");
-const engagements_controller_1 = require("./engagements.controller");
-const engagements_service_1 = require("./engagements.service");
+const tasks_controller_1 = require("./tasks.controller");
+const tasks_service_1 = require("./tasks.service");
 const prisma_module_1 = require("../prisma/prisma.module");
-const tasks_module_1 = require("../tasks/tasks.module");
-let EngagementsModule = class EngagementsModule {
+let TasksModule = class TasksModule {
 };
-exports.EngagementsModule = EngagementsModule;
-exports.EngagementsModule = EngagementsModule = __decorate([
+exports.TasksModule = TasksModule;
+exports.TasksModule = TasksModule = __decorate([
     (0, common_1.Module)({
-        imports: [prisma_module_1.PrismaModule, tasks_module_1.TasksModule],
-        controllers: [engagements_controller_1.EngagementsController],
-        providers: [engagements_service_1.EngagementsService]
+        imports: [prisma_module_1.PrismaModule],
+        controllers: [tasks_controller_1.TasksController],
+        providers: [tasks_service_1.TasksService],
+        exports: [tasks_service_1.TasksService],
     })
-], EngagementsModule);
-//# sourceMappingURL=engagements.module.js.map
+], TasksModule);
+//# sourceMappingURL=tasks.module.js.map

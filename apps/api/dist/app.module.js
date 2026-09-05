@@ -15,6 +15,7 @@ const ai_module_1 = require("./ai/ai.module");
 const communications_module_1 = require("./communications/communications.module");
 const services_module_1 = require("./services/services.module");
 const engagements_module_1 = require("./engagements/engagements.module");
+const tasks_module_1 = require("./tasks/tasks.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -28,6 +29,7 @@ exports.AppModule = AppModule = __decorate([
             communications_module_1.CommunicationsModule,
             services_module_1.ServicesModule,
             engagements_module_1.EngagementsModule,
+            tasks_module_1.TasksModule,
         ],
         controllers: [],
         providers: [],

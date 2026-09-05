@@ -15,9 +15,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.EngagementsController = void 0;
 const common_1 = require("@nestjs/common");
 const engagements_service_1 = require("./engagements.service");
+const tasks_service_1 = require("../tasks/tasks.service");
 let EngagementsController = class EngagementsController {
-    constructor(engagementsService) {
+    constructor(engagementsService, tasksService) {
         this.engagementsService = engagementsService;
+        this.tasksService = tasksService;
     }
     getClientServices(engagementId) {
         return this.engagementsService.getClientServices(engagementId);
@@ -27,6 +29,9 @@ let EngagementsController = class EngagementsController {
     }
     configureParameter(clientServiceId, serviceParameterId, data) {
         return this.engagementsService.configureParameter(clientServiceId, serviceParameterId, data.value);
+    }
+    generateTasks(engagementId) {
+        return this.tasksService.generateTasksForEngagement(engagementId);
     }
 };
 exports.EngagementsController = EngagementsController;
@@ -54,8 +59,16 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", void 0)
 ], EngagementsController.prototype, "configureParameter", null);
+__decorate([
+    (0, common_1.Post)(':engagementId/generate-tasks'),
+    __param(0, (0, common_1.Param)('engagementId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], EngagementsController.prototype, "generateTasks", null);
 exports.EngagementsController = EngagementsController = __decorate([
     (0, common_1.Controller)('engagements'),
-    __metadata("design:paramtypes", [engagements_service_1.EngagementsService])
+    __metadata("design:paramtypes", [engagements_service_1.EngagementsService,
+        tasks_service_1.TasksService])
 ], EngagementsController);
 //# sourceMappingURL=engagements.controller.js.map

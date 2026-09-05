@@ -8,33 +8,33 @@ export declare class ServicesService {
         description?: string;
     }): Promise<{
         id: string;
-        organizationId: string;
-        name: string;
-        description: string | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        organizationId: string;
     }>;
     getCategories(organizationId: string): Promise<({
         services: {
             id: string;
-            name: string;
-            description: string | null;
             isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
             categoryId: string;
+            description: string | null;
             frequency: string | null;
             priority: import(".prisma/client").$Enums.Priority;
         }[];
     } & {
         id: string;
-        organizationId: string;
-        name: string;
-        description: string | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
+        organizationId: string;
     })[]>;
     createService(categoryId: string, data: {
         name: string;
@@ -43,22 +43,22 @@ export declare class ServicesService {
         priority?: Priority;
     }): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         categoryId: string;
+        description: string | null;
         frequency: string | null;
         priority: import(".prisma/client").$Enums.Priority;
     }>;
     getServicesByCategory(categoryId: string): Promise<({
         parameters: {
             id: string;
-            name: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            description: string | null;
             serviceId: string;
             dataType: string;
             defaultValue: string | null;
@@ -66,9 +66,9 @@ export declare class ServicesService {
         }[];
         taskTemplates: {
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
+            description: string | null;
             priority: import(".prisma/client").$Enums.Priority;
             serviceId: string;
             title: string;
@@ -78,12 +78,12 @@ export declare class ServicesService {
         }[];
     } & {
         id: string;
-        name: string;
-        description: string | null;
         isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
         categoryId: string;
+        description: string | null;
         frequency: string | null;
         priority: import(".prisma/client").$Enums.Priority;
     })[]>;
@@ -95,10 +95,10 @@ export declare class ServicesService {
         isRequired?: boolean;
     }): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
         serviceId: string;
         dataType: string;
         defaultValue: string | null;
