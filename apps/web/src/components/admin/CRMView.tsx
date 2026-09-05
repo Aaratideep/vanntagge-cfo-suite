@@ -98,7 +98,7 @@ const BUSINESS_TYPES = [
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export const CRMView: React.FC = () => {
+export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, onActionHandled?: () => void }> = ({ initialAction, onActionHandled }) => {
   const {
     leads, addLead, updateLead, deleteLead, assignLead,
     followUps, addFollowUp,
@@ -156,6 +156,17 @@ export const CRMView: React.FC = () => {
     responsibilities: 'Client will share monthly ledger data by the 5th of each month.',
     terms: 'Standard professional advisory liability clause applies. Either party may exit with 30-day notice.',
   });
+
+  React.useEffect(() => {
+    if (initialAction === 'lead') {
+      setShowCreateLeadModal(true);
+      if (onActionHandled) onActionHandled();
+    } else if (initialAction === 'quotation') {
+      setSelectedLead(null);
+      setShowQuotationModal(true);
+      if (onActionHandled) onActionHandled();
+    }
+  }, [initialAction, onActionHandled]);
 
   // ─── Derived ────────────────────────────────────────────────────────────
   const filteredLeads = leads.filter((l) => {
@@ -1262,18 +1273,25 @@ export const CRMView: React.FC = () => {
       )}
 
       {/* ── QUOTATION MODAL ── */}
-      {showQuotationModal && selectedLead && (
+      {showQuotationModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setShowQuotationModal(false)} />
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl p-6 relative z-10 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-slate-800 text-sm">Generate Service Quotation</h3>
-                <p className="text-[10px] text-slate-400">{selectedLead.companyName}</p>
+                <p className="text-[10px] text-slate-400">{selectedLead ? selectedLead.companyName : 'Select a lead'}</p>
               </div>
               <button onClick={() => setShowQuotationModal(false)} className="text-slate-400 hover:text-slate-600"><XCircle size={18} /></button>
             </div>
             <form onSubmit={handleGenerateQuotation} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-500 font-semibold mb-1">Select Lead *</label>
+                <select required value={selectedLead?.id || ''} onChange={e => setSelectedLead(leads.find(l => l.id === e.target.value) || null)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none">
+                  <option value="" disabled>Select a lead...</option>
+                  {leads.map(l => <option key={l.id} value={l.id}>{l.companyName}</option>)}
+                </select>
+              </div>
               {/* Services */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

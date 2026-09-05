@@ -166,6 +166,7 @@ model Organization {
   clients           Client[]
   engagements       Engagement[]
   serviceCategories ServiceCategory[]
+  financialPeriods  FinancialPeriod[]
 }
 
 model User {
@@ -368,7 +369,8 @@ model Client {
   updatedAt       DateTime     @updatedAt
 
   // Relations
-  engagements Engagement[]
+  engagements      Engagement[]
+  financialPeriods FinancialPeriod[]
 }
 
 model Engagement {
@@ -637,6 +639,67 @@ model Notification {
   link      String?
   createdAt DateTime @default(now())
 }
+
+// ==========================================
+// STRUCTURED FINANCIAL DATA (PHASE 4)
+// ==========================================
+
+model FinancialPeriod {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  month          Int          // 1-12
+  year           Int
+  status         DocStatus    @default(PENDING) // PENDING, APPROVED
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  cashFlowData   CashFlowData?
+  metrics        FinancialMetric[]
+
+  @@unique([clientId, month, year])
+}
+
+model CashFlowData {
+  id                String          @id @default(uuid())
+  financialPeriodId String          @unique
+  financialPeriod   FinancialPeriod @relation(fields: [financialPeriodId], references: [id], onDelete: Cascade)
+
+  // Raw inputs
+  openingCash       Decimal         @default(0) @db.Decimal(15, 2)
+  receipts          Decimal         @default(0) @db.Decimal(15, 2)
+  payments          Decimal         @default(0) @db.Decimal(15, 2)
+  operatingExpenses Decimal         @default(0) @db.Decimal(15, 2)
+  financeCosts      Decimal         @default(0) @db.Decimal(15, 2)
+  loanRepayments    Decimal         @default(0) @db.Decimal(15, 2)
+  closingCash       Decimal         @default(0) @db.Decimal(15, 2)
+
+  // Computed fields (optional to store, can be computed on the fly, but good for querying)
+  netCashFlow       Decimal         @default(0) @db.Decimal(15, 2)
+  cashBurn          Decimal         @default(0) @db.Decimal(15, 2)
+  runwayMonths      Decimal         @default(0) @db.Decimal(6, 2)
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model FinancialMetric {
+  id                String          @id @default(uuid())
+  financialPeriodId String
+  financialPeriod   FinancialPeriod @relation(fields: [financialPeriodId], references: [id], onDelete: Cascade)
+  
+  name              String          // e.g. "EBITDA", "CAC", "LTV"
+  value             Decimal         @db.Decimal(15, 2)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@unique([financialPeriodId, name])
+}
+
 
 model AuditLog {
   id        String   @id @default(uuid())

@@ -2,35 +2,36 @@ import React, { useState } from 'react';
 import { Engagement } from '../../types';
 import { Layers, Settings, X, Power, CheckCircle2, Save } from 'lucide-react';
 
+import { useDashboardStore } from '../../store/dashboardStore';
+import { ClientService } from '../../types';
+
 interface EngagementServicesModalProps {
   engagement: Engagement;
   onClose: () => void;
 }
 
 export const EngagementServicesModal: React.FC<EngagementServicesModalProps> = ({ engagement, onClose }) => {
-  // Mock data for available services, in a real app this comes from API: GET /services/categories/:orgId
-  const availableServices = [
-    {
-      id: 's1',
-      name: 'Financial Planning & Analysis',
-      category: 'Virtual CFO',
-      parameters: [
-        { id: 'p1', name: 'Budgeting Model', dataType: 'BOOLEAN' },
-        { id: 'p2', name: 'Variance Threshold (%)', dataType: 'NUMBER' }
-      ]
-    },
-    {
-      id: 's2',
-      name: 'Cash Flow Management',
-      category: 'Virtual CFO',
-      parameters: [
-        { id: 'p3', name: 'Runway Calculation', dataType: 'BOOLEAN' }
-      ]
-    }
-  ];
+  const { serviceCategories, updateEngagementClientServices } = useDashboardStore();
 
-  const [activeServices, setActiveServices] = useState<string[]>(['s1']);
-  const [paramValues, setParamValues] = useState<Record<string, string>>({ 'p2': '10' });
+  const availableServices = serviceCategories.flatMap(cat => 
+    cat.services.map(s => ({
+      ...s,
+      categoryId: cat.id,
+      categoryName: cat.name
+    }))
+  );
+
+  const initialActiveServices = engagement.clientServices?.filter(cs => cs.isActive).map(cs => cs.serviceMasterId) || [];
+  
+  const initialParamValues: Record<string, string> = {};
+  engagement.clientServices?.forEach(cs => {
+    cs.clientParameters.forEach(cp => {
+      initialParamValues[cp.serviceParameterId] = cp.value;
+    });
+  });
+
+  const [activeServices, setActiveServices] = useState<string[]>(initialActiveServices);
+  const [paramValues, setParamValues] = useState<Record<string, string>>(initialParamValues);
 
   const toggleService = (serviceId: string) => {
     setActiveServices(prev => 
@@ -40,6 +41,29 @@ export const EngagementServicesModal: React.FC<EngagementServicesModalProps> = (
 
   const updateParam = (paramId: string, value: string) => {
     setParamValues(prev => ({ ...prev, [paramId]: value }));
+  };
+
+  const handleSave = () => {
+    const newClientServices: ClientService[] = activeServices.map(serviceId => {
+      const service = availableServices.find(s => s.id === serviceId);
+      const clientParameters = service?.parameters.map(p => ({
+        id: `cp-${Date.now()}-${p.id}`,
+        serviceParameterId: p.id,
+        value: paramValues[p.id] || (p.dataType === 'BOOLEAN' ? 'false' : '')
+      })) || [];
+
+      return {
+        id: `cs-${Date.now()}-${serviceId}`,
+        engagementId: engagement.id,
+        serviceMasterId: serviceId,
+        isActive: true,
+        clientParameters,
+        createdAt: new Date().toISOString()
+      };
+    });
+
+    updateEngagementClientServices(engagement.id, newClientServices);
+    onClose();
   };
 
   return (
@@ -74,7 +98,7 @@ export const EngagementServicesModal: React.FC<EngagementServicesModalProps> = (
                 }`}>
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{service.category}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{service.categoryName}</span>
                       <h3 className="font-bold text-slate-900 text-base mt-0.5">{service.name}</h3>
                     </div>
                     <button 
@@ -131,7 +155,7 @@ export const EngagementServicesModal: React.FC<EngagementServicesModalProps> = (
           <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">
             Cancel
           </button>
-          <button onClick={onClose} className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-colors flex items-center gap-2">
+          <button onClick={handleSave} className="px-5 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-md transition-colors flex items-center gap-2">
             <Save size={16} /> Save Configuration
           </button>
         </div>

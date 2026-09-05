@@ -18,7 +18,7 @@ import { formatINR } from '../../lib/currency';
 import { EngagementServicesModal } from './EngagementServicesModal';
 
 export const EngagementsView: React.FC = () => {
-  const { engagements, clients, addDirectEngagement, currentUser } = useDashboardStore();
+  const { engagements, clients, addDirectEngagement, generateWorkload, currentUser, setGlobalSuccessMsg } = useDashboardStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   
@@ -248,16 +248,10 @@ export const EngagementsView: React.FC = () => {
                     Configure Services
                   </button>
                   <button 
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      try {
-                        const res = await fetch(`/api/engagements/${eng.id}/generate-tasks`, { method: 'POST' });
-                        if (res.ok) {
-                          alert('Workload generated successfully!');
-                        }
-                      } catch (err) {
-                        console.error('Failed to generate workload', err);
-                      }
+                      generateWorkload(eng.id);
+                      setGlobalSuccessMsg('Workload generated successfully based on client services!');
                     }}
                     className="flex-1 py-2 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
                   >

@@ -31,6 +31,10 @@ export const ClientDashboardView: React.FC = () => {
   const myStandaloneInvoices = (standaloneInvoices || []).filter((i: any) => i.clientId === currentUser?.id).map((i: any) => ({ ...i, engagementName: 'Standalone' }));
   const allInvoices = [...engagementInvoices, ...myStandaloneInvoices].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+  const allReports = clientEngagements.flatMap(e => (e.reports || []).map(r => ({ ...r, engagementName: e.name })))
+    .filter(r => r.status === 'RELEASED' || r.status === 'APPROVED')
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
   React.useEffect(() => {
     setPageContext('/client', 'Client Dashboard', {
       myEngagementsCount: clientEngagements.length,
@@ -273,6 +277,42 @@ export const ClientDashboardView: React.FC = () => {
                       <span className="font-bold text-sm text-slate-800">₹{(inv.amount * 1.18).toLocaleString()}</span>
                       <button onClick={() => handleDownloadInvoice(inv)} className="text-blue-600 hover:text-blue-800 bg-blue-50 p-1.5 rounded">
                         <Download size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+            <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+              <FilePlus size={18} className="text-purple-600" /> Deliverables & Reports
+            </h3>
+            {allReports.length === 0 ? (
+              <p className="text-sm text-slate-500 italic text-center py-4">No reports available yet.</p>
+            ) : (
+              <div className="space-y-3 max-h-[350px] overflow-y-auto custom-scrollbar">
+                {allReports.map(report => (
+                  <div key={report.id} className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col gap-2 hover:bg-slate-100 transition-colors">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-800">{report.type} Report</h4>
+                        <p className="text-[10px] text-slate-500">{report.engagementName}</p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-100 text-purple-700">
+                        v{report.version}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-end mt-1">
+                      <span className="text-[10px] text-slate-500 font-medium">
+                        {new Date(report.createdAt).toLocaleDateString()}
+                      </span>
+                      <button 
+                        onClick={() => alert(`Downloading ${report.type} Report (v${report.version})...`)}
+                        className="text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition-colors flex items-center gap-1 text-[10px] font-bold"
+                      >
+                        <Download size={12} /> Download
                       </button>
                     </div>
                   </div>

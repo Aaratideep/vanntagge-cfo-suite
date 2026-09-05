@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { EmployeeDashboardView } from '../../components/EmployeeDashboardView';
 import { useDashboardStore } from '../../store/dashboardStore';
@@ -15,8 +16,8 @@ import { DashboardView } from '../../components/DashboardView';
 
 export default function EmployeePage() {
   const router = useRouter();
-  const { currentUser } = useDashboardStore();
-  const [currentTab, setCurrentTab] = useState<string>('employee_portal');
+  const { currentUser, globalSuccessMsg } = useDashboardStore();
+  const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTarget, setSearchTarget] = useState('all');
@@ -84,6 +85,13 @@ export default function EmployeePage() {
           {renderActiveSubView()}
         </main>
       </div>
+
+      {globalSuccessMsg && (
+        <div className="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 z-50">
+          <CheckCircle className="text-green-400" size={20} />
+          {globalSuccessMsg}
+        </div>
+      )}
     </div>
   );
 }

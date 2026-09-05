@@ -9,33 +9,33 @@ export declare class ServicesController {
         description?: string;
     }): Promise<{
         id: string;
-        isActive: boolean;
+        organizationId: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
         description: string | null;
-        organizationId: string;
+        isActive: boolean;
     }>;
     getCategories(orgId: string): Promise<({
         services: {
             id: string;
-            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            categoryId: string;
             description: string | null;
+            isActive: boolean;
+            categoryId: string;
             frequency: string | null;
             priority: import(".prisma/client").$Enums.Priority;
         }[];
     } & {
         id: string;
-        isActive: boolean;
+        organizationId: string;
         createdAt: Date;
         updatedAt: Date;
         name: string;
         description: string | null;
-        organizationId: string;
+        isActive: boolean;
     })[]>;
     createService(categoryId: string, data: {
         name: string;
@@ -44,12 +44,12 @@ export declare class ServicesController {
         priority?: Priority;
     }): Promise<{
         id: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        categoryId: string;
         description: string | null;
+        isActive: boolean;
+        categoryId: string;
         frequency: string | null;
         priority: import(".prisma/client").$Enums.Priority;
     }>;
@@ -79,12 +79,12 @@ export declare class ServicesController {
         }[];
     } & {
         id: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
         name: string;
-        categoryId: string;
         description: string | null;
+        isActive: boolean;
+        categoryId: string;
         frequency: string | null;
         priority: import(".prisma/client").$Enums.Priority;
     })[]>;

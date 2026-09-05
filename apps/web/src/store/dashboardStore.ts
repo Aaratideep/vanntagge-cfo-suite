@@ -61,6 +61,11 @@ import {
   OnboardingTask,
   Meeting,
   AvailabilityBlock,
+  ServiceCategory,
+  ServiceMaster,
+  ServiceParameter,
+  ClientService,
+  ClientServiceParameter,
 } from '../types';
 
 export interface AdminSettings {
@@ -91,6 +96,7 @@ interface DashboardState {
   onboardingTasks: OnboardingTask[];
   meetings: Meeting[];
   availabilityBlocks: AvailabilityBlock[];
+  serviceCategories: ServiceCategory[];
   currentUser: User | null;
   adminSettings: AdminSettings;
   setAdminSettings: (settings: Partial<AdminSettings>) => void;
@@ -176,6 +182,11 @@ interface DashboardState {
   updateProfile: (updates: Partial<User>) => void;
   seedDummyData: () => void;
   addDirectEngagement: (clientName: string, engagementName: string) => void;
+  setServiceCategories: (categories: ServiceCategory[]) => void;
+  updateEngagementClientServices: (engagementId: string, clientServices: ClientService[]) => void;
+  generateWorkload: (engagementId: string) => void;
+  updateTaskStatus: (engagementId: string, taskId: string, status: TaskStatus) => void;
+  generateReport: (engagementId: string, reportType: ReportType, notes?: string) => void;
 }
 
 export const useDashboardStore = create<DashboardState>()(
@@ -210,6 +221,49 @@ export const useDashboardStore = create<DashboardState>()(
   auditLogs: [],
   standaloneInvoices: [],
   standaloneReceipts: [],
+  serviceCategories: [
+    {
+      id: 'c1',
+      name: 'Virtual CFO',
+      services: [
+        {
+          id: 's1',
+          name: 'Financial Planning & Analysis',
+          frequency: 'Monthly',
+          priority: 'HIGH',
+          parameters: [
+            { id: 'p1', name: 'Budgeting Model', dataType: 'BOOLEAN', isRequired: true },
+            { id: 'p2', name: 'Variance Threshold (%)', dataType: 'NUMBER', isRequired: false },
+          ]
+        },
+        {
+          id: 's2',
+          name: 'Cash Flow Management',
+          frequency: 'Weekly',
+          priority: 'URGENT',
+          parameters: [
+            { id: 'p3', name: 'Runway Calculation', dataType: 'BOOLEAN', isRequired: true }
+          ]
+        }
+      ]
+    },
+    {
+      id: 'c2',
+      name: 'Tax & Compliance',
+      services: [
+        {
+          id: 's3',
+          name: 'GST Compliance',
+          frequency: 'Monthly',
+          priority: 'HIGH',
+          parameters: [
+            { id: 'p4', name: 'GSTR1 Enabled', dataType: 'BOOLEAN', isRequired: true },
+            { id: 'p5', name: 'GSTR3B Enabled', dataType: 'BOOLEAN', isRequired: true },
+          ]
+        }
+      ]
+    }
+  ],
   currentUser: null,
   adminSettings: {
     adminName: "Aarati Mule",
@@ -226,6 +280,124 @@ export const useDashboardStore = create<DashboardState>()(
 
   updateRegistrationCode: (code) => set({ registrationCode: code }),
   setAdminSettings: (settings) => set((state) => ({ adminSettings: { ...state.adminSettings, ...settings } })),
+  setServiceCategories: (categories) => set({ serviceCategories: categories }),
+  updateEngagementClientServices: (engagementId, clientServices) => set((state) => ({
+    engagements: state.engagements.map(eng => 
+      eng.id === engagementId ? { ...eng, clientServices } : eng
+    )
+  })),
+
+  generateWorkload: (engagementId) => set((state) => {
+    const engagement = state.engagements.find(e => e.id === engagementId);
+    if (!engagement || !engagement.clientServices) return state;
+
+    const newTasks: Task[] = [];
+    engagement.clientServices.filter(cs => cs.isActive).forEach(cs => {
+      const serviceMaster = state.serviceCategories.flatMap(c => c.services).find(s => s.id === cs.serviceMasterId);
+      if (serviceMaster) {
+        newTasks.push({
+          id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          engagementId: engagement.id,
+          title: `Execute: ${serviceMaster.name}`,
+          milestone: serviceMaster.frequency,
+          estimatedHours: 5,
+          timeSpent: 0,
+          progress: 0,
+          priority: serviceMaster.priority,
+          status: 'NOT_STARTED',
+          reviewPoints: [],
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+
+    return {
+      engagements: state.engagements.map(eng => 
+        eng.id === engagementId 
+          ? { ...eng, tasks: [...(eng.tasks || []), ...newTasks] } 
+          : eng
+      )
+    };
+  }),
+
+  updateTaskStatus: (engagementId, taskId, status) => set((state) => {
+    let allCompleted = false;
+    let engagementName = '';
+    
+    const newState = {
+      engagements: state.engagements.map(eng => {
+        if (eng.id === engagementId) {
+          engagementName = eng.name;
+          const updatedTasks = eng.tasks.map(t => 
+            t.id === taskId ? { ...t, status, progress: status === 'COMPLETED' ? 100 : t.progress } : t
+          );
+          
+          allCompleted = updatedTasks.length > 0 && updatedTasks.every(t => t.status === 'COMPLETED');
+          
+          return { ...eng, tasks: updatedTasks };
+        }
+        return eng;
+      })
+    };
+    
+    if (allCompleted) {
+      // Auto-trigger report generation
+      const newReport: Report = {
+        id: `rep-${Date.now()}`,
+        engagementId,
+        engagementName,
+        type: 'MIS',
+        status: 'RELEASED',
+        version: 1,
+        notes: 'Auto-generated final deliverable based on completed workload.',
+        createdAt: new Date().toISOString()
+      };
+      
+      newState.engagements = newState.engagements.map(eng => 
+        eng.id === engagementId ? { ...eng, reports: [...(eng.reports || []), newReport] } : eng
+      );
+    }
+    
+    return newState;
+  }),
+
+  addReviewPoint: (engagementId, taskId, reviewPoint) => set((state) => ({
+    engagements: state.engagements.map(eng => 
+      eng.id === engagementId
+        ? {
+            ...eng,
+            tasks: eng.tasks.map(t => 
+              t.id === taskId 
+                ? { ...t, reviewPoints: [...(t.reviewPoints || []), { id: `rp-${Date.now()}`, createdAt: new Date().toISOString(), ...reviewPoint }] } 
+                : t
+            )
+          }
+        : eng
+    )
+  })),
+
+  generateReport: (engagementId, reportType, notes) => set((state) => ({
+    engagements: state.engagements.map(eng => 
+      eng.id === engagementId
+        ? {
+            ...eng,
+            reports: [
+              ...(eng.reports || []),
+              {
+                id: `rep-${Date.now()}`,
+                engagementId,
+                engagementName: eng.name,
+                type: reportType,
+                status: 'DRAFT',
+                version: 1,
+                notes,
+                createdAt: new Date().toISOString()
+              }
+            ]
+          }
+        : eng
+    )
+  })),
 
   setGlobalSuccessMsg: (msg) => {
     set({ globalSuccessMsg: msg });
@@ -1188,62 +1360,24 @@ export const useDashboardStore = create<DashboardState>()(
     deleteRecordFromFirebase('tasks', taskId);
   },
 
-  addReviewPoint: (engagementId, taskId, pointData) => {
-    const newPoint: ReviewPoint = {
-      ...pointData,
-      id: `rp-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    set((state) => ({
-      engagements: state.engagements.map((e) =>
-        e.id === engagementId
-          ? {
-              ...e,
-              tasks: (e.tasks || []).map((t) =>
-                t.id === taskId
-                  ? {
-                      ...t,
-                      status: 'REVIEW_PENDING',
-                      reviewPoints: [newPoint, ...t.reviewPoints],
-                    }
-                  : t
-              ),
-            }
-          : e
-      ),
-    }));
-    get().addAuditLog('ADD_REVIEW_POINT', `Added review issue: ${pointData.description}`);
-    get().addNotification('Review Point Logged', `Review Point raised regarding: ${pointData.category}`);
-    
-    // Sync to Firestore
-    const eng = get().engagements.find((e) => e.id === engagementId);
-    if (eng) {
-      pushRecordToFirebase('engagements', engagementId, eng);
-      const updatedTask = eng.tasks.find((t) => t.id === taskId);
-      if (updatedTask) {
-        pushRecordToFirebase('tasks', taskId, updatedTask);
-      }
-    }
-  },
-
   updateReviewPoint: (engagementId, taskId, pointId, updates) => {
     set((state) => ({
-      engagements: state.engagements.map((e) =>
-        e.id === engagementId
+      engagements: state.engagements.map((eng) =>
+        eng.id === engagementId
           ? {
-              ...e,
-              tasks: (e.tasks || []).map((t) =>
+              ...eng,
+              tasks: eng.tasks.map((t) =>
                 t.id === taskId
                   ? {
                       ...t,
-                      reviewPoints: t.reviewPoints.map((rp) =>
+                      reviewPoints: (t.reviewPoints || []).map((rp) =>
                         rp.id === pointId ? { ...rp, ...updates } : rp
                       ),
                     }
                   : t
               ),
             }
-          : e
+          : eng
       ),
     }));
     

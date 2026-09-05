@@ -24,6 +24,7 @@ import { StaleLeadsModal } from '../../components/StaleLeadsModal';
 import { DailyTaskReminderModal } from '../../components/DailyTaskReminderModal';
 import { UsersManagementView } from '../../components/admin/UsersManagementView';
 import { UsersView } from '../../components/admin/UsersView';
+// Import Service Master Component
 import { ServiceMasterView } from '../../components/admin/ServiceMasterView';
 
 export default function AdminPage() {
@@ -32,6 +33,7 @@ export default function AdminPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTarget, setSearchTarget] = useState('all');
+  const [crmInitialAction, setCrmInitialAction] = useState<'lead' | 'quotation' | null>(null);
 
   const { leads, engagements, currentUser, globalSuccessMsg } = useDashboardStore();
 
@@ -194,12 +196,12 @@ export default function AdminPage() {
         return (
           <DashboardView
             setCurrentTab={setCurrentTab}
-            openCreateLeadModal={() => setCurrentTab('crm')}
-            openCreateQuotationModal={() => setCurrentTab('crm')}
+            openCreateLeadModal={() => { setCrmInitialAction('lead'); setCurrentTab('crm'); }}
+            openCreateQuotationModal={() => { setCrmInitialAction('quotation'); setCurrentTab('crm'); }}
           />
         );
       case 'crm':
-        return <CRMView />;
+        return <CRMView initialAction={crmInitialAction} onActionHandled={() => setCrmInitialAction(null)} />;
       case 'service_master':
         return <ServiceMasterView />;
       case 'work':
@@ -224,8 +226,8 @@ export default function AdminPage() {
         return (
           <DashboardView
             setCurrentTab={setCurrentTab}
-            openCreateLeadModal={() => setCurrentTab('crm')}
-            openCreateQuotationModal={() => setCurrentTab('crm')}
+            openCreateLeadModal={() => { setCrmInitialAction('lead'); setCurrentTab('crm'); }}
+            openCreateQuotationModal={() => { setCrmInitialAction('quotation'); setCurrentTab('crm'); }}
           />
         );
     }

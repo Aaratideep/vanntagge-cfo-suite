@@ -13,7 +13,7 @@ import { CalendarView } from '../../components/CalendarView';
 
 export default function ClientPage() {
   const router = useRouter();
-  const { currentUser } = useDashboardStore();
+  const { currentUser, globalSuccessMsg } = useDashboardStore();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,6 +75,13 @@ export default function ClientPage() {
           {renderActiveSubView()}
         </main>
       </div>
+
+      {globalSuccessMsg && (
+        <div className="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 z-50">
+          <CheckCircle className="text-green-400" size={20} />
+          {globalSuccessMsg}
+        </div>
+      )}
     </div>
   );
 }

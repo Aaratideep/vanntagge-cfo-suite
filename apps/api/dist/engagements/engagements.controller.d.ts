@@ -7,12 +7,12 @@ export declare class EngagementsController {
     getClientServices(engagementId: string): Promise<({
         serviceMaster: {
             id: string;
-            isActive: boolean;
             createdAt: Date;
             updatedAt: Date;
             name: string;
-            categoryId: string;
             description: string | null;
+            isActive: boolean;
+            categoryId: string;
             frequency: string | null;
             priority: import(".prisma/client").$Enums.Priority;
         };
@@ -32,28 +32,28 @@ export declare class EngagementsController {
             id: string;
             createdAt: Date;
             updatedAt: Date;
+            value: string;
             clientServiceId: string;
             serviceParameterId: string;
-            value: string;
         })[];
     } & {
         id: string;
-        engagementId: string;
-        serviceMasterId: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
+        engagementId: string;
+        serviceMasterId: string;
     })[]>;
     toggleClientService(engagementId: string, data: {
         serviceMasterId: string;
         isActive: boolean;
     }): Promise<{
         id: string;
-        engagementId: string;
-        serviceMasterId: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
+        engagementId: string;
+        serviceMasterId: string;
     }>;
     configureParameter(clientServiceId: string, serviceParameterId: string, data: {
         value: string;
@@ -61,9 +61,9 @@ export declare class EngagementsController {
         id: string;
         createdAt: Date;
         updatedAt: Date;
+        value: string;
         clientServiceId: string;
         serviceParameterId: string;
-        value: string;
     }>;
     generateTasks(engagementId: string): Promise<{
         success: boolean;

@@ -7,6 +7,7 @@ import { CommunicationsModule } from './communications/communications.module';
 import { ServicesModule } from './services/services.module';
 import { EngagementsModule } from './engagements/engagements.module';
 import { TasksModule } from './tasks/tasks.module';
+import { FinancialsModule } from './financials/financials.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { TasksModule } from './tasks/tasks.module';
     ServicesModule,
     EngagementsModule,
     TasksModule,
+    FinancialsModule,
   ],
   controllers: [],
   providers: [],

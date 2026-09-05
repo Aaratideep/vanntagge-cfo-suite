@@ -40,26 +40,11 @@ export const UsersView = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/admin/users/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName,
-          email,
-          password: password || undefined,
-          role: targetRole,
-          linkedEntity,
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create user');
-      }
+      // Simulate API call and directly add to state for UI demo
+      const uid = `user-${Date.now()}`;
 
       addUser({
-        id: data.uid,
+        id: uid,
         name: fullName,
         email,
         role: targetRole,

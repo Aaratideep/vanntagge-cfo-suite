@@ -248,6 +248,42 @@ export interface EngagementService {
   billingCycle: string;
 }
 
+export interface ServiceParameter {
+  id: string;
+  name: string;
+  dataType: string;
+  isRequired: boolean;
+}
+
+export interface ServiceMaster {
+  id: string;
+  name: string;
+  frequency: string;
+  priority: Priority;
+  parameters: ServiceParameter[];
+}
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  services: ServiceMaster[];
+}
+
+export interface ClientServiceParameter {
+  id: string;
+  serviceParameterId: string;
+  value: string;
+}
+
+export interface ClientService {
+  id: string;
+  engagementId: string;
+  serviceMasterId: string;
+  isActive: boolean;
+  clientParameters: ClientServiceParameter[];
+  createdAt: string;
+}
+
 export interface ReviewPoint {
   id: string;
   taskId: string;
@@ -403,6 +439,7 @@ export interface Engagement {
   createdAt: string;
   
   services: EngagementService[];
+  clientServices?: ClientService[];
   tasks: Task[];
   documents: Document[];
   compliances: Compliance[];

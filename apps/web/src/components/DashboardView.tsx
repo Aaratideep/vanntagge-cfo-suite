@@ -153,7 +153,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* CRM Leads KPI */}
-        <div className="premium-card p-4 flex items-start justify-between">
+        <div 
+          onClick={() => setCurrentTab('crm')}
+          className="premium-card p-4 flex items-start justify-between cursor-pointer hover:border-blue-200 hover:shadow-md transition-all"
+        >
           <div className="space-y-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">CRM Lead Funnel</span>
             <div className="flex items-baseline gap-2">
@@ -171,7 +174,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Followups Alert KPI */}
-        <div className="premium-card p-4 flex items-start justify-between">
+        <div 
+          onClick={() => setCurrentTab('crm')}
+          className="premium-card p-4 flex items-start justify-between cursor-pointer hover:border-amber-200 hover:shadow-md transition-all"
+        >
           <div className="space-y-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Follow-ups Reminders</span>
             <div className="flex items-baseline gap-2">
@@ -191,7 +197,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Billings KPI */}
-        <div className="premium-card p-4 flex items-start justify-between">
+        <div 
+          onClick={() => setCurrentTab('invoicing')}
+          className="premium-card p-4 flex items-start justify-between cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all"
+        >
           <div className="space-y-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Billed Revenue</span>
             <div className="flex items-baseline gap-2">
@@ -209,7 +218,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Collected Bill KPI */}
-        <div className="premium-card p-4 flex items-start justify-between">
+        <div 
+          onClick={() => setCurrentTab('invoicing')}
+          className="premium-card p-4 flex items-start justify-between cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all"
+        >
           <div className="space-y-2">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Collected Bills</span>
             <div className="flex items-baseline gap-2">
