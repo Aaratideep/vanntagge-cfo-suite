@@ -2270,25 +2270,18 @@ export const useDashboardStore = create<DashboardState>()(
     const cleanEmail = email.toLowerCase().trim();
     const user = get().users.find((u) => u.email.toLowerCase() === cleanEmail);
     const isSuperAdmin = cleanEmail === 'aaratimule006@gmail.com';
-    const isClient = cleanEmail === 'aaratideepak29@gmail.com';
-    const isEmployee = cleanEmail === 'aarati123@gmail.com' || cleanEmail === 'kiranm@gmail.com';
 
-    if (user || isSuperAdmin || isClient || isEmployee) {
-      const roleToSet: Role = isSuperAdmin ? 'SUPER_ADMIN' : isClient ? 'CLIENT' : isEmployee ? 'EMPLOYEE' : (user?.role || 'PENDING');
-      const perms = isSuperAdmin ? ['all'] : isClient ? ['read'] : ['work'];
-
+    if (user || isSuperAdmin) {
       const targetUser: User = user
         ? {
             ...user,
-            role: roleToSet,
-            permissions: perms,
           }
         : {
-            id: isSuperAdmin ? 'u-aarati' : isClient ? 'u-aarati-client' : (cleanEmail === 'kiranm@gmail.com' ? 'u-kiran-employee' : 'u-aarati-employee'),
-            name: isSuperAdmin ? 'Aarati Mule' : isClient ? 'Aarati Deepak' : (cleanEmail === 'kiranm@gmail.com' ? 'Kiran' : 'Aarati (Employee)'),
+            id: 'u-aarati',
+            name: 'Aarati Mule',
             email: cleanEmail,
-            role: roleToSet,
-            permissions: perms,
+            role: 'SUPER_ADMIN',
+            permissions: ['all'],
           };
       set((state) => {
         const userExists = state.users.some(u => u.id === targetUser.id);
@@ -2369,10 +2362,19 @@ export const useDashboardStore = create<DashboardState>()(
   },
 
   deleteUser: (id) => {
-    const user = get().users.find(u => u.id === id);
+    const user = get().users.find((u) => u.id === id);
     if (user) {
-      set((state) => ({ users: state.users.filter((u) => u.id !== id) }));
-      get().addAuditLog('USER_DELETED', `User ${user.name} deleted.`);
+      set((state) => {
+        const isCurrentDeleted = state.currentUser && (
+          state.currentUser.id === id ||
+          state.currentUser.email.toLowerCase().trim() === user.email.toLowerCase().trim()
+        );
+        return {
+          users: state.users.filter((u) => u.id !== id),
+          currentUser: isCurrentDeleted ? null : state.currentUser,
+        };
+      });
+      get().addAuditLog('USER_DELETED', `User ${user.name} (${user.email}) deleted.`);
       deleteRecordFromFirebase('users', id);
     }
   },
@@ -2956,24 +2958,43 @@ export const useDashboardStore = create<DashboardState>()(
     const receiptsToDelete = get().standaloneReceipts?.filter(rec => rec.clientName?.trim().toLowerCase() === targetName) || [];
     const quotationsToDelete = get().quotations?.filter(q => q.leadCompanyName?.trim().toLowerCase() === targetName) || [];
 
-    set((state) => ({
-      clients: state.clients.filter((c) => c.id !== id && (!targetName || c.companyName.toLowerCase().trim() !== targetName)),
-      engagements: state.engagements.filter((e) => e.clientId !== id && (!targetName || e.clientCompanyName.toLowerCase().trim() !== targetName)),
-      standaloneInvoices: state.standaloneInvoices?.filter(inv => !invoicesToDelete.find(i => i.id === inv.id)) || [],
-      standaloneReceipts: state.standaloneReceipts?.filter(rec => !receiptsToDelete.find(r => r.id === rec.id)) || [],
-      quotations: state.quotations?.filter(q => !quotationsToDelete.find(qu => qu.id === q.id)) || [],
-    }));
+    // Find and delete all user accounts associated with this client
+    const clientUsersToDelete = get().users.filter(u => 
+      u.id === id ||
+      (u.linkedEntity && u.linkedEntity.toLowerCase().trim() === targetName) ||
+      (clientToDelete?.email && u.email.toLowerCase().trim() === clientToDelete.email.toLowerCase().trim())
+    );
+    const clientUserIds = new Set(clientUsersToDelete.map(u => u.id));
+
+    set((state) => {
+      const isCurrentDeleted = state.currentUser && (
+        clientUserIds.has(state.currentUser.id) ||
+        (state.currentUser.linkedEntity && state.currentUser.linkedEntity.toLowerCase().trim() === targetName) ||
+        (clientToDelete?.email && state.currentUser.email.toLowerCase().trim() === clientToDelete.email.toLowerCase().trim())
+      );
+
+      return {
+        clients: state.clients.filter((c) => c.id !== id && (!targetName || c.companyName.toLowerCase().trim() !== targetName)),
+        users: state.users.filter((u) => !clientUserIds.has(u.id)),
+        currentUser: isCurrentDeleted ? null : state.currentUser,
+        engagements: state.engagements.filter((e) => e.clientId !== id && (!targetName || e.clientCompanyName.toLowerCase().trim() !== targetName)),
+        standaloneInvoices: state.standaloneInvoices?.filter(inv => !invoicesToDelete.find(i => i.id === inv.id)) || [],
+        standaloneReceipts: state.standaloneReceipts?.filter(rec => !receiptsToDelete.find(r => r.id === rec.id)) || [],
+        quotations: state.quotations?.filter(q => !quotationsToDelete.find(qu => qu.id === q.id)) || [],
+      };
+    });
 
     if (clientToDelete?.id) {
       deleteRecordFromFirebase('clients', clientToDelete.id);
     }
     
+    clientUsersToDelete.forEach(u => deleteRecordFromFirebase('users', u.id));
     engagementsToDelete.forEach(e => deleteRecordFromFirebase('engagements', e.id));
     invoicesToDelete.forEach(inv => deleteRecordFromFirebase('standaloneInvoices', inv.id));
     receiptsToDelete.forEach(rec => deleteRecordFromFirebase('standaloneReceipts', rec.id));
     quotationsToDelete.forEach(q => deleteRecordFromFirebase('quotations', q.id));
 
-    get().addAuditLog('DELETE_CLIENT', `Deleted client ${targetName || id} and its engagements`);
+    get().addAuditLog('DELETE_CLIENT', `Deleted client ${targetName || id}, associated user accounts and engagements.`);
   },
 
   updateChecklistDocStatus: (engagementId, docId, status, remarks, reviewerId) => {
