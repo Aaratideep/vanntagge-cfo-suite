@@ -1,6 +1,9 @@
+'use client';
+
 import React, { useState } from 'react';
 import { useDashboardStore } from '../store/dashboardStore';
-import { History, X, Shield, Clock } from 'lucide-react';
+import { History, X, Shield, Clock, Sparkles, Bot } from 'lucide-react';
+import { AICfoAssistantModal } from './AICfoAssistantModal';
 
 interface HeaderProps {
   searchQuery: string;
@@ -8,6 +11,7 @@ interface HeaderProps {
   setCurrentTab: (tab: string) => void;
   setSearchTarget: (target: string) => void;
   currentTabTitle: string;
+  onToggleMobileMenu?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   setCurrentTab,
   setSearchTarget,
   currentTabTitle,
+  onToggleMobileMenu,
 }) => {
   const {
     notifications,
@@ -23,11 +28,13 @@ export const Header: React.FC<HeaderProps> = ({
     clearNotifications,
     auditLogs,
     currentUser,
+    aiFeatureFlags
   } = useDashboardStore();
 
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [auditDrawerOpen, setAuditDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   
   // Profile edit states
   const [editName, setEditName] = useState(currentUser?.name || '');
@@ -55,11 +62,18 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="h-16 bg-surface/80 glass-header border-b border-outline-variant/50 px-8 flex justify-between items-center z-40 sticky top-0">
+      <header className="h-16 bg-surface/80 glass-header border-b border-outline-variant/50 px-3 sm:px-8 flex justify-between items-center z-40 sticky top-0 font-outfit">
         
         {/* Left Section: Active View Title & Search */}
-        <div className="flex items-center gap-6 flex-1">
-          <h2 className="font-title-lg text-title-lg font-bold text-on-surface tracking-tight whitespace-nowrap">
+        <div className="flex items-center gap-2 sm:gap-6 flex-1 min-w-0">
+          <button
+            onClick={onToggleMobileMenu}
+            className="md:hidden p-1.5 rounded-xl text-slate-700 hover:bg-slate-100/80 shrink-0"
+            title="Open Mobile Menu"
+          >
+            <span className="material-symbols-outlined text-2xl">menu</span>
+          </button>
+          <h2 className="font-title-lg text-sm sm:text-base md:text-lg font-bold text-on-surface tracking-tight truncate">
             {currentTabTitle}
           </h2>
           <div className="relative w-full max-w-md hidden sm:block">
@@ -92,6 +106,8 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Right Section: Actions & Profile */}
         <div className="flex items-center gap-4">
           
+
+
           {/* Audit Logs Widget */}
           <button
             onClick={() => setAuditDrawerOpen(true)}
@@ -169,18 +185,8 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Active Profile Info */}
           <div className="flex items-center gap-3">
             <div className="text-right hidden md:block leading-tight">
-
+              <span className="text-xs font-bold text-slate-900 block">{currentUser.name}</span>
               <div className="flex items-center gap-2 mt-0.5 justify-end">
-                <button
-                  onClick={() => {
-                    useDashboardStore.getState().loginUser('aarati123@gmail.com');
-                    window.location.href = '/';
-                  }}
-                  className="text-[9px] text-blue-600 hover:underline font-semibold"
-                >
-                  Employee Login
-                </button>
-                <span className="text-[9px] text-slate-300">•</span>
                 <button
                   onClick={() => useDashboardStore.getState().logoutUser()}
                   className="text-[9px] text-red-600 hover:underline font-semibold"
@@ -215,7 +221,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Slide-out Audit Logs Drawer */}
       {auditDrawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
+        <div className="fixed inset-0 z-50 overflow-hidden font-outfit">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity" onClick={() => setAuditDrawerOpen(false)} />
           <div className="absolute inset-y-0 right-0 max-w-md w-full bg-surface shadow-2xl flex flex-col z-50 border-l border-outline-variant/50">
             <div className="px-5 py-4 border-b border-outline-variant/55 flex items-center justify-between bg-surface-container-low">
@@ -271,7 +277,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Profile Edit Modal */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-outfit">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setIsProfileModalOpen(false)} />
           <div className="bg-surface border border-outline-variant/50 rounded-2xl w-full max-w-sm p-6 relative z-10 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
@@ -341,6 +347,29 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Floating Bottom Right AI CFO Assistant Trigger Button */}
+      {aiFeatureFlags?.aiCfoAssistant && !aiAssistantOpen && (
+        <button
+          onClick={() => setAiAssistantOpen(true)}
+          className="fixed bottom-6 right-6 w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-2xl hover:shadow-blue-500/30 hover:scale-105 active:scale-95 transition-all z-50 border border-white/20 group"
+          title="VANNTAGGE AI CFO Assistant"
+        >
+          <Bot size={24} className="text-white transition-transform group-hover:scale-110" />
+          <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-blue-300 border-2 border-white"></span>
+          </span>
+        </button>
+      )}
+
+      {/* AI CFO Assistant Modal */}
+      {aiAssistantOpen && (
+        <AICfoAssistantModal
+          onClose={() => setAiAssistantOpen(false)}
+          pageContext={currentUser.role === 'CLIENT' ? 'SERVICE' : currentUser.role === 'EMPLOYEE' ? 'EMPLOYEE' : 'ADMIN'}
+        />
       )}
     </>
   );

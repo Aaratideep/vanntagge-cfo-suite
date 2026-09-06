@@ -54,9 +54,12 @@ export const EngagementServicesModal: React.FC<EngagementServicesModalProps> = (
 
       return {
         id: `cs-${Date.now()}-${serviceId}`,
+        organizationId: 'org-1',
+        clientId: engagement.clientId,
         engagementId: engagement.id,
         serviceMasterId: serviceId,
         isActive: true,
+        status: 'ACTIVE',
         clientParameters,
         createdAt: new Date().toISOString()
       };

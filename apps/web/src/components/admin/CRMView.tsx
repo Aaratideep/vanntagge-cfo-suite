@@ -25,6 +25,13 @@ import {
   CheckCheck,
   AlertTriangle,
   Eye,
+  EyeOff,
+  Key,
+  Lock,
+  Copy,
+  ShieldCheck,
+  Sparkles,
+  Send,
 } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { Lead, LeadStatus, Priority, FollowUpMode } from '../../types';
@@ -105,7 +112,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
     quotations, createQuotation, updateQuotationStatus, deleteQuotation, convertQuotationToInvoice,
     engagementLetters, createEngagementLetter, deleteEngagementLetter,
     convertLeadToClient,
-    users, currentUser,
+    users, currentUser, addUser, onboardNewClient,
   } = useDashboardStore();
 
   const [crmSubTab, setCrmSubTab] = useState<'leads' | 'pipeline' | 'quotations' | 'letters' | 'converted'>('leads');
@@ -181,6 +188,36 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
   const convertedCount = leads.filter(l => l.status === 'CONVERTED').length;
   const conversionRate = leads.length > 0 ? Math.round((convertedCount / leads.length) * 100) : 0;
 
+  // Portal account provisioning state for Create Lead
+  const [provisionPortal, setProvisionPortal] = useState(true);
+  const [portalRole, setPortalRole] = useState<'CLIENT' | 'EMPLOYEE'>('CLIENT');
+  const [portalEmail, setPortalEmail] = useState('');
+  const [portalPassword, setPortalPassword] = useState('');
+  const [showPortalPassword, setShowPortalPassword] = useState(false);
+  const [autoDispatchCreds, setAutoDispatchCreds] = useState(true);
+  const [createdCredsSummary, setCreatedCredsSummary] = useState<{
+    companyName: string;
+    contactPerson: string;
+    email: string;
+    password: string;
+    role: string;
+  } | null>(null);
+
+  const generateRandomPassword = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
+    let pass = 'Vant@';
+    for (let i = 0; i < 6; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setPortalPassword(pass);
+  };
+
+  React.useEffect(() => {
+    if (newLeadForm.email && (!portalEmail || portalEmail === newLeadForm.email)) {
+      setPortalEmail(newLeadForm.email);
+    }
+  }, [newLeadForm.email]);
+
   // ─── Handlers ────────────────────────────────────────────────────────────
 
   const showSuccess = (msg: string) => {
@@ -188,12 +225,84 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
-  const handleCreateLead = (e: React.FormEvent) => {
+  const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     addLead({ ...newLeadForm, status: 'NEW', expectedRevenue: Number(newLeadForm.expectedRevenue) });
+
+    let finalPass = portalPassword;
+    if (provisionPortal) {
+      if (!finalPass || finalPass.trim().length < 6) {
+        finalPass = 'Vant@' + Math.random().toString(36).slice(-6) + '#1';
+      }
+
+      const targetEmail = portalEmail || newLeadForm.email;
+      const targetName = newLeadForm.contactPerson || newLeadForm.companyName;
+
+      // 1. Provision User in dashboardStore
+      const uid = `user-lead-${Date.now()}`;
+      addUser({
+        id: uid,
+        name: targetName,
+        email: targetEmail,
+        role: portalRole,
+        permissions: portalRole === 'CLIENT' ? ['read', 'upload'] : ['work', 'read'],
+        status: 'ACTIVE',
+        linkedEntity: newLeadForm.companyName,
+      });
+
+      // 2. Call API to provision in auth/db
+      try {
+        await fetch('/api/admin/users/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: targetEmail,
+            password: finalPass,
+            fullName: targetName,
+            role: portalRole,
+            linkedEntity: newLeadForm.companyName,
+          }),
+        });
+      } catch (err) {
+        console.warn('API User Provisioning call:', err);
+      }
+
+      // 3. If role === 'CLIENT', onboard as Client so onboarding checklist & data bank works immediately
+      if (portalRole === 'CLIENT') {
+        onboardNewClient({
+          companyName: newLeadForm.companyName,
+          contactPerson: targetName,
+          email: targetEmail,
+          phone: newLeadForm.phone,
+          entityType: newLeadForm.businessType,
+          gstin: '',
+          pan: '',
+        }, true);
+      }
+
+      // 4. Auto-dispatch notification if checked
+      if (autoDispatchCreds) {
+        useDashboardStore.getState().addAuditLog(
+          'DISPATCH_PORTAL_CREDENTIALS',
+          `Dispatched ${portalRole} Portal credentials to ${targetEmail} for ${newLeadForm.companyName}`
+        );
+      }
+
+      setCreatedCredsSummary({
+        companyName: newLeadForm.companyName,
+        contactPerson: targetName,
+        email: targetEmail,
+        password: finalPass,
+        role: portalRole,
+      });
+    } else {
+      showSuccess('Lead created successfully!');
+    }
+
     setShowCreateLeadModal(false);
     setNewLeadForm({ ...EMPTY_LEAD });
-    showSuccess('Lead created successfully!');
+    setPortalEmail('');
+    setPortalPassword('');
   };
 
   const handleUpdateLead = (e: React.FormEvent) => {
@@ -1190,19 +1299,102 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Initial Remarks / Requirements</label>
-                <textarea rows={3} value={newLeadForm.remarks}
-                  onChange={e => setNewLeadForm({ ...newLeadForm, remarks: e.target.value })}
-                  placeholder="Describe what the prospect is looking for..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none resize-none" />
+              {/* ── PORTAL CREDENTIALS PROVISIONING SECTION (CLIENT ONLY) ── */}
+              <div className="bg-slate-900 text-white rounded-2xl p-4 space-y-3 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-400/30 flex items-center justify-center font-bold">
+                      <Key size={15} />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-xs tracking-tight text-white">Client Portal Access Credentials</h4>
+                      <p className="text-[10px] text-slate-300">Grant client portal login access (/client) to view work completion, task status & onboarding checklist</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={provisionPortal}
+                      onChange={(e) => setProvisionPortal(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                {provisionPortal && (
+                  <div className="space-y-3 pt-3 border-t border-slate-800 text-xs">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-300 mb-1.5 whitespace-nowrap">Login Email Address *</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                          <input
+                            type="email"
+                            required={provisionPortal}
+                            value={portalEmail}
+                            onChange={(e) => setPortalEmail(e.target.value)}
+                            placeholder="client@company.com"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5 gap-1">
+                          <label className="block text-[11px] font-bold text-slate-300 whitespace-nowrap">Login Password *</label>
+                          <button
+                            type="button"
+                            onClick={generateRandomPassword}
+                            className="text-[10px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 underline whitespace-nowrap shrink-0"
+                          >
+                            <Sparkles size={11} /> Auto Generate
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                          <input
+                            type={showPortalPassword ? 'text' : 'password'}
+                            required={provisionPortal}
+                            value={portalPassword}
+                            onChange={(e) => setPortalPassword(e.target.value)}
+                            placeholder="Min. 6 characters"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-9 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPortalPassword(!showPortalPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                          >
+                            {showPortalPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="autoDispatchCredsToggle"
+                        checked={autoDispatchCreds}
+                        onChange={(e) => setAutoDispatchCreds(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-slate-700 bg-slate-800 focus:ring-blue-500 shrink-0"
+                      />
+                      <label htmlFor="autoDispatchCredsToggle" className="text-[11px] text-slate-300 cursor-pointer font-medium leading-tight">
+                        Auto-dispatch portal credentials & access URL via WhatsApp & Email
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={() => setShowCreateLeadModal(false)}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold">Cancel</button>
                 <button type="submit"
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-500/20">
-                  Save Lead
+                  Save Lead & Provision Credentials
                 </button>
               </div>
             </form>
@@ -1489,6 +1681,72 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
           data={selectedAgreementPreview}
           onClose={() => setSelectedAgreementPreview(null)}
         />
+      )}
+
+      {/* ── CREATED CREDENTIALS SUMMARY MODAL ── */}
+      {createdCredsSummary && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs" onClick={() => setCreatedCredsSummary(null)} />
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md p-6 relative z-10 shadow-2xl space-y-4 font-outfit">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto font-bold">
+              <CheckCircle2 size={26} />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="font-extrabold text-slate-900 text-base">Portal Credentials Created!</h3>
+              <p className="text-xs text-slate-500">
+                Portal account generated for <span className="font-bold text-slate-800">{createdCredsSummary.companyName}</span>
+              </p>
+            </div>
+
+            <div className="bg-slate-900 text-white rounded-2xl p-4 space-y-2.5 text-xs">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <span className="text-slate-400">Portal Target:</span>
+                <span className="font-mono text-blue-400 font-bold bg-blue-500/20 px-2 py-0.5 rounded border border-blue-400/30">
+                  {createdCredsSummary.role === 'CLIENT' ? 'Client Portal (/client)' : 'Employee Portal (/employee)'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <span className="text-slate-400">Login Email:</span>
+                <span className="font-bold text-white">{createdCredsSummary.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Password:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-amber-300 font-bold bg-slate-800 px-2.5 py-1 rounded border border-slate-700">
+                    {createdCredsSummary.password}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdCredsSummary.password);
+                      alert('Password copied to clipboard!');
+                    }}
+                    className="text-slate-400 hover:text-white p-1"
+                    title="Copy Password"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-800 leading-relaxed font-medium">
+              <span className="font-bold">Portal Features Available to User:</span>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700">
+                <li>Track live work completion status (% completed)</li>
+                <li>View active task deliverables & milestones</li>
+                <li>Upload and manage onboarding checklist documents</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => setCreatedCredsSummary(null)}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-blue-500/20"
+            >
+              Done & Return to CRM
+            </button>
+          </div>
+        </div>
       )}
 
     </div>

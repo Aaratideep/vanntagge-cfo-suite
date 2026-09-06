@@ -21,6 +21,9 @@ import {
 } from 'lucide-react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { Task, TaskStatus, Priority, ReviewSeverity, ReviewStatus } from '../types';
+import WorkAllocationView from './admin/WorkAllocationView';
+import { TaskExecutionModal } from './TaskExecutionModal';
+import { TaskReviewQueueView } from './admin/TaskReviewQueueView';
 
 export const WorkView: React.FC = () => {
   const {
@@ -38,6 +41,7 @@ export const WorkView: React.FC = () => {
   const [activeEngId, setActiveEngId] = useState<string>('ALL');
   const [showAllocModal, setShowAllocModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null); // any to avoid TSTask missing errors
+  const [executingTask, setExecutingTask] = useState<{ taskId: string; engagementId: string } | null>(null);
 
   // Alloc Form
   const [allocForm, setAllocForm] = useState({
@@ -67,7 +71,7 @@ export const WorkView: React.FC = () => {
   // Follow-up Input
   const [followUpInput, setFollowUpInput] = useState<string>('');
 
-  const [viewMode, setViewMode] = useState<'dashboard' | 'kanban' | 'list'>(
+  const [viewMode, setViewMode] = useState<'dashboard' | 'kanban' | 'list' | 'allocation' | 'review'>(
     currentUser?.role === 'SUPER_ADMIN' ? 'dashboard' : 'kanban'
   );
 
@@ -406,6 +410,32 @@ export const WorkView: React.FC = () => {
             <span className="material-symbols-outlined text-[18px]">table_rows</span>
             <span>List Table</span>
           </button>
+          {(currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN') && (
+            <>
+              <button
+                onClick={() => setViewMode('allocation')}
+                className={`px-4 py-2 font-semibold rounded-lg flex items-center gap-2 transition-all text-xs ${
+                  viewMode === 'allocation'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">assignment_ind</span>
+                <span>Work Allocation</span>
+              </button>
+              <button
+                onClick={() => setViewMode('review')}
+                className={`px-4 py-2 font-semibold rounded-lg flex items-center gap-2 transition-all text-xs ${
+                  viewMode === 'review'
+                    ? 'bg-gradient-to-r from-amber-500 to-indigo-600 text-white shadow-sm font-bold'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                <span>Review Queue</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -796,6 +826,16 @@ export const WorkView: React.FC = () => {
       )}
 
 
+      {/* Work Allocation Panel (Prompt 11) */}
+      {viewMode === 'allocation' && (
+        <WorkAllocationView />
+      )}
+
+      {/* Review Queue Dashboard (Prompt 13) */}
+      {viewMode === 'review' && (
+        <TaskReviewQueueView />
+      )}
+
       {/* Task Allocation Modal */}
       {showAllocModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1181,8 +1221,20 @@ export const WorkView: React.FC = () => {
                 </div>
               )}
 
-              {currentUser.role === 'SUPER_ADMIN' && (
-                <div className="pt-4 border-t border-slate-100">
+              <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExecutingTask({ taskId: selectedTask.id, engagementId: selectedTask.engagementId });
+                    setSelectedTask(null);
+                  }}
+                  className="w-full py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all shadow-md text-xs"
+                >
+                  <Play size={14} />
+                  Open Work Execution Portal
+                </button>
+
+                {currentUser.role === 'SUPER_ADMIN' && (
                   <button
                     type="button"
                     onClick={() => handleDeleteTask(selectedTask.id)}
@@ -1191,12 +1243,20 @@ export const WorkView: React.FC = () => {
                     <Trash2 size={14} />
                     Delete Task (Admin Only)
                   </button>
-                </div>
-              )}
+                )}
+              </div>
 
             </div>
           </div>
         </div>
+      )}
+
+      {executingTask && (
+        <TaskExecutionModal
+          taskId={executingTask.taskId}
+          engagementId={executingTask.engagementId}
+          onClose={() => setExecutingTask(null)}
+        />
       )}
 
       {taskNoteModal.isOpen && (

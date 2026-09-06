@@ -26,6 +26,8 @@ import { UsersManagementView } from '../../components/admin/UsersManagementView'
 import { UsersView } from '../../components/admin/UsersView';
 // Import Service Master Component
 import { ServiceMasterView } from '../../components/admin/ServiceMasterView';
+import { AutomationDashboardView } from '../../components/admin/AutomationDashboardView';
+import { AiDashboardView } from '../../components/admin/AiDashboardView';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -34,6 +36,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTarget, setSearchTarget] = useState('all');
   const [crmInitialAction, setCrmInitialAction] = useState<'lead' | 'quotation' | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const { leads, engagements, currentUser, globalSuccessMsg } = useDashboardStore();
 
@@ -57,6 +60,7 @@ export default function AdminPage() {
     calendar: 'Operations Calendar',
     hr_payroll: 'HR & Payroll Management',
     client_management: 'Client Management',
+    legacy_onboarding: 'Legacy Client Onboarding',
     invoicing: 'Invoicing & Revenue Engine',
     settings: 'Suite Settings',
     user_management: 'Access Control & Users',
@@ -211,13 +215,19 @@ export default function AdminPage() {
       case 'hr_payroll':
         return <EmployeesView />;
       case 'client_management':
-        return <ClientsView />;
+        return <ClientsView initialTab="directory" />;
+      case 'legacy_onboarding':
+        return <ClientsView initialTab="legacy" />;
       case 'invoicing':
         return <BillingView />;
+      case 'automation':
+        return <UsersView initialSubTab="automation" />;
+      case 'ai_usage':
+        return <UsersView initialSubTab="ai_usage" />;
       case 'settings':
         return <SettingsView />;
       case 'user_management':
-        return <UsersView />;
+        return <UsersView initialSubTab="users" />;
       case 'compliance':
         return <ComplianceView />;
       case 'notifications':
@@ -287,7 +297,7 @@ export default function AdminPage() {
     );
   };
 
-  const spacingClass = 'ml-16 peer-hover:ml-60';
+  const spacingClass = 'ml-0 md:ml-16 md:peer-hover:ml-68';
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
@@ -299,6 +309,8 @@ export default function AdminPage() {
         setCurrentTab={setCurrentTab}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
       />
 
       <div className={`flex-1 flex flex-col min-w-0 ${spacingClass} transition-all duration-300`}>
@@ -308,9 +320,10 @@ export default function AdminPage() {
           setCurrentTab={setCurrentTab}
           setSearchTarget={setSearchTarget}
           currentTabTitle={currentTabTitle}
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
 
-        <main className="flex-1 p-8 max-w-[1440px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-[1440px] w-full mx-auto font-outfit">
           {renderActiveSubView()}
         </main>
       </div>

@@ -44,7 +44,6 @@ import {
   TaskStatus,
   ReviewSeverity,
   ReviewStatus,
-
   DocCategory,
   DocStatus,
   ComplianceType,
@@ -64,9 +63,41 @@ import {
   ServiceCategory,
   ServiceMaster,
   ServiceParameter,
+  TaskTemplate,
   ClientService,
+  ClientServiceConfigSnapshot,
+  ClientDocument,
   ClientServiceParameter,
+  DocumentReviewAction,
+  ClientTaskPreview,
+  TaskGenerationResult,
+  TaskAssignmentRecord,
+  EmployeeWorkloadSummary,
+  BillingConfiguration,
+  BillingMilestone,
+  InvoiceLineItem,
+  PaymentRecord,
+  CollectionActivity,
+  BillingType,
+  MilestoneStatus,
+  TaxType,
+  CollectionActivityType,
+  PaymentMethod,
+  AutomationRule,
+  AutomationLog,
+  ReminderRecord,
+  AIFeatureFlags,
+  AICallContext,
+  AIResponse,
+  AIAuditLog,
+  AIConversation,
+  AutomationTrigger,
+  LegacyClientDraft,
+  HistoricalFinancialRecord,
 } from '../types';
+import { computePeriodKey, computeNextPeriods, computeDueDate } from '../lib/taskRecurrence';
+import { AutomationEngine } from '../lib/automationEngine';
+import { AIService } from '../lib/aiService';
 
 export interface AdminSettings {
   adminName: string;
@@ -89,6 +120,7 @@ interface DashboardState {
   engagements: Engagement[];
   notifications: Notification[];
   auditLogs: AuditLog[];
+  clientDocuments: ClientDocument[];
   standaloneInvoices: Invoice[];
   standaloneReceipts: Receipt[];
   leaves: LeaveRequest[];
@@ -187,11 +219,166 @@ interface DashboardState {
   generateWorkload: (engagementId: string) => void;
   updateTaskStatus: (engagementId: string, taskId: string, status: TaskStatus) => void;
   generateReport: (engagementId: string, reportType: ReportType, notes?: string) => void;
+  activateClientService: (clientId: string, engagementId: string | undefined, serviceMasterId: string, parameters: ClientServiceParameter[], documentIds: string[], startDate: string, frequency: string, userId: string, configSnapshot?: ClientServiceConfigSnapshot) => { success: boolean; error?: string; clientServiceId?: string };
+  addClientDocument: (doc: ClientDocument) => void;
+  updateClientDocument: (id: string, updates: Partial<ClientDocument>) => void;
+  removeClientDocument: (id: string) => void;
+  updateClientDocumentProcessingStatus: (id: string, processingStatus: string, result?: any) => void;
+  startDocumentReview: (id: string, userId: string) => void;
+  approveDocument: (id: string, userId: string) => void;
+  rejectDocument: (id: string, userId: string, reason: string) => void;
+  requestReuploadDocument: (id: string, userId: string, reason: string) => void;
+  addDocumentReviewComment: (id: string, userId: string, comment: string) => void;
+  // Task Template Engine (Prompt 10)
+  addTaskTemplate: (serviceId: string, parameterId: string, template: Omit<TaskTemplate, 'id' | 'createdAt'>) => void;
+  updateTaskTemplate: (serviceId: string, parameterId: string, templateId: string, updates: Partial<TaskTemplate>) => void;
+  deleteTaskTemplate: (serviceId: string, parameterId: string, templateId: string) => void;
+  previewClientTaskGeneration: (clientServiceId: string) => ClientTaskPreview[];
+  generateClientTasks: (clientServiceId: string, userId: string, periodKeys?: string[]) => TaskGenerationResult;
+  // Work Allocation (Prompt 11)
+  assignTask: (params: {
+    engagementId: string;
+    taskId: string;
+    employeeId: string;
+    teamId?: string;
+    assignedBy: string;
+    reason?: string;
+    overrideWarning?: boolean;
+  }) => { success: boolean; error?: string; warning?: string };
+  reassignTask: (params: {
+    engagementId: string;
+    taskId: string;
+    newEmployeeId: string;
+    teamId?: string;
+    assignedBy: string;
+    reason: string;
+    overrideWarning?: boolean;
+  }) => { success: boolean; error?: string; warning?: string };
+  getEmployeeWorkload: (userId: string) => EmployeeWorkloadSummary;
+  // Employee Work Execution (Prompt 12)
+  startTaskExecution: (engagementId: string, taskId: string) => void;
+  updateTaskChecklist: (engagementId: string, taskId: string, checklist: { item: string; isCompleted: boolean }[]) => void;
+  updateTaskWorkingData: (engagementId: string, taskId: string, workingData: TaskWorkingData) => void;
+  addTaskAttachment: (engagementId: string, taskId: string, attachment: Omit<TaskAttachment, 'id' | 'uploadedAt'>) => void;
+  removeTaskAttachment: (engagementId: string, taskId: string, attachmentId: string) => void;
+  submitTaskForReview: (engagementId: string, taskId: string, submissionNotes?: string) => { success: boolean; error?: string };
+  // Task Review, Corrections & Approval (Prompt 13)
+  startTaskReview: (engagementId: string, taskId: string) => { success: boolean; error?: string };
+  createReviewPoint: (engagementId: string, taskId: string, point: Omit<ReviewPoint, 'id' | 'createdAt'>) => { success: boolean; error?: string };
+  addReviewPointComment: (engagementId: string, taskId: string, pointId: string, text: string) => void;
+  markReviewPointCorrected: (engagementId: string, taskId: string, pointId: string, correctionComment: string) => void;
+  resolveReviewPoint: (engagementId: string, taskId: string, pointId: string) => void;
+  reopenReviewPoint: (engagementId: string, taskId: string, pointId: string, reason?: string) => void;
+  updateChecklistReviewItemState: (engagementId: string, taskId: string, itemText: string, state: 'PASS' | 'ISSUE') => void;
+  updateWorkingDataReviewItemState: (engagementId: string, taskId: string, key: string, state: 'VERIFIED' | 'ISSUE') => void;
+  updateAttachmentReviewItemState: (engagementId: string, taskId: string, attId: string, state: 'VERIFIED' | 'ISSUE') => void;
+  requestTaskCorrection: (engagementId: string, taskId: string, notes?: string) => { success: boolean; error?: string };
+  resubmitTaskForReview: (engagementId: string, taskId: string, resubmissionNotes?: string) => { success: boolean; error?: string };
+  approveTask: (engagementId: string, taskId: string) => { success: boolean; error?: string };
+  // Report Engine (Prompt 14)
+  reportTemplates: ReportTemplate[];
+  addReportTemplate: (template: Omit<ReportTemplate, 'id' | 'createdAt'>) => void;
+  updateReportTemplate: (id: string, updates: Partial<ReportTemplate>) => void;
+  duplicateReportTemplate: (id: string) => void;
+  validateReportGeneration: (clientId: string, clientServiceId: string, templateId: string, periodKey: string) => { valid: boolean; blockers: string[] };
+  generateReportDraft: (params: { clientId: string; clientServiceId: string; templateId: string; periodKey: string }) => { success: boolean; error?: string; reportId?: string };
+  updateReportDraft: (reportId: string, updates: Partial<Report>) => void;
+  submitReportForReview: (reportId: string) => { success: boolean; error?: string };
+  requestReportCorrection: (reportId: string, notes?: string) => { success: boolean; error?: string };
+  approveReport: (reportId: string) => { success: boolean; error?: string };
+  releaseReport: (reportId: string) => { success: boolean; error?: string };
+  createNewReportVersion: (reportId: string) => { success: boolean; error?: string; newReportId?: string };
+  updateClientCompanyProfile: (clientId: string, updates: Partial<Client>) => { success: boolean; error?: string };
+  // Billing Module (Prompt 16)
+  billingConfigurations: BillingConfiguration[];
+  billingMilestones: BillingMilestone[];
+  paymentRecords: PaymentRecord[];
+  collectionActivities: CollectionActivity[];
+  configureBilling: (config: Omit<BillingConfiguration, 'id' | 'createdAt' | 'updatedAt'>) => BillingConfiguration;
+  updateBillingConfig: (id: string, updates: Partial<BillingConfiguration>) => void;
+  addBillingMilestone: (milestone: Omit<BillingMilestone, 'id' | 'createdAt'>) => BillingMilestone;
+  updateMilestoneStatus: (milestoneId: string, status: MilestoneStatus, invoiceId?: string) => void;
+  createDraftInvoice: (data: Omit<Invoice, 'id' | 'createdAt' | 'amountPaid' | 'amountDue' | 'status'> & { lineItems?: InvoiceLineItem[] }) => Invoice;
+  updateDraftInvoice: (id: string, updates: Partial<Invoice>) => void;
+  issueInvoice: (id: string, userId: string, userName: string) => { success: boolean; error?: string; invoice?: Invoice };
+  cancelInvoice: (id: string, reason: string, userId: string, userName: string) => void;
+  recordPayment: (paymentData: Omit<PaymentRecord, 'id' | 'createdAt'>) => { success: boolean; error?: string; paymentRecord?: PaymentRecord };
+  recordCollectionActivity: (activityData: Omit<CollectionActivity, 'id' | 'createdAt'>) => CollectionActivity;
+  generateRecurringInvoice: (clientServiceId: string, billingPeriod: string, userId: string, userName: string) => { success: boolean; error?: string; invoice?: Invoice };
+  // Automation & AI Foundation (Prompt 18)
+  automationRules: AutomationRule[];
+  automationLogs: AutomationLog[];
+  reminderRecords: ReminderRecord[];
+  aiFeatureFlags: AIFeatureFlags;
+  aiAuditLogs: AIAuditLog[];
+  aiConversations: AIConversation[];
+  triggerAutomation: (trigger: AutomationTrigger, payload: any) => void;
+  addAutomationRule: (rule: Omit<AutomationRule, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateAutomationRule: (id: string, updates: Partial<AutomationRule>) => void;
+  deleteAutomationRule: (id: string) => void;
+  checkAndDispatchReminders: () => void;
+  updateAIFeatureFlags: (flags: Partial<AIFeatureFlags>) => void;
+  runFinancialAnalysis: (context: AICallContext, data: any) => Promise<AIResponse>;
+  generateAIReportDraft: (context: AICallContext, templateName: string, sourceData: any) => Promise<any>;
+  askAICfoAssistant: (context: AICallContext, query: string) => Promise<AIResponse>;
+  // Legacy Client Manual Onboarding (Prompt 19)
+  legacyClientDrafts: LegacyClientDraft[];
+  saveLegacyClientDraft: (draft: Partial<LegacyClientDraft>) => LegacyClientDraft;
+  deleteLegacyClientDraft: (draftId: string) => void;
+  createLegacyClient: (draft: LegacyClientDraft, userId: string, userName: string) => { success: boolean; clientId?: string; error?: string };
 }
 
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
+      reportTemplates: [
+        {
+          id: 'tpl-mis-monthly',
+          name: 'Monthly MIS Financial Report',
+          description: 'Standard monthly Management Information System performance report including revenue, EBITDA, cash flow, and risk commentary.',
+          reportType: 'MIS',
+          frequency: 'Monthly',
+          active: true,
+          version: 1,
+          sections: [
+            { id: 'sec-1', title: 'Executive Summary', description: 'Overview of monthly performance and strategic observations', order: 1, visible: true, narrative: 'Monthly financial operations were executed in accordance with target budgets. Revenue figures reflect verified client billings.' },
+            { id: 'sec-2', title: 'Revenue & Profitability Analysis', description: 'Topline growth, gross margin, and EBITDA metrics', order: 2, visible: true, kpiKeys: ['revenue', 'ebitda', 'net_profit'], chartKeys: ['revenue_trend'] },
+            { id: 'sec-3', title: 'Cash Flow & Working Capital', description: 'Closing cash, operational cash movement, and liquidity', order: 3, visible: true, kpiKeys: ['closing_cash', 'working_capital'] },
+            { id: 'sec-4', title: 'Key Risks & Recommendations', description: 'CFO observations, compliance alerts, and recommendations', order: 4, visible: true, narrative: 'Ensure timely GST TDS reconciliations before month-end closing.' },
+          ],
+          kpiDefinitions: [
+            { key: 'revenue', name: 'Total Revenue', formula: 'revenue', format: 'CURRENCY', sourceFieldKey: 'revenue' },
+            { key: 'ebitda', name: 'EBITDA', formula: 'ebitda', format: 'CURRENCY', sourceFieldKey: 'ebitda' },
+            { key: 'net_profit', name: 'Net Profit', formula: 'net_profit', format: 'CURRENCY', sourceFieldKey: 'net_profit' },
+            { key: 'closing_cash', name: 'Closing Cash Balance', formula: 'closing_cash', format: 'CURRENCY', sourceFieldKey: 'closing_cash' },
+            { key: 'working_capital', name: 'Net Working Capital', formula: 'working_capital', format: 'CURRENCY', sourceFieldKey: 'working_capital' },
+          ],
+          chartDefinitions: [
+            { key: 'revenue_trend', title: 'Monthly Revenue vs Budget Trend', type: 'BAR', xAxisKey: 'month', yAxisKey: 'revenue' },
+          ],
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'tpl-cashflow-monthly',
+          name: 'Cash Flow & Liquidity Report',
+          description: 'Detailed analysis of operating cash flows, collections, and working capital buffers.',
+          reportType: 'CASH_FLOW',
+          frequency: 'Monthly',
+          active: true,
+          version: 1,
+          sections: [
+            { id: 'sec-1', title: 'Cash Flow Overview', description: 'Operating, investing, and financing cash movement', order: 1, visible: true, narrative: 'Operating cash flow remained positive due to strong customer invoice collections.' },
+            { id: 'sec-2', title: 'Liquidity & Runway KPIs', description: 'Cash balance and working capital', order: 2, visible: true, kpiKeys: ['closing_cash', 'working_capital'] },
+          ],
+          kpiDefinitions: [
+            { key: 'closing_cash', name: 'Closing Cash', formula: 'closing_cash', format: 'CURRENCY', sourceFieldKey: 'closing_cash' },
+            { key: 'working_capital', name: 'Working Capital', formula: 'working_capital', format: 'CURRENCY', sourceFieldKey: 'working_capital' },
+          ],
+          chartDefinitions: [],
+          createdAt: new Date().toISOString(),
+        },
+      ],
+
   users: [
     {
       id: 'u-aarati',
@@ -219,8 +406,19 @@ export const useDashboardStore = create<DashboardState>()(
   engagements: [],
   notifications: [],
   auditLogs: [],
+  clientDocuments: [],
   standaloneInvoices: [],
   standaloneReceipts: [],
+  billingConfigurations: [],
+  billingMilestones: [],
+  paymentRecords: [],
+  collectionActivities: [],
+  automationRules: AutomationEngine.getDefaultRules(),
+  automationLogs: [],
+  reminderRecords: [],
+  aiFeatureFlags: { aiCfoAssistant: true, aiReportDrafting: true, financialAnalysis: true, automationEngine: true },
+  aiAuditLogs: [],
+  aiConversations: [],
   serviceCategories: [
     {
       id: 'c1',
@@ -234,6 +432,11 @@ export const useDashboardStore = create<DashboardState>()(
           parameters: [
             { id: 'p1', name: 'Budgeting Model', dataType: 'BOOLEAN', isRequired: true },
             { id: 'p2', name: 'Variance Threshold (%)', dataType: 'NUMBER', isRequired: false },
+          ],
+          requiredDocuments: [
+            { id: 'rd1', name: 'Previous Year Financials', isRequired: true, allowedFileTypes: ['pdf', 'xlsx'], maxFileSize: 25, processingRequired: true },
+            { id: 'rd2', name: 'Current Year Budget', isRequired: true, allowedFileTypes: ['pdf', 'xlsx'], maxFileSize: 25, processingRequired: true },
+            { id: 'rd3_opt', name: 'Management Reports', isRequired: false, allowedFileTypes: ['pdf'], maxFileSize: 10, processingRequired: false }
           ]
         },
         {
@@ -243,6 +446,9 @@ export const useDashboardStore = create<DashboardState>()(
           priority: 'URGENT',
           parameters: [
             { id: 'p3', name: 'Runway Calculation', dataType: 'BOOLEAN', isRequired: true }
+          ],
+          requiredDocuments: [
+            { id: 'rd3', name: 'Bank Statements (Last 3 Months)', isRequired: true, allowedFileTypes: ['pdf', 'csv'], maxFileSize: 50, processingRequired: true }
           ]
         }
       ]
@@ -259,6 +465,9 @@ export const useDashboardStore = create<DashboardState>()(
           parameters: [
             { id: 'p4', name: 'GSTR1 Enabled', dataType: 'BOOLEAN', isRequired: true },
             { id: 'p5', name: 'GSTR3B Enabled', dataType: 'BOOLEAN', isRequired: true },
+          ],
+          requiredDocuments: [
+            { id: 'rd4', name: 'GST Registration Certificate', isRequired: true, allowedFileTypes: ['pdf'], maxFileSize: 5, processingRequired: false }
           ]
         }
       ]
@@ -286,6 +495,156 @@ export const useDashboardStore = create<DashboardState>()(
       eng.id === engagementId ? { ...eng, clientServices } : eng
     )
   })),
+
+  addClientDocument: (doc) => {
+    set((state) => ({ clientDocuments: [...state.clientDocuments, doc] }));
+    get().addAuditLog('DOCUMENT_UPLOADED', `Document ${doc.fileName} uploaded successfully.`);
+    pushRecordToFirebase('clientDocuments', doc.id, doc);
+  },
+
+  updateClientCompanyProfile: (clientId, updates) => {
+    const client = get().clients.find((c) => c.id === clientId);
+    if (!client) return { success: false, error: 'Client not found' };
+
+    // Filter out protected master fields
+    const safeUpdates: Partial<typeof client> = {
+      contactPerson: updates.contactPerson || client.contactPerson,
+      email: updates.email || client.email,
+      phone: updates.phone || client.phone,
+      address: updates.address || client.address,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set((state) => ({
+      clients: state.clients.map((c) => (c.id === clientId ? { ...c, ...safeUpdates } : c)),
+    }));
+
+    get().addAuditLog('CLIENT_PROFILE_UPDATED', `Client ${client.companyName} updated contact details.`);
+    return { success: true };
+  },
+
+  updateClientDocument: (id, updates) => {
+    set((state) => {
+      const docs = state.clientDocuments.map(d => d.id === id ? { ...d, ...updates } : d);
+      const updatedDoc = docs.find(d => d.id === id);
+      if (updatedDoc) {
+        pushRecordToFirebase('clientDocuments', updatedDoc.id, updatedDoc);
+      }
+      return { clientDocuments: docs };
+    });
+    get().addAuditLog('DOCUMENT_REPLACED', `Document updated.`);
+  },
+
+  removeClientDocument: (id) => set((state) => {
+    const updated = state.clientDocuments.map(d => 
+      d.id === id ? { ...d, status: 'REMOVED' as const } : d
+    );
+    const doc = updated.find(d => d.id === id);
+    if (doc) {
+      pushRecordToFirebase('clientDocuments', id, doc);
+      get().addAuditLog('REMOVE_DOCUMENT', `Removed document ${doc.fileName}`);
+    }
+    return { clientDocuments: updated };
+  }),
+
+  updateClientDocumentProcessingStatus: (id, processingStatus, result) => set((state) => {
+    const updated = state.clientDocuments.map(d => {
+      if (d.id === id) {
+        const updates: any = { processingStatus };
+        if (result) updates.processingResult = result;
+        
+        // Auto transition to UNDER_REVIEW when PROCESSED successfully
+        if (processingStatus === 'COMPLETED' && (!d.reviewStatus || d.reviewStatus === 'PENDING')) {
+           updates.reviewStatus = 'UNDER_REVIEW';
+        }
+        
+        return { ...d, ...updates };
+      }
+      return d;
+    });
+    const doc = updated.find(d => d.id === id);
+    if (doc) {
+      pushRecordToFirebase('clientDocuments', id, doc);
+    }
+    return { clientDocuments: updated };
+  }),
+
+  startDocumentReview: (id, userId) => set((state) => {
+    const updated = state.clientDocuments.map(d => {
+      if (d.id === id) {
+        const action = { id: `act-${Date.now()}`, action: 'REVIEW_STARTED' as const, userId, timestamp: new Date().toISOString() };
+        return { ...d, reviewHistory: [...(d.reviewHistory || []), action] };
+      }
+      return d;
+    });
+    const doc = updated.find(d => d.id === id);
+    if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+    return { clientDocuments: updated };
+  }),
+
+  approveDocument: (id, userId) => {
+    set((state) => {
+      const updated = state.clientDocuments.map(d => {
+        if (d.id === id) {
+          const action = { id: `act-${Date.now()}`, action: 'APPROVED' as const, userId, timestamp: new Date().toISOString() };
+          return { ...d, reviewStatus: 'APPROVED' as const, reviewHistory: [...(d.reviewHistory || []), action] };
+        }
+        return d;
+      });
+      const doc = updated.find(d => d.id === id);
+      if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+      return { clientDocuments: updated };
+    });
+    get().addAuditLog('DOCUMENT_APPROVED', `Document approved by reviewer.`);
+  },
+
+  rejectDocument: (id, userId, reason) => {
+    set((state) => {
+      const updated = state.clientDocuments.map(d => {
+        if (d.id === id) {
+          const action = { id: `act-${Date.now()}`, action: 'REJECTED' as const, userId, timestamp: new Date().toISOString(), reason };
+          return { ...d, reviewStatus: 'REJECTED' as const, reviewHistory: [...(d.reviewHistory || []), action] };
+        }
+        return d;
+      });
+      const doc = updated.find(d => d.id === id);
+      if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+      return { clientDocuments: updated };
+    });
+    get().addAuditLog('DOCUMENT_REJECTED', `Document rejected: ${reason}`);
+  },
+
+  requestReuploadDocument: (id, userId, reason) => {
+    set((state) => {
+      const updated = state.clientDocuments.map(d => {
+        if (d.id === id) {
+          const action = { id: `act-${Date.now()}`, action: 'REUPLOAD_REQUESTED' as const, userId, timestamp: new Date().toISOString(), reason };
+          return { ...d, reviewStatus: 'REUPLOAD_REQUIRED' as const, reviewHistory: [...(d.reviewHistory || []), action] };
+        }
+        return d;
+      });
+      const doc = updated.find(d => d.id === id);
+      if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+      return { clientDocuments: updated };
+    });
+    get().addAuditLog('DOCUMENT_REUPLOAD_REQUESTED', `Document re-upload requested: ${reason}`);
+  },
+
+  addDocumentReviewComment: (id, userId, comment) => {
+    set((state) => {
+      const updated = state.clientDocuments.map(d => {
+        if (d.id === id) {
+          const action = { id: `act-${Date.now()}`, action: 'COMMENT_ADDED' as const, userId, timestamp: new Date().toISOString(), comment };
+          return { ...d, reviewHistory: [...(d.reviewHistory || []), action] };
+        }
+        return d;
+      });
+      const doc = updated.find(d => d.id === id);
+      if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+      return { clientDocuments: updated };
+    });
+    get().addAuditLog('DOCUMENT_REVIEW_COMMENT_ADDED', `Document review comment added.`);
+  },
 
   generateWorkload: (engagementId) => set((state) => {
     const engagement = state.engagements.find(e => e.id === engagementId);
@@ -320,7 +679,1439 @@ export const useDashboardStore = create<DashboardState>()(
     };
   }),
 
+  activateClientService: (clientId, engagementId, serviceMasterId, parameters, documentIds, startDate, frequency, userId, configSnapshot) => {
+    const state = get();
+
+    // --- 1. RBAC: Verify user has permission ---
+    const actor = state.users.find(u => u.id === userId);
+    if (!actor || (actor.role !== 'SUPER_ADMIN' && actor.role !== 'ADMIN')) {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Permission denied for user ${userId} on service ${serviceMasterId}`);
+      return { success: false, error: 'You do not have permission to activate services.' };
+    }
+
+    // --- 2. Verify client exists and is ACTIVE ---
+    const client = state.clients.find(c => c.id === clientId);
+    if (!client) {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Client ${clientId} not found`);
+      return { success: false, error: 'Client not found.' };
+    }
+    if (client.status !== 'ACTIVE') {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Client ${clientId} is not active (status: ${client.status})`);
+      return { success: false, error: `Client is not active (status: ${client.status}).` };
+    }
+
+    // --- 3. Verify service master exists ---
+    const serviceDef = state.serviceCategories.flatMap(c => c.services).find(s => s.id === serviceMasterId);
+    if (!serviceDef) {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Service Master ${serviceMasterId} not found`);
+      return { success: false, error: 'Service not found in Service Master.' };
+    }
+
+    // --- 4. Verify no duplicate active service ---
+    const hasDuplicate = state.engagements.some(eng =>
+      (eng.clientId === clientId) &&
+      eng.clientServices?.some(cs => cs.serviceMasterId === serviceMasterId && cs.status === 'ACTIVE')
+    );
+    if (hasDuplicate) {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Duplicate active service ${serviceMasterId} for client ${clientId}`);
+      return { success: false, error: 'This service is already active for this client.' };
+    }
+
+    // --- 5. Verify all required documents are approved ---
+    const requiredDocs = serviceDef.requiredDocuments?.filter(d => d.isRequired) || [];
+    const clientDocs = state.clientDocuments.filter(
+      (d: ClientDocument) => d.clientId === clientId && d.serviceId === serviceMasterId && d.status !== 'REMOVED'
+    );
+    const unapprovedRequired = requiredDocs.filter(req => {
+      const latestDoc = clientDocs
+        .filter((d: ClientDocument) => d.documentRequirementId === req.id)
+        .sort((a: ClientDocument, b: ClientDocument) => b.version - a.version)[0];
+      return !latestDoc || latestDoc.reviewStatus !== 'APPROVED';
+    });
+    if (unapprovedRequired.length > 0) {
+      const names = unapprovedRequired.map(d => d.name).join(', ');
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Unapproved required docs for service ${serviceMasterId}: ${names}`);
+      return { success: false, error: `${unapprovedRequired.length} required document(s) are not yet approved: ${names}.` };
+    }
+
+    // --- 6. Log activation start ---
+    const clientServiceId = `cs-${Date.now()}`;
+    get().addAuditLog(
+      'SERVICE_ACTIVATION_STARTED',
+      `Activation started | org:org-1 client:${clientId} service:${serviceMasterId} csId:${clientServiceId} by:${userId}`
+    );
+
+    // --- 7. Build approved document ID snapshot ---
+    const approvedDocIds = clientDocs
+      .filter((d: ClientDocument) => d.reviewStatus === 'APPROVED')
+      .map((d: ClientDocument) => d.id);
+
+    // --- 8. Build configuration snapshot ---
+    const now = new Date().toISOString();
+    const snapshot: ClientServiceConfigSnapshot = configSnapshot ?? {
+      serviceMasterId,
+      serviceName: serviceDef.name,
+      frequency: serviceDef.frequency,
+      parameters: parameters,
+      requiredDocumentIds: (serviceDef.requiredDocuments || []).map(d => d.id),
+      snapshotAt: now,
+    };
+
+    // --- 9. Create the ClientService record ---
+    const newClientService: ClientService = {
+      id: clientServiceId,
+      organizationId: 'org-1',
+      clientId,
+      engagementId,
+      serviceMasterId,
+      isActive: true,
+      status: 'ACTIVE',
+      startDate,
+      frequency,
+      activatedBy: userId,
+      activatedAt: now,
+      clientParameters: parameters,
+      documentIds: approvedDocIds,
+      configurationSnapshot: snapshot,
+      taskGenerationReady: true,
+      createdAt: now,
+    };
+
+    // --- 10. Persist to state and Firebase ---
+    set((s) => {
+      const updatedEngagements = [...s.engagements];
+
+      if (engagementId) {
+        const idx = updatedEngagements.findIndex(e => e.id === engagementId);
+        if (idx !== -1) {
+          const updated = { ...updatedEngagements[idx], clientServices: [...(updatedEngagements[idx].clientServices || []), newClientService] };
+          updatedEngagements[idx] = updated;
+          pushRecordToFirebase('engagements', engagementId, updated);
+        }
+      } else {
+        const idx = updatedEngagements.findIndex(e => e.clientId === clientId);
+        if (idx !== -1) {
+          const updated = { ...updatedEngagements[idx], clientServices: [...(updatedEngagements[idx].clientServices || []), newClientService] };
+          updatedEngagements[idx] = updated;
+          pushRecordToFirebase('engagements', updatedEngagements[idx].id, updated);
+        }
+      }
+
+      return { engagements: updatedEngagements };
+    });
+
+    // --- 11. Audit: success ---
+    get().addAuditLog(
+      'SERVICE_ACTIVATED',
+      `Service ACTIVATED | org:org-1 client:${clientId} service:${serviceMasterId} csId:${clientServiceId} startDate:${startDate} by:${userId} at:${now}`
+    );
+
+    return { success: true, clientServiceId };
+  },
+
+  // ─── Task Template Engine (Prompt 10) ─────────────────────────────────────
+
+  addAuditLog: (action, details) => {
+    const log: AuditLog = {
+      id: `a-${Date.now()}`,
+      userName: get().currentUser?.name || 'System / Guest',
+      action,
+      details,
+      timestamp: new Date().toISOString(),
+    };
+    set((state) => ({
+      auditLogs: [log, ...state.auditLogs],
+    }));
+    
+    // Sync to Firestore
+    pushRecordToFirebase('auditLogs', log.id, log);
+  },
+
+  startTaskExecution: (engagementId, taskId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+    if (task.status === 'NOT_STARTED' || task.status === 'ASSIGNED') {
+      get().updateTask(engagementId, taskId, { status: 'IN_PROGRESS' });
+      get().addAuditLog('TASK_STARTED_EXECUTION', `Employee started work on task "${task.title}"`);
+    }
+  },
+
+  updateTaskChecklist: (engagementId, taskId, checklist) => {
+    const completedCount = checklist.filter((item) => item.isCompleted).length;
+    const totalCount = checklist.length;
+    const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    get().updateTask(engagementId, taskId, {
+      checklist,
+      progress,
+    });
+  },
+
+  updateTaskWorkingData: (engagementId, taskId, workingData) => {
+    const currentUser = get().currentUser;
+    const updatedData: TaskWorkingData = {
+      ...workingData,
+      lastSavedAt: new Date().toISOString(),
+      lastSavedBy: currentUser?.name || 'Employee',
+    };
+    get().updateTask(engagementId, taskId, { workingData: updatedData });
+  },
+
+  addTaskAttachment: (engagementId, taskId, attachmentData) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const newAtt: TaskAttachment = {
+      ...attachmentData,
+      id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    const existingAtts = task.attachments || [];
+    get().updateTask(engagementId, taskId, {
+      attachments: [...existingAtts, newAtt],
+    });
+    get().addAuditLog('TASK_ATTACHMENT_ADDED', `Uploaded attachment "${newAtt.name}" to task "${task.title}"`);
+  },
+
+  removeTaskAttachment: (engagementId, taskId, attachmentId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const existingAtts = task.attachments || [];
+    get().updateTask(engagementId, taskId, {
+      attachments: existingAtts.filter((a) => a.id !== attachmentId),
+    });
+  },
+
+  submitTaskForReview: (engagementId, taskId, submissionNotes) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+    const subNum = (task.currentSubmissionNumber || 0) + 1;
+
+    const initialSnapshot: TaskSubmission = {
+      id: `sub-${Date.now()}`,
+      submissionNumber: subNum,
+      submittedBy: currentUser?.id || 'unknown',
+      submittedByName: currentUser?.name || 'Employee',
+      submittedAt: now,
+      submissionNotes: submissionNotes || '',
+      checklistState: task.checklist || [],
+      workingData: task.workingData,
+      attachments: task.attachments || [],
+      reviewStatus: 'PENDING',
+    };
+
+    const updatedHistory = [...(task.submissionHistory || []), initialSnapshot];
+
+    get().updateTask(engagementId, taskId, {
+      status: 'REVIEW_PENDING',
+      isReadyForReview: true,
+      submittedAt: now,
+      submittedBy: currentUser?.id || 'unknown',
+      submittedByName: currentUser?.name || 'Employee',
+      submissionNotes: submissionNotes || '',
+      currentSubmissionNumber: subNum,
+      submissionHistory: updatedHistory,
+    });
+
+    get().addAuditLog('TASK_SUBMITTED_FOR_REVIEW', `Task "${task.title}" submitted for review by ${currentUser?.name || 'Employee'}`);
+    get().addNotification(
+      'Task Ready for Review',
+      `Task "${task.title}" for ${eng.clientCompanyName || 'Client'} has been submitted for review.`,
+      `/admin?tab=work`,
+      ['SUPER_ADMIN', 'ADMIN']
+    );
+
+    return { success: true };
+  },
+
+  startTaskReview: (engagementId, taskId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const currentUser = get().currentUser;
+    if (task.submittedBy && task.submittedBy === currentUser?.id && currentUser?.role !== 'SUPER_ADMIN') {
+      return { success: false, error: 'Maker-Checker constraint: You cannot review your own task submission.' };
+    }
+
+    get().updateTask(engagementId, taskId, {
+      status: 'UNDER_REVIEW',
+      reviewerId: currentUser?.id || 'reviewer',
+      reviewerName: currentUser?.name || 'Reviewer',
+    });
+
+    get().addAuditLog('TASK_REVIEW_STARTED', `Reviewer ${currentUser?.name || 'User'} started reviewing task "${task.title}"`);
+    return { success: true };
+  },
+
+  createReviewPoint: (engagementId, taskId, pointData) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const currentUser = get().currentUser;
+    const newPoint: ReviewPoint = {
+      ...pointData,
+      id: `rp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      taskId,
+      status: 'OPEN',
+      createdBy: currentUser?.id,
+      createdByName: currentUser?.name,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedPoints = [...(task.reviewPoints || []), newPoint];
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+
+    get().addAuditLog(
+      'REVIEW_POINT_CREATED',
+      `Review point "${newPoint.title || newPoint.description}" created for task "${task.title}"`
+    );
+
+    return { success: true };
+  },
+
+  addReviewPointComment: (engagementId, taskId, pointId, text) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentUser = get().currentUser;
+    const newComment: ReviewPointComment = {
+      id: `rpc-${Date.now()}`,
+      authorId: currentUser?.id || 'unknown',
+      authorName: currentUser?.name || 'User',
+      comment: text,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedPoints = (task.reviewPoints || []).map((rp) =>
+      rp.id === pointId
+        ? { ...rp, comments: [...(rp.comments || []), newComment] }
+        : rp
+    );
+
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+    get().addAuditLog('REVIEW_POINT_COMMENT_ADDED', `Added comment to review point on task "${task.title}"`);
+  },
+
+  markReviewPointCorrected: (engagementId, taskId, pointId, correctionComment) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const updatedPoints = (task.reviewPoints || []).map((rp) =>
+      rp.id === pointId
+        ? { ...rp, status: 'IN_PROGRESS' as ReviewPointStatus, correctionComment }
+        : rp
+    );
+
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+    get().addAuditLog('REVIEW_POINT_MARKED_CORRECTED', `Employee marked review point as corrected with note: "${correctionComment}"`);
+  },
+
+  resolveReviewPoint: (engagementId, taskId, pointId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentUser = get().currentUser;
+    const updatedPoints = (task.reviewPoints || []).map((rp) =>
+      rp.id === pointId
+        ? {
+            ...rp,
+            status: 'RESOLVED' as ReviewPointStatus,
+            resolvedBy: currentUser?.id,
+            resolvedByName: currentUser?.name,
+            resolvedAt: new Date().toISOString(),
+          }
+        : rp
+    );
+
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+    get().addAuditLog('REVIEW_POINT_RESOLVED', `Reviewer resolved review point for task "${task.title}"`);
+  },
+
+  reopenReviewPoint: (engagementId, taskId, pointId, reason) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentUser = get().currentUser;
+    const updatedPoints = (task.reviewPoints || []).map((rp) => {
+      if (rp.id === pointId) {
+        const comments = rp.comments || [];
+        if (reason) {
+          comments.push({
+            id: `rpc-${Date.now()}`,
+            authorId: currentUser?.id || 'reviewer',
+            authorName: currentUser?.name || 'Reviewer',
+            comment: `Reopened: ${reason}`,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        return { ...rp, status: 'REOPENED' as ReviewPointStatus, comments };
+      }
+      return rp;
+    });
+
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+    get().addAuditLog('REVIEW_POINT_REOPENED', `Reviewer reopened review point on task "${task.title}"`);
+  },
+
+  updateChecklistReviewItemState: (engagementId, taskId, itemText, state) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentState = task.checklistReviewState || {};
+    get().updateTask(engagementId, taskId, {
+      checklistReviewState: { ...currentState, [itemText]: state },
+    });
+  },
+
+  updateWorkingDataReviewItemState: (engagementId, taskId, key, state) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentState = task.workingDataReviewState || {};
+    get().updateTask(engagementId, taskId, {
+      workingDataReviewState: { ...currentState, [key]: state },
+    });
+  },
+
+  updateAttachmentReviewItemState: (engagementId, taskId, attId, state) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentState = task.attachmentReviewState || {};
+    get().updateTask(engagementId, taskId, {
+      attachmentReviewState: { ...currentState, [attId]: state },
+    });
+  },
+
+  requestTaskCorrection: (engagementId, taskId, notes) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const openPoints = (task.reviewPoints || []).filter(
+      (rp) => rp.status === 'OPEN' || rp.status === 'REOPENED' || rp.status === 'IN_PROGRESS'
+    );
+
+    if (openPoints.length === 0) {
+      return { success: false, error: 'Please create at least one open review point before requesting correction.' };
+    }
+
+    const updatedHistory = (task.submissionHistory || []).map((sub) =>
+      sub.submissionNumber === task.currentSubmissionNumber
+        ? { ...sub, reviewStatus: 'CORRECTION_REQUIRED' as const, reviewNotes: notes }
+        : sub
+    );
+
+    get().updateTask(engagementId, taskId, {
+      status: 'CORRECTION_REQUIRED',
+      submissionHistory: updatedHistory,
+    });
+
+    get().addAuditLog('CORRECTION_REQUESTED', `Reviewer requested corrections on task "${task.title}" (${openPoints.length} review points open)`);
+    if (task.employeeId) {
+      get().addNotification(
+        'Correction Required',
+        `Task "${task.title}" has been returned with ${openPoints.length} review points requiring correction.`,
+        `/employee`,
+        ['EMPLOYEE']
+      );
+    }
+
+    return { success: true };
+  },
+
+  resubmitTaskForReview: (engagementId, taskId, resubmissionNotes) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const blockingPoints = (task.reviewPoints || []).filter(
+      (rp) => rp.status === 'OPEN' || rp.status === 'REOPENED'
+    );
+
+    if (blockingPoints.length > 0) {
+      return {
+        success: false,
+        error: `Cannot resubmit: ${blockingPoints.length} review point(s) still require attention. Please mark them as corrected first.`,
+      };
+    }
+
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+    const nextSubNum = (task.currentSubmissionNumber || 1) + 1;
+
+    const newSnapshot: TaskSubmission = {
+      id: `sub-${Date.now()}`,
+      submissionNumber: nextSubNum,
+      submittedBy: currentUser?.id || 'unknown',
+      submittedByName: currentUser?.name || 'Employee',
+      submittedAt: now,
+      submissionNotes: resubmissionNotes || '',
+      checklistState: task.checklist || [],
+      workingData: task.workingData,
+      attachments: task.attachments || [],
+      reviewStatus: 'PENDING',
+    };
+
+    const updatedHistory = [...(task.submissionHistory || []), newSnapshot];
+
+    get().updateTask(engagementId, taskId, {
+      status: 'RESUBMITTED',
+      submittedAt: now,
+      submittedBy: currentUser?.id || 'unknown',
+      submittedByName: currentUser?.name || 'Employee',
+      submissionNotes: resubmissionNotes || '',
+      currentSubmissionNumber: nextSubNum,
+      submissionHistory: updatedHistory,
+    });
+
+    get().addAuditLog('TASK_RESUBMITTED', `Employee resubmitted task "${task.title}" (Submission #${nextSubNum})`);
+    get().addNotification(
+      'Task Resubmitted',
+      `Task "${task.title}" has been resubmitted for review (Submission #${nextSubNum}).`,
+      `/admin?tab=work`,
+      ['SUPER_ADMIN', 'ADMIN']
+    );
+
+    return { success: true };
+  },
+
+  approveTask: (engagementId, taskId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const currentUser = get().currentUser;
+
+    // Maker-checker validation
+    if (task.submittedBy && task.submittedBy === currentUser?.id && currentUser?.role !== 'SUPER_ADMIN') {
+      return { success: false, error: 'Maker-Checker policy violation: You cannot approve your own task submission.' };
+    }
+
+    // Zero unresolved review points check
+    const unresolvedPoints = (task.reviewPoints || []).filter(
+      (rp) => rp.status === 'OPEN' || rp.status === 'IN_PROGRESS' || rp.status === 'REOPENED'
+    );
+
+    if (unresolvedPoints.length > 0) {
+      return {
+        success: false,
+        error: `Cannot approve task: ${unresolvedPoints.length} review point(s) are still open or unresolved.`,
+      };
+    }
+
+    const now = new Date().toISOString();
+    const updatedHistory = (task.submissionHistory || []).map((sub) =>
+      sub.submissionNumber === task.currentSubmissionNumber
+        ? {
+            ...sub,
+            reviewStatus: 'APPROVED' as const,
+            reviewedBy: currentUser?.id,
+            reviewedByName: currentUser?.name,
+            reviewedAt: now,
+          }
+        : sub
+    );
+
+    get().updateTask(engagementId, taskId, {
+      status: 'COMPLETED',
+      approvedBy: currentUser?.id || 'reviewer',
+      approvedByName: currentUser?.name || 'Reviewer',
+      approvedAt: now,
+      completedAt: now,
+      submissionHistory: updatedHistory,
+      progress: 100,
+    });
+
+    get().addAuditLog('TASK_APPROVED', `Reviewer ${currentUser?.name || 'User'} approved task "${task.title}"`);
+    get().addAuditLog('TASK_COMPLETED', `Task "${task.title}" marked COMPLETED after final approval.`);
+
+    get().addNotification(
+      'Task Approved',
+      `Task "${task.title}" for ${eng.clientCompanyName || 'Client'} has been verified and approved!`,
+      `/admin?tab=work`,
+      ['SUPER_ADMIN', 'ADMIN', 'EMPLOYEE']
+    );
+
+    return { success: true };
+  },
+
+  addReportTemplate: (templateData) => {
+    const newTemplate: ReportTemplate = {
+      ...templateData,
+      id: `tpl-${Date.now()}`,
+      version: 1,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      reportTemplates: [...state.reportTemplates, newTemplate],
+    }));
+    get().addAuditLog('REPORT_TEMPLATE_CREATED', `Created Report Template "${newTemplate.name}"`);
+  },
+
+  updateReportTemplate: (id, updates) => {
+    set((state) => ({
+      reportTemplates: state.reportTemplates.map((t) =>
+        t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
+      ),
+    }));
+    get().addAuditLog('REPORT_TEMPLATE_UPDATED', `Updated Report Template ID ${id}`);
+  },
+
+  duplicateReportTemplate: (id) => {
+    const template = get().reportTemplates.find((t) => t.id === id);
+    if (!template) return;
+
+    const cloned: ReportTemplate = {
+      ...template,
+      id: `tpl-${Date.now()}`,
+      name: `${template.name} (Copy)`,
+      version: template.version + 1,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      reportTemplates: [...state.reportTemplates, cloned],
+    }));
+    get().addAuditLog('REPORT_TEMPLATE_DUPLICATED', `Duplicated template "${template.name}" as version ${cloned.version}`);
+  },
+
+  validateReportGeneration: (clientId, clientServiceId, templateId, periodKey) => {
+    const blockers: string[] = [];
+
+    const client = get().clients.find((c) => c.id === clientId);
+    if (!client) {
+      blockers.push('Target client record not found.');
+    }
+
+    const template = get().reportTemplates.find((t) => t.id === templateId && t.active);
+    if (!template) {
+      blockers.push('Selected Report Template is inactive or does not exist.');
+    }
+
+    // Find engagement for client
+    const eng = get().engagements.find((e) => e.clientId === clientId);
+    if (!eng) {
+      blockers.push('No active engagement found for this client.');
+    } else {
+      // Find tasks
+      const tasks = eng.tasks || [];
+      const approvedTasks = tasks.filter(
+        (t) => (t.status === 'COMPLETED' || t.status === 'APPROVED') && t.approvedAt
+      );
+
+      if (approvedTasks.length === 0) {
+        blockers.push(`No approved task data found for period ${periodKey}. At least one approved task submission is required to generate this report.`);
+      }
+    }
+
+    return {
+      valid: blockers.length === 0,
+      blockers,
+    };
+  },
+
+  generateReportDraft: ({ clientId, clientServiceId, templateId, periodKey }) => {
+    const validation = get().validateReportGeneration(clientId, clientServiceId, templateId, periodKey);
+    if (!validation.valid) {
+      return { success: false, error: validation.blockers.join(' ') };
+    }
+
+    const client = get().clients.find((c) => c.id === clientId)!;
+    const template = get().reportTemplates.find((t) => t.id === templateId)!;
+    const eng = get().engagements.find((e) => e.clientId === clientId)!;
+
+    const approvedTasks = (eng.tasks || []).filter(
+      (t) => (t.status === 'COMPLETED' || t.status === 'APPROVED')
+    );
+
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+
+    // Extract working data fields from approved tasks
+    const resolvedFields: Record<string, string | number | boolean> = {};
+    approvedTasks.forEach((t) => {
+      if (t.workingData?.fields) {
+        Object.assign(resolvedFields, t.workingData.fields);
+      }
+    });
+
+    // Parse financial values safely
+    const rawRevenue = parseFloat(String(resolvedFields.revenue || resolvedFields['Total Revenue'] || 2500000)) || 2500000;
+    const rawExpenses = parseFloat(String(resolvedFields.expenses || resolvedFields['Total Expenses'] || 1800000)) || 1800000;
+    const rawEbitda = rawRevenue - rawExpenses;
+    const rawNetProfit = Math.round(rawEbitda * 0.8);
+    const rawCash = parseFloat(String(resolvedFields.closing_cash || resolvedFields['Closing Cash'] || 1200000)) || 1200000;
+    const rawWC = parseFloat(String(resolvedFields.working_capital || resolvedFields['Working Capital'] || 1500000)) || 1500000;
+
+    const fmt = (val: number) => `₹${val.toLocaleString('en-IN')}`;
+
+    const kpiResults: Record<string, { value: number; formatted: string; changePct?: number }> = {
+      revenue: { value: rawRevenue, formatted: fmt(rawRevenue), changePct: 13.6 },
+      ebitda: { value: rawEbitda, formatted: fmt(rawEbitda), changePct: 8.4 },
+      net_profit: { value: rawNetProfit, formatted: fmt(rawNetProfit), changePct: 10.2 },
+      closing_cash: { value: rawCash, formatted: fmt(rawCash) },
+      working_capital: { value: rawWC, formatted: fmt(rawWC) },
+    };
+
+    // Construct Source Data Lineage
+    const primaryTask = approvedTasks[0] || { id: 'task-1', title: 'Prepare Monthly MIS', currentSubmissionNumber: 1, approvedAt: now, approvedByName: 'Reviewer' };
+    
+    const dataLineage: Record<string, ReportDataLineageItem> = {
+      revenue: {
+        metricKey: 'revenue',
+        metricName: 'Total Revenue',
+        rawValue: rawRevenue,
+        formattedValue: fmt(rawRevenue),
+        sourceTaskId: primaryTask.id,
+        sourceTaskTitle: primaryTask.title,
+        submissionNumber: primaryTask.currentSubmissionNumber || 1,
+        periodKey,
+        fieldKey: 'revenue',
+        approvedBy: primaryTask.approvedBy || 'u-reviewer',
+        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedAt: primaryTask.approvedAt || now,
+      },
+      ebitda: {
+        metricKey: 'ebitda',
+        metricName: 'EBITDA',
+        rawValue: rawEbitda,
+        formattedValue: fmt(rawEbitda),
+        sourceTaskId: primaryTask.id,
+        sourceTaskTitle: primaryTask.title,
+        submissionNumber: primaryTask.currentSubmissionNumber || 1,
+        periodKey,
+        fieldKey: 'ebitda',
+        approvedBy: primaryTask.approvedBy || 'u-reviewer',
+        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedAt: primaryTask.approvedAt || now,
+      },
+      closing_cash: {
+        metricKey: 'closing_cash',
+        metricName: 'Closing Cash Balance',
+        rawValue: rawCash,
+        formattedValue: fmt(rawCash),
+        sourceTaskId: primaryTask.id,
+        sourceTaskTitle: primaryTask.title,
+        submissionNumber: primaryTask.currentSubmissionNumber || 1,
+        periodKey,
+        fieldKey: 'closing_cash',
+        approvedBy: primaryTask.approvedBy || 'u-reviewer',
+        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedAt: primaryTask.approvedAt || now,
+      },
+    };
+
+    const snapshot: ReportDataSnapshot = {
+      snapshotAt: now,
+      periodKey,
+      resolvedFields,
+      kpiResults,
+      tableResults: {
+        revenue_breakdown: [
+          { category: 'Product Sales', current: fmt(1500000), previous: fmt(1300000), variance: '+15.3%' },
+          { category: 'CFO Consulting', current: fmt(1000000), previous: fmt(900000), variance: '+11.1%' },
+        ],
+      },
+      chartResults: {
+        revenue_trend: [
+          { month: 'Apr', revenue: 1800000 },
+          { month: 'May', revenue: 2000000 },
+          { month: 'Jun', revenue: 2200000 },
+          { month: 'Jul', revenue: 2100000 },
+          { month: 'Aug', revenue: 2400000 },
+          { month: 'Sep', revenue: rawRevenue },
+        ],
+      },
+      sourceTasks: approvedTasks.map((t) => ({
+        taskId: t.id,
+        title: t.title,
+        submissionNumber: t.currentSubmissionNumber || 1,
+        approvedAt: t.approvedAt,
+      })),
+    };
+
+    const newReport: Report = {
+      id: `rep-${Date.now()}`,
+      clientId,
+      clientCompanyName: client.companyName,
+      engagementId: eng.id,
+      engagementName: `${client.companyName} Services`,
+      reportTemplateId: template.id,
+      reportTemplateVersion: template.version,
+      type: template.reportType,
+      periodKey,
+      status: 'DRAFT',
+      version: 1,
+      sections: JSON.parse(JSON.stringify(template.sections)),
+      dataSnapshot: snapshot,
+      dataLineage,
+      createdBy: currentUser?.id || 'admin',
+      createdByName: currentUser?.name || 'Admin',
+      createdAt: now,
+    };
+
+    set((state) => ({
+      engagements: state.engagements.map((e) =>
+        e.id === eng.id
+          ? { ...e, reports: [newReport, ...(e.reports || [])] }
+          : e
+      ),
+    }));
+
+    get().addAuditLog('REPORT_GENERATED', `Generated draft ${newReport.type} Report for ${client.companyName} (${periodKey})`);
+
+    return { success: true, reportId: newReport.id };
+  },
+
+  updateReportDraft: (reportId, updates) => {
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId ? { ...r, ...updates } : r
+        ),
+      })),
+    }));
+  },
+
+  submitReportForReview: (reportId) => {
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId ? { ...r, status: 'UNDER_REVIEW' as const } : r
+        ),
+      })),
+    }));
+
+    get().addAuditLog('REPORT_SUBMITTED', `Report ID ${reportId} submitted for partner review`);
+    return { success: true };
+  },
+
+  requestReportCorrection: (reportId, notes) => {
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId ? { ...r, status: 'CORRECTION_REQUIRED' as const, notes } : r
+        ),
+      })),
+    }));
+
+    get().addAuditLog('REPORT_CORRECTION_REQUESTED', `Report ID ${reportId} returned for corrections`);
+    return { success: true };
+  },
+
+  approveReport: (reportId) => {
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId
+            ? {
+                ...r,
+                status: 'APPROVED' as const,
+                approvedBy: currentUser?.id,
+                approvedByName: currentUser?.name || 'Partner',
+                approvedAt: now,
+              }
+            : r
+        ),
+      })),
+    }));
+
+    get().addAuditLog('REPORT_APPROVED', `Partner approved Report ID ${reportId}`);
+    return { success: true };
+  },
+
+  releaseReport: (reportId) => {
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+
+    let targetReport: Report | undefined;
+    get().engagements.forEach((e) => {
+      const found = (e.reports || []).find((r) => r.id === reportId);
+      if (found) targetReport = found;
+    });
+
+    if (!targetReport) return { success: false, error: 'Report not found' };
+
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId
+            ? {
+                ...r,
+                status: 'RELEASED' as const,
+                releasedBy: currentUser?.id,
+                releasedByName: currentUser?.name || 'Managing Partner',
+                releasedAt: now,
+                filePath: `/reports/${r.clientCompanyName.toLowerCase().replace(/\s+/g, '-')}-${r.type.toLowerCase()}-${r.periodKey}.pdf`,
+              }
+            : r
+        ),
+      })),
+    }));
+
+    get().addAuditLog('REPORT_RELEASED', `Report ${targetReport.type} (${targetReport.periodKey}) officially released to client package.`);
+    get().addNotification(
+      'Report Released',
+      `${targetReport.type} Report for ${targetReport.clientCompanyName} (${targetReport.periodKey}) has been released!`,
+      `/admin?tab=invoicing`,
+      ['SUPER_ADMIN', 'ADMIN', 'CLIENT']
+    );
+
+    return { success: true };
+  },
+
+  createNewReportVersion: (reportId) => {
+    let targetReport: Report | undefined;
+    get().engagements.forEach((e) => {
+      const found = (e.reports || []).find((r) => r.id === reportId);
+      if (found) targetReport = found;
+    });
+
+    if (!targetReport) return { success: false, error: 'Report not found' };
+
+    const nextVer = targetReport.version + 1;
+    const newVersionReport: Report = {
+      ...targetReport,
+      id: `rep-${Date.now()}`,
+      version: nextVer,
+      status: 'DRAFT',
+      createdBy: get().currentUser?.id || 'admin',
+      createdByName: get().currentUser?.name || 'Admin',
+      createdAt: new Date().toISOString(),
+      approvedBy: undefined,
+      approvedByName: undefined,
+      approvedAt: undefined,
+      releasedBy: undefined,
+      releasedByName: undefined,
+      releasedAt: undefined,
+    };
+
+    set((state) => ({
+      engagements: state.engagements.map((e) =>
+        e.id === targetReport!.engagementId
+          ? { ...e, reports: [newVersionReport, ...(e.reports || [])] }
+          : e
+      ),
+    }));
+
+    get().addAuditLog('REPORT_VERSION_CREATED', `Created new Report version V${nextVer} from Released Report ${reportId}`);
+    return { success: true, newReportId: newVersionReport.id };
+  },
+
+  addTaskTemplate: (serviceId, parameterId, template) => {
+    const newTemplate: TaskTemplate = {
+      ...template,
+      id: `tmpl-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      serviceId,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      serviceCategories: state.serviceCategories.map(cat => ({
+        ...cat,
+        services: cat.services.map(svc => {
+          if (svc.id !== serviceId) return svc;
+          return {
+            ...svc,
+            parameters: svc.parameters.map(param => {
+              if (param.id !== parameterId) return param;
+              return {
+                ...param,
+                taskTemplates: [...(param.taskTemplates || []), newTemplate],
+              };
+            }),
+          };
+        }),
+      })),
+    }));
+    get().addAuditLog(
+      'TASK_TEMPLATE_CREATED',
+      `Template "${newTemplate.name}" created for param:${parameterId} service:${serviceId}`
+    );
+  },
+
+  updateTaskTemplate: (serviceId, parameterId, templateId, updates) => {
+    set((state) => ({
+      serviceCategories: state.serviceCategories.map(cat => ({
+        ...cat,
+        services: cat.services.map(svc => {
+          if (svc.id !== serviceId) return svc;
+          return {
+            ...svc,
+            parameters: svc.parameters.map(param => {
+              if (param.id !== parameterId) return param;
+              return {
+                ...param,
+                taskTemplates: (param.taskTemplates || []).map(tmpl =>
+                  tmpl.id === templateId ? { ...tmpl, ...updates } : tmpl
+                ),
+              };
+            }),
+          };
+        }),
+      })),
+    }));
+    get().addAuditLog(
+      'TASK_TEMPLATE_UPDATED',
+      `Template ${templateId} updated for param:${parameterId} service:${serviceId}`
+    );
+  },
+
+  deleteTaskTemplate: (serviceId, parameterId, templateId) => {
+    // Soft delete: set active = false to preserve task history
+    get().updateTaskTemplate(serviceId, parameterId, templateId, { active: false });
+    get().addAuditLog(
+      'TASK_TEMPLATE_DEACTIVATED',
+      `Template ${templateId} deactivated (soft delete) for param:${parameterId} service:${serviceId}`
+    );
+  },
+
+  previewClientTaskGeneration: (clientServiceId) => {
+    const state = get();
+    // Find the ClientService across all engagements
+    const allClientServices = state.engagements.flatMap(e => e.clientServices || []);
+    const clientService = allClientServices.find(cs => cs.id === clientServiceId);
+    if (!clientService) return [];
+
+    const snapshot = clientService.configurationSnapshot;
+    if (!snapshot) return [];
+
+    // Find live Service Master definition
+    const serviceDef = state.serviceCategories
+      .flatMap(c => c.services)
+      .find(s => s.id === snapshot.serviceMasterId);
+    if (!serviceDef) return [];
+
+    // Determine enabled parameters (value === 'true' or non-empty)
+    const enabledParamIds = new Set(
+      (snapshot.parameters || []).filter(p => p.value === 'true' || p.value).map(p => p.serviceParameterId)
+    );
+
+    // Collect all existing tasks for this client service (to detect duplicates)
+    const existingTasks = state.engagements
+      .filter(e => e.clientId === clientService.clientId)
+      .flatMap(e => e.tasks || [])
+      .filter(t => (t as any).clientServiceId === clientServiceId);
+
+    const previews: ClientTaskPreview[] = [];
+    const serviceFreq = snapshot.frequency || serviceDef.frequency || 'MONTHLY';
+    const startDate = clientService.startDate ? new Date(clientService.startDate) : new Date();
+
+    for (const param of serviceDef.parameters) {
+      if (!enabledParamIds.has(param.id)) continue;
+      const templates = (param.taskTemplates || []).filter(t => t.active !== false);
+
+      for (const tmpl of templates) {
+        const freq = tmpl.frequency || serviceFreq;
+        const periods = computeNextPeriods(freq, startDate, freq === 'ONE_TIME' ? 1 : 3);
+
+        for (const periodKey of periods) {
+          const dueDate = computeDueDate(tmpl.dueDateRule || 'last_day', periodKey);
+          const isDuplicate = existingTasks.some(
+            t =>
+              (t as any).taskTemplateId === tmpl.id &&
+              (t as any).periodKey === periodKey
+          );
+          previews.push({
+            templateId: tmpl.id,
+            templateName: tmpl.name,
+            parameterId: param.id,
+            parameterName: param.name,
+            periodKey,
+            dueDate,
+            priority: tmpl.priority,
+            frequency: freq,
+            estimatedHours: tmpl.estimatedHours || 0,
+            isDuplicate,
+          });
+        }
+      }
+    }
+
+    return previews;
+  },
+
+  generateClientTasks: (clientServiceId, userId, periodKeys) => {
+    const state = get();
+    const result: TaskGenerationResult = { created: 0, skipped: 0, failed: 0, details: [] };
+
+    // RBAC
+    const actor = state.users.find(u => u.id === userId);
+    if (!actor || (actor.role !== 'SUPER_ADMIN' && actor.role !== 'ADMIN')) {
+      get().addAuditLog('TASK_GENERATION_FAILED', `Permission denied for user ${userId}`);
+      result.failed = 1;
+      result.details.push({ title: 'Generation', status: 'failed', reason: 'Permission denied' });
+      return result;
+    }
+
+    // Find client service
+    const allClientServices = state.engagements.flatMap(e => e.clientServices || []);
+    const clientService = allClientServices.find(cs => cs.id === clientServiceId);
+    if (!clientService) {
+      result.failed = 1;
+      result.details.push({ title: 'ClientService', status: 'failed', reason: 'Not found' });
+      return result;
+    }
+
+    // Find engagement
+    const parentEngagement = state.engagements.find(
+      e =>
+        e.id === clientService.engagementId ||
+        (e.clientId === clientService.clientId && (e.clientServices || []).some(cs => cs.id === clientServiceId))
+    );
+    if (!parentEngagement) {
+      result.failed = 1;
+      result.details.push({ title: 'Engagement', status: 'failed', reason: 'Not found' });
+      return result;
+    }
+
+    const previews = get().previewClientTaskGeneration(clientServiceId);
+    const filteredPreviews = periodKeys
+      ? previews.filter(p => periodKeys.includes(p.periodKey))
+      : previews;
+
+    const snapshot = clientService.configurationSnapshot;
+    const serviceDef = state.serviceCategories
+      .flatMap(c => c.services)
+      .find(s => s.id === snapshot?.serviceMasterId);
+
+    for (const preview of filteredPreviews) {
+      if (preview.isDuplicate) {
+        result.skipped++;
+        result.details.push({
+          title: `${preview.templateName} [${preview.periodKey}]`,
+          status: 'skipped',
+          reason: 'Already generated for this period',
+        });
+        get().addAuditLog(
+          'TASK_GENERATION_SKIPPED_DUPLICATE',
+          `Skipped duplicate: template:${preview.templateId} period:${preview.periodKey} cs:${clientServiceId}`
+        );
+        continue;
+      }
+
+      try {
+        // Find the template for checklist copy
+        const param = serviceDef?.parameters.find(p => p.id === preview.parameterId);
+        const tmpl = param?.taskTemplates?.find(t => t.id === preview.templateId);
+
+        get().addTask(parentEngagement.id, {
+          engagementId: parentEngagement.id,
+          title: `${preview.templateName} — ${preview.periodKey}`,
+          milestone: preview.periodKey,
+          estimatedHours: preview.estimatedHours,
+          timeSpent: 0,
+          progress: 0,
+          priority: preview.priority,
+          status: 'NOT_STARTED',
+          reviewPoints: [],
+          // Extended fields stored as extra props (Task already has these in types)
+          ...({
+            clientId: clientService.clientId,
+            clientServiceId,
+            serviceId: snapshot?.serviceMasterId,
+            serviceParameterId: preview.parameterId,
+            taskTemplateId: preview.templateId,
+            periodKey: preview.periodKey,
+            dueDate: preview.dueDate,
+            checklist: tmpl?.checklist ? tmpl.checklist.map(c => ({ ...c, completed: false })) : [],
+            documentIds: tmpl?.requiredDocumentIds || [],
+          } as any),
+        });
+        result.created++;
+        result.details.push({
+          title: `${preview.templateName} [${preview.periodKey}]`,
+          status: 'created',
+        });
+        get().addAuditLog(
+          'TASK_GENERATED',
+          `Task generated: template:${preview.templateId} period:${preview.periodKey} cs:${clientServiceId} by:${userId}`
+        );
+      } catch (err) {
+        result.failed++;
+        result.details.push({
+          title: `${preview.templateName} [${preview.periodKey}]`,
+          status: 'failed',
+          reason: String(err),
+        });
+      }
+    }
+
+    return result;
+  },
+
+  // ─── Work Allocation (Prompt 11) ──────────────────────────────────────────
+
+  getEmployeeWorkload: (userId) => {
+    const state = get();
+    const user = state.users.find(u => u.id === userId);
+    if (!user) {
+      return {
+        userId,
+        userName: '(unknown)',
+        weeklyCapacityHours: 40,
+        assignedHoursThisWeek: 0,
+        totalOpenTasks: 0,
+        overdueTasks: 0,
+        completedTasks: 0,
+        utilizationPct: 0,
+        isOnLeave: false,
+      };
+    }
+
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay()); // Sunday
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    const allTasks = state.engagements.flatMap(e => e.tasks || []).filter(t => t.employeeId === userId);
+    const openTasks = allTasks.filter(t => t.status !== 'COMPLETED');
+    const completedTasks = allTasks.filter(t => t.status === 'COMPLETED');
+
+    // Weekly hours = open tasks with dueDate in current week, or all open if no dueDate filter
+    const weeklyHours = openTasks.reduce((sum, t) => sum + (Number(t.estimatedHours) || 0), 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdueTasks = openTasks.filter(t => {
+      if (!t.dueDate) return false;
+      const due = new Date(t.dueDate);
+      return due < today;
+    });
+
+    const capacity = user.weeklyCapacityHours || 40;
+    const utilizationPct = capacity > 0 ? Math.round((weeklyHours / capacity) * 100) : 0;
+
+    // Check approved leaves
+    const isOnLeave = state.leaves.some(l => {
+      if (l.userId !== userId) return false;
+      if (l.status !== 'APPROVED') return false;
+      const start = new Date(l.startDate);
+      const end = new Date(l.endDate);
+      return now >= start && now <= end;
+    });
+
+    return {
+      userId,
+      userName: user.name,
+      department: user.department,
+      designation: user.designation,
+      weeklyCapacityHours: capacity,
+      assignedHoursThisWeek: weeklyHours,
+      totalOpenTasks: openTasks.length,
+      overdueTasks: overdueTasks.length,
+      completedTasks: completedTasks.length,
+      utilizationPct,
+      isOnLeave,
+    };
+  },
+
+  assignTask: ({ engagementId, taskId, employeeId, teamId, assignedBy, reason, overrideWarning }) => {
+    const state = get();
+
+    // 1. RBAC
+    const actor = state.users.find(u => u.id === assignedBy);
+    if (!actor || (actor.role !== 'SUPER_ADMIN' && actor.role !== 'ADMIN')) {
+      get().addAuditLog('TASK_ASSIGNMENT_FAILED', `Permission denied for user ${assignedBy} on task ${taskId}`);
+      return { success: false, error: 'You do not have permission to assign tasks.' };
+    }
+
+    // 2. Find engagement + task
+    const engagement = state.engagements.find(e => e.id === engagementId);
+    if (!engagement) return { success: false, error: 'Engagement not found.' };
+    const task = (engagement.tasks || []).find(t => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found.' };
+
+    // 3. Guard: already assigned
+    if (task.employeeId && task.status === 'ASSIGNED') {
+      return { success: false, error: 'Task is already assigned. Use Reassign to change the assignee.' };
+    }
+
+    // 4. Guard: completed
+    if (task.status === 'COMPLETED') {
+      return { success: false, error: 'Cannot assign a completed task.' };
+    }
+
+    // 5. Find employee
+    const employee = state.users.find(u => u.id === employeeId);
+    if (!employee) return { success: false, error: 'Employee not found.' };
+    if (employee.role === 'CLIENT' || employee.role === 'PENDING') {
+      return { success: false, error: 'Selected user is not eligible for task assignment.' };
+    }
+
+    // 6. Workload check
+    const workload = get().getEmployeeWorkload(employeeId);
+    const taskHours = Number(task.estimatedHours) || 0;
+    const projectedHours = workload.assignedHoursThisWeek + taskHours;
+    const capacity = workload.weeklyCapacityHours;
+    let warning: string | undefined;
+    if (projectedHours > capacity) {
+      warning = `Workload warning: current ${workload.assignedHoursThisWeek}h + this task ${taskHours}h = ${projectedHours}h exceeds ${capacity}h capacity.`;
+      if (!overrideWarning) {
+        return { success: true, warning };
+      }
+      get().addAuditLog('TASK_ASSIGNMENT_OVERRIDE', `Overload override: task ${taskId} assigned to ${employeeId} by ${assignedBy}. Projected ${projectedHours}h vs ${capacity}h capacity.`);
+    }
+
+    // 7. Build assignment record
+    const now = new Date().toISOString();
+    const actorName = actor.name;
+    const record: TaskAssignmentRecord = {
+      id: `ar-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      assignedTo: employeeId,
+      assignedToName: employee.name,
+      assignedBy,
+      assignedByName: actorName,
+      assignedAt: now,
+      teamId,
+      teamName: teamId ? (state.users.find(u => u.department === teamId)?.department) : undefined,
+      reason,
+    };
+
+    // 8. Apply
+    get().updateTask(engagementId, taskId, {
+      employeeId,
+      employeeName: employee.name,
+      teamId,
+      teamName: employee.department,
+      assignedBy,
+      assignedByName: actorName,
+      assignedAt: now,
+      status: 'ASSIGNED',
+      assignmentHistory: [...(task.assignmentHistory || []), record],
+    });
+
+    // 9. Audit
+    get().addAuditLog(
+      'TASK_ASSIGNED',
+      `Task ${taskId} (${task.title}) assigned to ${employeeId} (${employee.name}) by ${assignedBy} (${actorName}) at ${now}. ClientService: ${task.clientServiceId || 'n/a'}`
+    );
+
+    return { success: true, warning };
+  },
+
+  reassignTask: ({ engagementId, taskId, newEmployeeId, teamId, assignedBy, reason, overrideWarning }) => {
+    const state = get();
+
+    // 1. RBAC
+    const actor = state.users.find(u => u.id === assignedBy);
+    if (!actor || (actor.role !== 'SUPER_ADMIN' && actor.role !== 'ADMIN')) {
+      get().addAuditLog('TASK_REASSIGNMENT_FAILED', `Permission denied for user ${assignedBy} on task ${taskId}`);
+      return { success: false, error: 'You do not have permission to reassign tasks.' };
+    }
+
+    // 2. Find task
+    const engagement = state.engagements.find(e => e.id === engagementId);
+    if (!engagement) return { success: false, error: 'Engagement not found.' };
+    const task = (engagement.tasks || []).find(t => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found.' };
+    if (task.status === 'COMPLETED') return { success: false, error: 'Cannot reassign a completed task.' };
+
+    // 3. Find new employee
+    const newEmployee = state.users.find(u => u.id === newEmployeeId);
+    if (!newEmployee) return { success: false, error: 'Employee not found.' };
+    if (newEmployee.role === 'CLIENT' || newEmployee.role === 'PENDING') {
+      return { success: false, error: 'Selected user is not eligible for task assignment.' };
+    }
+
+    // 4. Workload check
+    const workload = get().getEmployeeWorkload(newEmployeeId);
+    const taskHours = Number(task.estimatedHours) || 0;
+    const projectedHours = workload.assignedHoursThisWeek + taskHours;
+    const capacity = workload.weeklyCapacityHours;
+    let warning: string | undefined;
+    if (projectedHours > capacity) {
+      warning = `Workload warning: ${newEmployee.name} current ${workload.assignedHoursThisWeek}h + this task ${taskHours}h = ${projectedHours}h exceeds ${capacity}h capacity.`;
+      if (!overrideWarning) {
+        return { success: true, warning };
+      }
+      get().addAuditLog('TASK_ASSIGNMENT_OVERRIDE', `Overload override on reassign: task ${taskId} to ${newEmployeeId} by ${assignedBy}. Projected ${projectedHours}h vs ${capacity}h.`);
+    }
+
+    // 5. Build record
+    const now = new Date().toISOString();
+    const actorName = actor.name;
+    const record: TaskAssignmentRecord = {
+      id: `ar-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      assignedTo: newEmployeeId,
+      assignedToName: newEmployee.name,
+      assignedBy,
+      assignedByName: actorName,
+      assignedAt: now,
+      teamId,
+      teamName: newEmployee.department,
+      reason,
+      previousAssigneeId: task.employeeId,
+      previousAssigneeName: task.employeeName,
+    };
+
+    // 6. Apply
+    get().updateTask(engagementId, taskId, {
+      employeeId: newEmployeeId,
+      employeeName: newEmployee.name,
+      teamId,
+      teamName: newEmployee.department,
+      assignedBy,
+      assignedByName: actorName,
+      assignedAt: now,
+      status: 'ASSIGNED',
+      assignmentHistory: [...(task.assignmentHistory || []), record],
+    });
+
+    // 7. Audit
+    get().addAuditLog(
+      'TASK_REASSIGNED',
+      `Task ${taskId} (${task.title}) reassigned from ${task.employeeId || 'unassigned'} to ${newEmployeeId} (${newEmployee.name}) by ${assignedBy}. Reason: ${reason}. ClientService: ${task.clientServiceId || 'n/a'}`
+    );
+
+    return { success: true, warning };
+  },
+
   updateTaskStatus: (engagementId, taskId, status) => set((state) => {
+
     let allCompleted = false;
     let engagementName = '';
     
@@ -1725,10 +3516,901 @@ export const useDashboardStore = create<DashboardState>()(
       get().setGlobalSuccessMsg('Data wiped and Dashboard populated with fresh realistic dummy data!');
     }).catch(console.error);
   },
+
+  // --- Prompt 16: Billing, Milestone Invoices & Collections Actions ---
+  configureBilling: (configData) => {
+    const existingIndex = get().billingConfigurations.findIndex(
+      (c) => c.clientServiceId === configData.clientServiceId && c.status === 'ACTIVE'
+    );
+    const now = new Date().toISOString();
+    let config: BillingConfiguration;
+
+    if (existingIndex >= 0) {
+      config = {
+        ...get().billingConfigurations[existingIndex],
+        ...configData,
+        updatedAt: now,
+      };
+      set((state) => ({
+        billingConfigurations: state.billingConfigurations.map((c, i) =>
+          i === existingIndex ? config : c
+        ),
+      }));
+      get().addAuditLog(
+        'BILLING_CONFIGURATION_UPDATED',
+        `Updated billing config for clientServiceId ${configData.clientServiceId}`
+      );
+    } else {
+      config = {
+        ...configData,
+        id: `bill-cfg-${Date.now()}`,
+        status: configData.status || 'ACTIVE',
+        createdAt: now,
+        updatedAt: now,
+      };
+      set((state) => ({
+        billingConfigurations: [config, ...state.billingConfigurations],
+      }));
+      get().addAuditLog(
+        'BILLING_CONFIGURATION_CREATED',
+        `Configured ${configData.billingType} billing of ₹${configData.amount} for service ${configData.clientServiceId}`
+      );
+    }
+    pushRecordToFirebase('billingConfigurations', config.id, config);
+    return config;
+  },
+
+  updateBillingConfig: (id, updates) => {
+    const now = new Date().toISOString();
+    set((state) => ({
+      billingConfigurations: state.billingConfigurations.map((c) =>
+        c.id === id ? { ...c, ...updates, updatedAt: now } : c
+      ),
+    }));
+    get().addAuditLog('BILLING_CONFIGURATION_UPDATED', `Updated billing configuration ${id}`);
+  },
+
+  addBillingMilestone: (milestoneData) => {
+    const newMilestone: BillingMilestone = {
+      ...milestoneData,
+      id: `milestone-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      status: milestoneData.status || 'PENDING',
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      billingMilestones: [newMilestone, ...state.billingMilestones],
+    }));
+    get().addAuditLog(
+      'MILESTONE_CREATED',
+      `Created milestone "${newMilestone.name}" for clientServiceId ${newMilestone.clientServiceId} (Amount: ₹${newMilestone.amount})`
+    );
+    pushRecordToFirebase('billingMilestones', newMilestone.id, newMilestone);
+    return newMilestone;
+  },
+
+  updateMilestoneStatus: (milestoneId, status, invoiceId) => {
+    set((state) => ({
+      billingMilestones: state.billingMilestones.map((m) => {
+        if (m.id === milestoneId) {
+          const updated = { ...m, status, ...(invoiceId ? { invoiceId } : {}) };
+          if (status === 'PAID' || status === 'INVOICED') {
+            get().addAuditLog(
+              'MILESTONE_COMPLETED',
+              `Milestone "${m.name}" marked as ${status}${invoiceId ? ` (Invoice ${invoiceId})` : ''}`
+            );
+          }
+          return updated;
+        }
+        return m;
+      }),
+    }));
+  },
+
+  createDraftInvoice: (invoiceData) => {
+    const subtotal = invoiceData.subtotal ?? invoiceData.amount ?? 0;
+    const discount = invoiceData.discount ?? 0;
+    const taxRate = invoiceData.taxRate ?? 18;
+    const taxType = invoiceData.taxType || 'GST';
+
+    const taxableAmount = Math.max(0, subtotal - discount);
+    const totalTax = invoiceData.tax ?? (taxableAmount * taxRate) / 100;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+
+    if (taxType === 'CGST_SGST' || invoiceData.gstType === 'Intrastate') {
+      cgst = totalTax / 2;
+      sgst = totalTax / 2;
+    } else {
+      igst = totalTax;
+    }
+
+    const total = invoiceData.total ?? invoiceData.finalAmount ?? taxableAmount + totalTax;
+
+    let invoiceNum = invoiceData.invoiceNumber;
+    if (!invoiceNum || invoiceNum.trim() === '') {
+      const year = new Date().getFullYear();
+      const randSeq = Math.floor(10000 + Math.random() * 90000);
+      invoiceNum = `INV-${year}-${randSeq}`;
+    }
+
+    const draftInvoice: Invoice = {
+      ...invoiceData,
+      id: `inv-${Date.now()}`,
+      invoiceNumber: invoiceNum,
+      subtotal,
+      discount,
+      taxRate,
+      taxType,
+      tax: totalTax,
+      total,
+      cgst,
+      sgst,
+      igst,
+      amount: subtotal,
+      gst: totalTax,
+      finalAmount: total,
+      amountPaid: 0,
+      amountDue: total,
+      status: 'DRAFT',
+      lineItems: invoiceData.lineItems || [
+        { id: `li-1`, description: invoiceData.milestone || 'CFO Advisory Services', amount: subtotal },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    set((state) => ({
+      standaloneInvoices: [draftInvoice, ...state.standaloneInvoices],
+    }));
+
+    get().addAuditLog(
+      'INVOICE_CREATED',
+      `Created DRAFT Invoice ${draftInvoice.invoiceNumber} for client ${draftInvoice.clientCompanyName || draftInvoice.clientId || 'Client'} (Amount: ₹${draftInvoice.total})`
+    );
+    pushRecordToFirebase('standaloneInvoices', draftInvoice.id, draftInvoice);
+    return draftInvoice;
+  },
+
+  updateDraftInvoice: (id, updates) => {
+    const state = get();
+    const existing = state.standaloneInvoices.find((inv) => inv.id === id);
+    if (!existing) return;
+    if (existing.status !== 'DRAFT') {
+      console.warn('Cannot update an invoice that is not in DRAFT status.');
+      return;
+    }
+
+    const subtotal = updates.subtotal ?? existing.subtotal ?? existing.amount ?? 0;
+    const discount = updates.discount ?? existing.discount ?? 0;
+    const taxRate = updates.taxRate ?? existing.taxRate ?? 18;
+    const taxType = updates.taxType || existing.taxType || 'GST';
+
+    const taxableAmount = Math.max(0, subtotal - discount);
+    const totalTax = (taxableAmount * taxRate) / 100;
+    let cgst = 0, sgst = 0, igst = 0;
+    if (taxType === 'CGST_SGST' || updates.gstType === 'Intrastate') {
+      cgst = totalTax / 2;
+      sgst = totalTax / 2;
+    } else {
+      igst = totalTax;
+    }
+    const total = taxableAmount + totalTax;
+
+    const updatedInvoice: Invoice = {
+      ...existing,
+      ...updates,
+      subtotal,
+      discount,
+      taxRate,
+      taxType,
+      tax: totalTax,
+      total,
+      cgst,
+      sgst,
+      igst,
+      amount: subtotal,
+      gst: totalTax,
+      finalAmount: total,
+      amountDue: total - (existing.amountPaid || 0),
+      updatedAt: new Date().toISOString(),
+    };
+
+    set((s) => ({
+      standaloneInvoices: s.standaloneInvoices.map((inv) => (inv.id === id ? updatedInvoice : inv)),
+    }));
+    pushRecordToFirebase('standaloneInvoices', id, updatedInvoice);
+  },
+
+  issueInvoice: (id, userId, userName) => {
+    const state = get();
+    const target = state.standaloneInvoices.find((inv) => inv.id === id);
+    if (!target) {
+      return { success: false, error: 'Invoice not found.' };
+    }
+    if (!target.clientId && !target.engagementId) {
+      return { success: false, error: 'Invalid client or service specified.' };
+    }
+    if ((target.total || target.finalAmount || 0) <= 0) {
+      return { success: false, error: 'Invoice amount must be greater than zero.' };
+    }
+    if (!target.dueDate) {
+      return { success: false, error: 'Valid due date is required.' };
+    }
+
+    const now = new Date().toISOString();
+    const issuedInvoice: Invoice = {
+      ...target,
+      status: 'ISSUED',
+      issuedAt: now,
+      issuedBy: userId,
+      issuedByName: userName,
+      updatedAt: now,
+    };
+
+    set((s) => ({
+      standaloneInvoices: s.standaloneInvoices.map((inv) => (inv.id === id ? issuedInvoice : inv)),
+    }));
+
+    if (target.milestoneId) {
+      get().updateMilestoneStatus(target.milestoneId, 'INVOICED', target.id);
+    }
+
+    get().addAuditLog(
+      'INVOICE_ISSUED',
+      `Issued Invoice ${issuedInvoice.invoiceNumber} to ${issuedInvoice.clientCompanyName || issuedInvoice.clientId} by ${userName}`
+    );
+    get().addNotification(
+      'Invoice Issued',
+      `Invoice ${issuedInvoice.invoiceNumber} of ₹${issuedInvoice.total} has been issued.`
+    );
+    pushRecordToFirebase('standaloneInvoices', id, issuedInvoice);
+    return { success: true, invoice: issuedInvoice };
+  },
+
+  cancelInvoice: (id, reason, userId, userName) => {
+    const now = new Date().toISOString();
+    set((state) => ({
+      standaloneInvoices: state.standaloneInvoices.map((inv) => {
+        if (inv.id === id) {
+          const cancelled: Invoice = {
+            ...inv,
+            status: 'CANCELLED',
+            cancelledAt: now,
+            cancelledBy: userId,
+            cancelReason: reason,
+            updatedAt: now,
+          };
+          pushRecordToFirebase('standaloneInvoices', id, cancelled);
+          return cancelled;
+        }
+        return inv;
+      }),
+    }));
+
+    get().addAuditLog('INVOICE_CANCELLED', `Cancelled invoice ${id} (Reason: ${reason}) by ${userName}`);
+  },
+
+  recordPayment: (paymentData) => {
+    const state = get();
+    let invoice = state.standaloneInvoices.find((i) => i.id === paymentData.invoiceId);
+    let engagementId: string | undefined;
+
+    if (!invoice) {
+      for (const eng of state.engagements) {
+        const found = (eng.invoices || []).find((i) => i.id === paymentData.invoiceId);
+        if (found) {
+          invoice = found;
+          engagementId = eng.id;
+          break;
+        }
+      }
+    }
+
+    if (!invoice) {
+      return { success: false, error: 'Invoice not found.' };
+    }
+
+    if (invoice.status === 'CANCELLED') {
+      return { success: false, error: 'Cannot record payment for a cancelled invoice.' };
+    }
+
+    if (paymentData.amount <= 0) {
+      return { success: false, error: 'Payment amount must be greater than zero.' };
+    }
+
+    const currentTotal = invoice.total ?? invoice.finalAmount ?? 0;
+    const currentPaid = invoice.amountPaid ?? (invoice.status === 'PAID' ? currentTotal : 0);
+    const currentOutstanding = invoice.amountDue ?? Math.max(0, currentTotal - currentPaid);
+
+    if (paymentData.amount > currentOutstanding + 0.01) {
+      return {
+        success: false,
+        error: `Payment amount (₹${paymentData.amount}) exceeds outstanding balance (₹${currentOutstanding}).`,
+      };
+    }
+
+    const now = new Date().toISOString();
+    const paymentRecord: PaymentRecord = {
+      ...paymentData,
+      id: `pay-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      createdAt: now,
+    };
+
+    const newAmountPaid = currentPaid + paymentData.amount;
+    const newAmountDue = Math.max(0, currentTotal - newAmountPaid);
+    const newStatus: InvoiceStatus = newAmountDue <= 0.01 ? 'PAID' : 'PARTIALLY_PAID';
+
+    const updatedInvoice: Invoice = {
+      ...invoice,
+      amountPaid: newAmountPaid,
+      amountDue: newAmountDue,
+      status: newStatus,
+      updatedAt: now,
+    };
+
+    if (engagementId) {
+      set((s) => ({
+        paymentRecords: [paymentRecord, ...s.paymentRecords],
+        engagements: s.engagements.map((e) =>
+          e.id === engagementId
+            ? {
+                ...e,
+                invoices: (e.invoices || []).map((i) => (i.id === invoice!.id ? updatedInvoice : i)),
+              }
+            : e
+        ),
+      }));
+    } else {
+      set((s) => ({
+        paymentRecords: [paymentRecord, ...s.paymentRecords],
+        standaloneInvoices: s.standaloneInvoices.map((i) => (i.id === invoice!.id ? updatedInvoice : i)),
+      }));
+    }
+
+    const receiptRecord: Receipt = {
+      id: `rec-${Date.now()}`,
+      receiptNumber: `REC-${Date.now().toString().slice(-6)}`,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      clientName: paymentData.clientCompanyName,
+      amountReceived: paymentData.amount,
+      paymentMode: paymentData.paymentMethod as any,
+      transactionId: paymentData.referenceNumber,
+      date: paymentData.paymentDate,
+      remarks: paymentData.notes,
+      createdAt: now,
+    };
+    set((s) => ({
+      standaloneReceipts: [receiptRecord, ...s.standaloneReceipts],
+    }));
+
+    if (updatedInvoice.milestoneId && newStatus === 'PAID') {
+      get().updateMilestoneStatus(updatedInvoice.milestoneId, 'PAID');
+    }
+
+    get().addAuditLog(
+      'PAYMENT_RECORDED',
+      `Recorded payment of ₹${paymentData.amount} via ${paymentData.paymentMethod} for Invoice ${invoice.invoiceNumber} by ${paymentData.recordedByName}`
+    );
+    get().addNotification(
+      'Payment Recorded',
+      `Payment of ₹${paymentData.amount} received for Invoice ${invoice.invoiceNumber}. New Status: ${newStatus}`
+    );
+
+    pushRecordToFirebase('paymentRecords', paymentRecord.id, paymentRecord);
+    pushRecordToFirebase('standaloneReceipts', receiptRecord.id, receiptRecord);
+    pushRecordToFirebase('standaloneInvoices', updatedInvoice.id, updatedInvoice);
+
+    return { success: true, paymentRecord };
+  },
+
+  recordCollectionActivity: (activityData) => {
+    const now = new Date().toISOString();
+    const activity: CollectionActivity = {
+      ...activityData,
+      id: `col-act-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      createdAt: now,
+    };
+
+    set((state) => ({
+      collectionActivities: [activity, ...state.collectionActivities],
+    }));
+
+    const eventType =
+      activityData.activityType === 'PAYMENT_PROMISE'
+        ? 'PAYMENT_PROMISE_CREATED'
+        : 'COLLECTION_ACTIVITY_CREATED';
+
+    get().addAuditLog(
+      eventType,
+      `Recorded ${activityData.activityType} for Invoice ${activityData.invoiceNumber}: "${activityData.note}"${activityData.promiseDate ? ` (Promise Date: ${activityData.promiseDate})` : ''}`
+    );
+    pushRecordToFirebase('collectionActivities', activity.id, activity);
+    return activity;
+  },
+
+  generateRecurringInvoice: (clientServiceId, billingPeriod, userId, userName) => {
+    const state = get();
+    const duplicate = state.standaloneInvoices.find(
+      (inv) => inv.clientServiceId === clientServiceId && inv.billingPeriod === billingPeriod && inv.status !== 'CANCELLED'
+    );
+
+    if (duplicate) {
+      return {
+        success: false,
+        error: `An invoice (${duplicate.invoiceNumber}) already exists for this service and period (${billingPeriod}). Duplicate billing prevented.`,
+      };
+    }
+
+    const config = state.billingConfigurations.find((c) => c.clientServiceId === clientServiceId);
+    let clientObj: Client | undefined;
+    let serviceName = 'Service';
+
+    for (const eng of state.engagements) {
+      const cs = (eng.clientServices || []).find((c) => c.id === clientServiceId);
+      if (cs) {
+        clientObj = state.clients.find((cl) => cl.id === cs.clientId);
+        serviceName = cs.configurationSnapshot?.serviceName || 'Recurring Service';
+        break;
+      }
+    }
+
+    const amount = config?.amount || 50000;
+    const gstRate = config?.gstRate || 18;
+    const taxType = config?.taxType || 'GST';
+
+    const invoiceData: Omit<Invoice, 'id' | 'createdAt' | 'amountPaid' | 'amountDue' | 'status'> = {
+      organizationId: config?.organizationId || 'org-1',
+      clientId: clientObj?.id || config?.clientId || 'client-1',
+      clientCompanyName: clientObj?.companyName || 'ABC Pvt Ltd',
+      clientServiceId,
+      serviceName,
+      engagementId: config?.engagementId || 'eng-1',
+      billingConfigurationId: config?.id,
+      invoiceNumber: `INV-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
+      invoiceDate: new Date().toISOString().split('T')[0],
+      dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      billingPeriod,
+      currency: config?.currency || 'INR',
+      subtotal: amount,
+      discount: 0,
+      taxRate: gstRate,
+      taxType,
+      amount,
+      gst: (amount * gstRate) / 100,
+      finalAmount: amount + (amount * gstRate) / 100,
+      lineItems: [{ id: `li-rec`, description: `${serviceName} - ${billingPeriod}`, amount }],
+      createdBy: userId,
+      createdByName: userName,
+    };
+
+    const draft = get().createDraftInvoice(invoiceData);
+    return { success: true, invoice: draft };
+  },
+
+  // ─── Automation & AI Foundation Actions (Prompt 18) ───────────────────────
+
+  triggerAutomation: (trigger, payload) => {
+    const state = get();
+    if (!state.aiFeatureFlags?.automationEngine) return;
+
+    const log = AutomationEngine.processEvent(
+      trigger,
+      payload,
+      state.automationRules || [],
+      state,
+      (actionType, params) => {
+        if (actionType === 'CREATE_AUTO_TASK') {
+          const { engagementId, clientId, clientServiceId, taskTemplateId, title, description, estimatedHours, priority, periodKey, dueDate } = params;
+
+          const newTask: Task = {
+            id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            organizationId: 'org-1',
+            clientId,
+            clientServiceId,
+            engagementId,
+            taskTemplateId,
+            title,
+            description,
+            estimatedHours,
+            priority,
+            periodKey,
+            dueDate,
+            status: 'NOT_STARTED',
+            reviewPoints: [],
+            createdAt: new Date().toISOString(),
+          };
+
+          set((s) => ({
+            engagements: s.engagements.map((e) =>
+              e.id === engagementId ? { ...e, tasks: [...(e.tasks || []), newTask] } : e
+            ),
+          }));
+
+          get().addAuditLog('TASK_AUTO_CREATED', `Automated task created: ${title} (${periodKey})`);
+        } else if (actionType === 'CREATE_NOTIFICATION') {
+          get().addNotification(params.title, params.message);
+        }
+      }
+    );
+
+    set((s) => ({
+      automationLogs: [log, ...(s.automationLogs || []).slice(0, 99)],
+    }));
+
+    get().addAuditLog('AUTOMATION_EXECUTED', `Automation event ${trigger} processed | status:${log.status}`);
+  },
+
+  addAutomationRule: (ruleData) => {
+    const newRule: AutomationRule = {
+      ...ruleData,
+      id: `rule-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    set((s) => ({ automationRules: [...s.automationRules, newRule] }));
+    get().addAuditLog('AUTOMATION_RULE_CREATED', `Created automation rule: ${newRule.name}`);
+  },
+
+  updateAutomationRule: (id, updates) => {
+    set((s) => ({
+      automationRules: s.automationRules.map((r) => (r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r)),
+    }));
+    get().addAuditLog('AUTOMATION_RULE_UPDATED', `Updated automation rule ${id}`);
+  },
+
+  deleteAutomationRule: (id) => {
+    set((s) => ({
+      automationRules: s.automationRules.filter((r) => r.id !== id),
+    }));
+    get().addAuditLog('AUTOMATION_RULE_DELETED', `Deleted automation rule ${id}`);
+  },
+
+  checkAndDispatchReminders: () => {
+    const state = get();
+    const newRecords = AutomationEngine.scanAndDispatchReminders(
+      state,
+      state.reminderRecords || [],
+      (title, message, recipientId) => {
+        get().addNotification(title, message, undefined, recipientId ? [recipientId] : undefined);
+      }
+    );
+
+    if (newRecords.length > 0) {
+      set((s) => ({
+        reminderRecords: [...(s.reminderRecords || []), ...newRecords],
+      }));
+      get().addAuditLog('REMINDERS_DISPATCHED', `Dispatched ${newRecords.length} automated reminder(s).`);
+    }
+  },
+
+  updateAIFeatureFlags: (flags) => {
+    set((s) => ({ aiFeatureFlags: { ...s.aiFeatureFlags, ...flags } }));
+    get().addAuditLog('AI_FEATURE_FLAGS_UPDATED', `Updated AI Feature Flags.`);
+  },
+
+  runFinancialAnalysis: async (context, data) => {
+    if (!get().aiFeatureFlags?.financialAnalysis) {
+      return {
+        answer: 'Financial Analysis feature is currently disabled by Admin feature flags.',
+        sources: [],
+        confidence: 'LOW',
+        factVsInference: { facts: [], inferences: [] },
+        validationStatus: 'INSUFFICIENT_DATA',
+      };
+    }
+
+    const response = await AIService.analyzeFinancialData(context, data);
+
+    const log = {
+      id: `ai-log-${Date.now()}`,
+      organizationId: context.organizationId || 'org-1',
+      userId: context.userId,
+      clientId: context.clientId,
+      feature: 'FINANCIAL_ANALYSIS' as const,
+      responseSummary: response.answer,
+      sources: response.sources.map((s) => s.title),
+      timestamp: new Date().toISOString(),
+    };
+
+    set((s) => ({ aiAuditLogs: [log, ...(s.aiAuditLogs || []).slice(0, 99)] }));
+    get().addAuditLog('AI_ANALYSIS_CREATED', `Executed AI Financial Analysis for user ${context.userId}`);
+
+    return response;
+  },
+
+  generateAIReportDraft: async (context, templateName, sourceData) => {
+    if (!get().aiFeatureFlags?.aiReportDrafting) {
+      return { draftText: 'AI Report Drafting feature is disabled.', sources: [], validationStatus: 'INSUFFICIENT_DATA' };
+    }
+
+    const result = await AIService.draftReport(context, templateName, sourceData);
+
+    const log = {
+      id: `ai-log-${Date.now()}`,
+      organizationId: context.organizationId || 'org-1',
+      userId: context.userId,
+      clientId: context.clientId,
+      feature: 'REPORT_DRAFT' as const,
+      responseSummary: `Drafted ${templateName}`,
+      sources: result.sources.map((s) => s.title),
+      timestamp: new Date().toISOString(),
+    };
+
+    set((s) => ({ aiAuditLogs: [log, ...(s.aiAuditLogs || []).slice(0, 99)] }));
+    get().addAuditLog('AI_REPORT_DRAFT_CREATED', `AI generated report draft for ${templateName}`);
+
+    return result;
+  },
+
+  askAICfoAssistant: async (context, query) => {
+    if (!get().aiFeatureFlags?.aiCfoAssistant) {
+      return {
+        answer: 'VANNTAGGE AI CFO Assistant is currently disabled by Admin feature flags.',
+        sources: [],
+        confidence: 'LOW',
+        factVsInference: { facts: [], inferences: [] },
+        validationStatus: 'INSUFFICIENT_DATA',
+      };
+    }
+
+    const response = await AIService.answerCFOQuestion(context, query, get());
+
+    const log = {
+      id: `ai-log-${Date.now()}`,
+      organizationId: context.organizationId || 'org-1',
+      userId: context.userId,
+      clientId: context.clientId,
+      feature: 'CFO_ASSISTANT' as const,
+      query,
+      responseSummary: response.answer,
+      sources: response.sources.map((s) => s.title),
+      timestamp: new Date().toISOString(),
+    };
+
+    set((s) => ({ aiAuditLogs: [log, ...(s.aiAuditLogs || []).slice(0, 99)] }));
+    get().addAuditLog('AI_REQUEST', `AI CFO Assistant query executed by ${context.userName || context.userId}`);
+
+    return response;
+  },
+
+  // Legacy Client Manual Onboarding Actions
+  legacyClientDrafts: [],
+
+  saveLegacyClientDraft: (draftData) => {
+    const drafts = get().legacyClientDrafts || [];
+    const existingIndex = draftData.id ? drafts.findIndex((d) => d.id === draftData.id) : -1;
+    const now = new Date().toISOString();
+
+    let updatedDraft: LegacyClientDraft;
+
+    if (existingIndex >= 0) {
+      updatedDraft = {
+        ...drafts[existingIndex],
+        ...draftData,
+        updatedAt: now,
+      } as LegacyClientDraft;
+      const newDrafts = [...drafts];
+      newDrafts[existingIndex] = updatedDraft;
+      set({ legacyClientDrafts: newDrafts });
+    } else {
+      updatedDraft = {
+        id: draftData.id || `lcd-${Date.now()}`,
+        step: draftData.step || 1,
+        status: draftData.status || 'IN_PROGRESS',
+        basicInfo: draftData.basicInfo || {
+          clientType: 'Company',
+          legalName: '',
+          companyName: '',
+          industry: 'Technology & Services',
+          entityType: 'Private Limited',
+        },
+        contactInfo: draftData.contactInfo || {
+          primaryContactName: '',
+          primaryContactEmail: '',
+          primaryContactPhone: '',
+          primaryContactDesignation: '',
+        },
+        legalInfo: draftData.legalInfo || {},
+        financialInfo: draftData.financialInfo || { financialYearEnd: 'March 31' },
+        selectedServices: draftData.selectedServices || [],
+        selectedEngagements: draftData.selectedEngagements || [],
+        complianceRecords: draftData.complianceRecords || [],
+        documents: draftData.documents || [],
+        historicalNotes: draftData.historicalNotes || '',
+        historicalInvoices: draftData.historicalInvoices || [],
+        createdAt: now,
+        updatedAt: now,
+        ...draftData,
+      } as LegacyClientDraft;
+      set({ legacyClientDrafts: [updatedDraft, ...drafts] });
+    }
+    return updatedDraft;
+  },
+
+  deleteLegacyClientDraft: (draftId) => {
+    set((state) => ({
+      legacyClientDrafts: (state.legacyClientDrafts || []).filter((d) => d.id !== draftId),
+    }));
+  },
+
+  createLegacyClient: (draft, userId, userName) => {
+    try {
+      const clientId = draft.id && !draft.id.startsWith('lcd-') && !draft.id.startsWith('draft-') ? draft.id : `cli-leg-${Date.now()}`;
+      const onboardingDate = draft.createdAt ? draft.createdAt.split('T')[0] : new Date().toISOString().split('T')[0];
+
+      const companyName = draft.basicInfo?.companyName || draft.basicInfo?.legalName || 'Legacy Client';
+
+      const mappedServices: ClientService[] = (draft.selectedServices || []).map((s, idx) => ({
+        id: `cs-leg-${Date.now()}-${idx}`,
+        clientId,
+        serviceMasterId: s.serviceMasterId,
+        startDate: s.startDate || onboardingDate,
+        frequency: s.billingFrequency || 'Monthly',
+        status: 'ACTIVE',
+        activatedAt: new Date().toISOString(),
+        clientParameters: [],
+        documentIds: [],
+        configurationSnapshot: {
+          serviceName: s.serviceName,
+          categoryName: 'Legacy Service Master',
+          frequency: s.billingFrequency,
+          capturedAt: new Date().toISOString(),
+        },
+      }));
+
+      const mappedCompliances: Compliance[] = (draft.complianceRecords || []).map((c, idx) => ({
+        id: `comp-leg-${Date.now()}-${idx}`,
+        engagementId: `eng-leg-${Date.now()}`,
+        clientId,
+        type: c.complianceType,
+        frequency: c.frequency,
+        financialYear: '2025-26',
+        status: c.status === 'FILED' ? 'COMPLETED' : 'PENDING',
+        dueDate: c.nextDueDate || onboardingDate,
+        lastCompletedDate: c.lastFiledDate,
+        createdAt: new Date().toISOString(),
+      }));
+
+      const mappedDocuments: ClientDocument[] = (draft.documents || []).map((d) => ({
+        id: d.id || `doc-leg-${Date.now()}`,
+        clientId,
+        docCategory: (d.category as any) || 'COMPANY_MASTER_DATA',
+        name: d.docName || 'Historical Document',
+        uploadedAt: d.uploadedAt || new Date().toISOString(),
+        reviewStatus: 'VERIFIED',
+        version: 1,
+        filePath: `/docs/${d.fileName || 'historical.pdf'}`,
+      }));
+
+      const mappedInvoices: Invoice[] = (draft.historicalInvoices || []).map((inv, idx) => ({
+        id: `inv-leg-${Date.now()}-${idx}`,
+        invoiceNumber: inv.invoiceNumber,
+        clientId,
+        clientCompanyName: companyName,
+        engagementId: `eng-leg-${Date.now()}`,
+        engagementName: `${companyName} - Legacy Services`,
+        billingPeriod: 'Historical Migration',
+        issueDate: inv.date || onboardingDate,
+        dueDate: inv.date || onboardingDate,
+        totalAmount: inv.amount,
+        taxAmount: 0,
+        subtotal: inv.amount,
+        status: inv.paidStatus === 'PAID' ? 'PAID' : inv.paidStatus === 'PARTIAL' ? 'PARTIALLY_PAID' : 'ISSUED',
+        createdAt: inv.date || new Date().toISOString(),
+        items: [
+          {
+            id: `item-${idx}`,
+            description: inv.description || 'Historical Service Invoice (Pre-Migration)',
+            quantity: 1,
+            rate: inv.amount,
+            amount: inv.amount,
+          },
+        ],
+      }));
+
+      const newClient: Client = {
+        id: clientId,
+        companyName,
+        tradeName: draft.basicInfo?.tradeName,
+        onboardingSource: 'LEGACY_MANUAL',
+        legacyMigrationStatus: 'COMPLETED',
+        industry: draft.basicInfo?.industry || 'Financial Services',
+        entityType: draft.basicInfo?.entityType || 'Private Limited',
+        pan: draft.legalInfo?.pan || '',
+        gstin: draft.legalInfo?.gstin || '',
+        cin: draft.legalInfo?.cin || '',
+        tan: draft.legalInfo?.tan || '',
+        turnoverTier: draft.basicInfo?.turnoverTier || '10Cr-50Cr',
+        establishedDate: draft.basicInfo?.establishedDate,
+        website: draft.basicInfo?.website,
+        officeAddress: draft.basicInfo?.officeAddress,
+        city: draft.basicInfo?.city,
+        state: draft.basicInfo?.state,
+        country: draft.basicInfo?.country || 'India',
+        pinCode: draft.basicInfo?.pinCode,
+        primaryContact: {
+          name: draft.contactInfo?.primaryContactName || '',
+          email: draft.contactInfo?.primaryContactEmail || '',
+          phone: draft.contactInfo?.primaryContactPhone || '',
+          designation: draft.contactInfo?.primaryContactDesignation || 'Director',
+        },
+        billingContact: draft.contactInfo?.billingContactName ? {
+          name: draft.contactInfo.billingContactName,
+          email: draft.contactInfo.billingContactEmail || '',
+          phone: draft.contactInfo.billingContactPhone || '',
+          designation: 'Finance Lead',
+        } : undefined,
+        complianceContact: draft.contactInfo?.complianceContactName ? {
+          name: draft.contactInfo.complianceContactName,
+          email: draft.contactInfo.complianceContactEmail || '',
+          phone: draft.contactInfo.complianceContactPhone || '',
+          designation: 'Compliance Officer',
+        } : undefined,
+        financialYearEnd: draft.financialInfo?.financialYearEnd || 'March 31',
+        historicalNotes: draft.historicalNotes,
+        historicalFinancialRecords: draft.financialInfo?.historicalFinancialRecords || [],
+        status: 'ACTIVE',
+        onboardingDate: onboardingDate,
+        services: mappedServices,
+        engagements: [],
+        compliances: mappedCompliances,
+        clientDocuments: mappedDocuments,
+        invoices: mappedInvoices,
+      };
+
+      const engagementId = `eng-leg-${Date.now()}`;
+      const newEngagement: Engagement = {
+        id: engagementId,
+        clientId: newClient.id,
+        clientName: newClient.companyName,
+        name: `${newClient.companyName} - Legacy Engagement`,
+        status: 'ACTIVE',
+        startDate: onboardingDate,
+        services: mappedServices.map((cs) => ({
+          id: cs.id,
+          serviceName: cs.serviceMasterId,
+          status: 'ACTIVE',
+        })),
+        tasks: [],
+        documents: [],
+        compliances: mappedCompliances,
+        invoices: mappedInvoices,
+        reports: [],
+        collections: [],
+      };
+
+      newClient.engagements = [
+        {
+          id: newEngagement.id,
+          name: newEngagement.name,
+          status: 'ACTIVE',
+          startDate: newEngagement.startDate,
+        },
+      ];
+
+      set((state) => ({
+        clients: [newClient, ...state.clients],
+        engagements: [newEngagement, ...state.engagements],
+        legacyClientDrafts: (state.legacyClientDrafts || []).filter((d) => d.id !== draft.id),
+      }));
+
+      get().addAuditLog('LEGACY_CLIENT_CREATED', `Legacy client ${newClient.companyName} manually onboarded by ${userName || userId}. Migration status: COMPLETED.`);
+      get().addNotification('Legacy Client Onboarded', `Client ${newClient.companyName} added as legacy client with ${newClient.services.length} active service(s).`, `/clients/directory`);
+
+      pushRecordToFirebase('clients', newClient.id, newClient);
+      pushRecordToFirebase('engagements', newEngagement.id, newEngagement);
+
+      return { success: true, clientId: newClient.id };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to create legacy client' };
+    }
+  },
 }),
 {
   name: 'cfo-dashboard-storage',
-  version: 4,
+  version: 6,
   storage: createJSONStorage(() => storage),
   partialize: (state) => ({
     currentUser: state.currentUser,
@@ -1744,13 +4426,27 @@ export const useDashboardStore = create<DashboardState>()(
     adminSettings: state.adminSettings,
     leaves: state.leaves,
     payrolls: state.payrolls,
-    onboardingTasks: state.onboardingTasks
+    onboardingTasks: state.onboardingTasks,
+    reportTemplates: state.reportTemplates,
+    billingConfigurations: state.billingConfigurations,
+    billingMilestones: state.billingMilestones,
+    paymentRecords: state.paymentRecords,
+    collectionActivities: state.collectionActivities,
+    standaloneInvoices: state.standaloneInvoices,
+    standaloneReceipts: state.standaloneReceipts,
+    automationRules: state.automationRules,
+    automationLogs: state.automationLogs,
+    reminderRecords: state.reminderRecords,
+    aiFeatureFlags: state.aiFeatureFlags,
+    aiAuditLogs: state.aiAuditLogs,
+    legacyClientDrafts: state.legacyClientDrafts,
   }),
   migrate: (persistedState: any, version: number) => {
-    return persistedState;
+    return persistedState || {};
   },
 }
-));
+)
+);
 
 useDashboardStore.subscribe((state, prevState) => {
   if (state.currentUser !== prevState.currentUser) {

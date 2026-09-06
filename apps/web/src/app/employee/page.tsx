@@ -21,6 +21,7 @@ export default function EmployeePage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTarget, setSearchTarget] = useState('all');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!currentUser) {
@@ -33,36 +34,22 @@ export default function EmployeePage() {
   if (!currentUser || currentUser.role !== 'EMPLOYEE') return null;
 
   const tabTitles: { [key: string]: string } = {
-    dashboard: 'Dashboard Overview',
-    employee_portal: 'Employee Operations Portal',
-    engagements: 'Client Engagements',
-    work: 'Task Management',
-    compliance: 'Compliance & Audit Program',
-    calendar: 'Operations Calendar',
+    dashboard: 'Employee Dashboard',
+    employee_tasks: 'My Assigned Tasks',
+    calendar: 'My Operations Calendar',
+    workload: 'My Workload & Capacity',
+    submissions: 'My Submissions',
+    reviews: 'My Review History',
+    performance: 'My Performance Metrics',
+    employee_profile: 'My Profile & Account',
     notifications: 'Notifications',
   };
 
   const renderActiveSubView = () => {
-    switch (currentTab) {
-      case 'dashboard':
-        return <EmployeeDashboardView />;
-      case 'employee_portal':
-        return <EmployeeDashboardView />;
-      case 'engagements':
-      case 'client_management':
-        return <EngagementsView />;
-      case 'work':
-        return <WorkView />;
-      case 'compliance':
-        return <ComplianceView />;
-      case 'calendar':
-        return <CalendarView />;
-      default:
-        return <EmployeeDashboardView />;
-    }
+    return <EmployeeDashboardView initialTab={currentTab} />;
   };
 
-  const spacingClass = 'ml-16 peer-hover:ml-60';
+  const spacingClass = 'ml-0 md:ml-16 md:peer-hover:ml-68';
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
@@ -72,6 +59,8 @@ export default function EmployeePage() {
         setCurrentTab={setCurrentTab}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
       />
       <div className={`flex-1 flex flex-col min-w-0 ${spacingClass} transition-all duration-300`}>
         <Header
@@ -80,8 +69,9 @@ export default function EmployeePage() {
           setCurrentTab={setCurrentTab}
           setSearchTarget={setSearchTarget}
           currentTabTitle={tabTitles[currentTab] || 'Employee Portal'}
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
-        <main className="flex-1 p-8 max-w-[1440px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-[1440px] w-full mx-auto font-outfit">
           {renderActiveSubView()}
         </main>
       </div>

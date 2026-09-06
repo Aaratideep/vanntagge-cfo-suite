@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { formatINR } from '../../lib/currency';
 import { EngagementServicesModal } from './EngagementServicesModal';
+import { ClientServiceOnboardingModal } from './ClientServiceOnboardingModal';
 
 export const EngagementsView: React.FC = () => {
   const { engagements, clients, addDirectEngagement, generateWorkload, currentUser, setGlobalSuccessMsg } = useDashboardStore();
@@ -25,6 +26,7 @@ export const EngagementsView: React.FC = () => {
   const [showNewModal, setShowNewModal] = useState(false);
   const [newEngForm, setNewEngForm] = useState({ clientName: '', engagementName: '' });
   const [selectedEngagement, setSelectedEngagement] = useState<Engagement | null>(null);
+  const [onboardingEngagement, setOnboardingEngagement] = useState<Engagement | null>(null);
 
   const handleCreateEngagement = (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,6 +252,15 @@ export const EngagementsView: React.FC = () => {
                   <button 
                     onClick={(e) => {
                       e.stopPropagation();
+                      setOnboardingEngagement(eng);
+                    }}
+                    className="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-bold rounded-xl transition-colors border border-emerald-100/50"
+                  >
+                    Add Service
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
                       generateWorkload(eng.id);
                       setGlobalSuccessMsg('Workload generated successfully based on client services!');
                     }}
@@ -332,6 +343,15 @@ export const EngagementsView: React.FC = () => {
         <EngagementServicesModal
           engagement={selectedEngagement}
           onClose={() => setSelectedEngagement(null)}
+        />
+      )}
+
+      {/* Onboard New Service Modal */}
+      {onboardingEngagement && (
+        <ClientServiceOnboardingModal
+          isOpen={true}
+          onClose={() => setOnboardingEngagement(null)}
+          engagementId={onboardingEngagement.id}
         />
       )}
     </div>

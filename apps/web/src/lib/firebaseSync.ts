@@ -1,4 +1,4 @@
-import { db, auth } from './firebase';
+import { db, auth, storage } from './firebase';
 import {
   collection,
   doc,
@@ -9,6 +9,7 @@ import {
   query,
   where,
 } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useDashboardStore } from '../store/dashboardStore';
 import { Lead, Engagement, User, FollowUp, Quotation, EngagementLetter, Client, Notification, AuditLog } from '../types';
 
@@ -138,5 +139,27 @@ export async function deleteRecordFromFirebase(collectionName: string, docId: st
     console.log(`🗑️ Firestore: Deleted doc "${docId}" from collection "${collectionName}"`);
   } catch (error) {
     console.warn(`⚠️ Firestore: Could not delete doc "${docId}":`, error);
+  }
+}
+
+/**
+ * Uploads a file to Firebase Storage and returns the download URL
+ */
+export async function uploadFileToFirebaseStorage(file: File, path: string): Promise<string> {
+  if (!storage) {
+    console.warn('⚠️ Firebase Storage is not configured. Mocking upload.');
+    // Return a mock URL for local testing
+    return `mock-url-${Date.now()}`;
+  }
+
+  try {
+    const storageRef = ref(storage, path);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log(`✅ Firebase Storage: Uploaded file to "${path}"`);
+    return downloadURL;
+  } catch (error) {
+    console.error(`❌ Firebase Storage: Failed to upload file to "${path}":`, error);
+    throw error;
   }
 }

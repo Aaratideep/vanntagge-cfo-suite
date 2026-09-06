@@ -1,18 +1,44 @@
 import React, { useState } from 'react';
-import { Search, Plus, Settings, Layers, ChevronRight, Activity, Zap, CheckCircle2, Edit2, Trash2, X } from 'lucide-react';
+import { Search, Plus, Settings, Layers, ChevronRight, Activity, Zap, CheckCircle2, Edit2, Trash2, X, FileText, ToggleLeft, ToggleRight } from 'lucide-react';
 import { Priority } from '@prisma/client';
 
 import { useDashboardStore } from '../../store/dashboardStore';
-import { ServiceCategory, ServiceMaster, ServiceParameter } from '../../types';
+import { ServiceCategory, ServiceMaster, ServiceParameter, TaskTemplate } from '../../types';
+import TaskTemplateModal from './TaskTemplateModal';
 
 export const ServiceMasterView: React.FC = () => {
-  const { serviceCategories: categories, setServiceCategories: setCategories } = useDashboardStore();
+  const { serviceCategories: categories, setServiceCategories: setCategories, deleteTaskTemplate, currentUser } = useDashboardStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>(categories[0]?.id || '');
   
   // Modals state
   const [isCatModalOpen, setIsCatModalOpen] = useState(false);
   const [newCatName, setNewCatName] = useState('');
+
+  // Task Template modal state
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [templateModalServiceId, setTemplateModalServiceId] = useState('');
+  const [templateModalParamId, setTemplateModalParamId] = useState('');
+  const [templateModalParamName, setTemplateModalParamName] = useState('');
+  const [templateModalExisting, setTemplateModalExisting] = useState<TaskTemplate | undefined>(undefined);
+
+  const canManageTemplates = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
+
+  function openAddTemplate(serviceId: string, paramId: string, paramName: string) {
+    setTemplateModalServiceId(serviceId);
+    setTemplateModalParamId(paramId);
+    setTemplateModalParamName(paramName);
+    setTemplateModalExisting(undefined);
+    setTemplateModalOpen(true);
+  }
+
+  function openEditTemplate(serviceId: string, paramId: string, paramName: string, tmpl: TaskTemplate) {
+    setTemplateModalServiceId(serviceId);
+    setTemplateModalParamId(paramId);
+    setTemplateModalParamName(paramName);
+    setTemplateModalExisting(tmpl);
+    setTemplateModalOpen(true);
+  }
 
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<ServiceMaster | null>(null);
@@ -21,6 +47,16 @@ export const ServiceMasterView: React.FC = () => {
   const [isParamModalOpen, setIsParamModalOpen] = useState(false);
   const [targetServiceId, setTargetServiceId] = useState<string | null>(null);
   const [paramForm, setParamForm] = useState({ name: '', dataType: 'BOOLEAN', isRequired: true });
+
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [docForm, setDocForm] = useState({
+    name: '',
+    description: '',
+    isRequired: true,
+    allowedFileTypes: ['pdf'],
+    maxFileSize: 25,
+    processingRequired: true
+  });
   
   const selectedCat = categories.find(c => c.id === activeCategory);
 
@@ -100,6 +136,39 @@ export const ServiceMasterView: React.FC = () => {
     setParamForm({ name: '', dataType: 'BOOLEAN', isRequired: true });
   };
 
+  const handleSaveDocReq = () => {
+    if (!docForm.name.trim() || !targetServiceId || !activeCategory) return;
+    
+    setCategories(categories.map(c => {
+      if (c.id === activeCategory) {
+        return {
+          ...c,
+          services: c.services.map(s => {
+            if (s.id === targetServiceId) {
+              return {
+                ...s,
+                requiredDocuments: [...(s.requiredDocuments || []), { id: `rd_${Date.now()}`, ...docForm }]
+              };
+            }
+            return s;
+          })
+        };
+      }
+      return c;
+    }));
+
+    setIsDocModalOpen(false);
+    setTargetServiceId(null);
+    setDocForm({
+      name: '',
+      description: '',
+      isRequired: true,
+      allowedFileTypes: ['pdf'],
+      maxFileSize: 25,
+      processingRequired: true
+    });
+  };
+
   const filteredServices = selectedCat?.services.filter(s => 
     s.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -132,7 +201,7 @@ export const ServiceMasterView: React.FC = () => {
           </div>
           <button 
             onClick={() => setIsCatModalOpen(true)}
-            className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-slate-800 transition-all shadow-md shadow-slate-900/10"
+            className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20"
           >
             <Plus size={18} />
             New Category
@@ -245,20 +314,154 @@ export const ServiceMasterView: React.FC = () => {
                         </button>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {service.parameters.map(param => (
-                          <div key={param.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 size={16} className={param.isRequired ? "text-blue-500" : "text-slate-300"} />
-                              <span className="text-sm font-medium text-slate-700">{param.name}</span>
+                      <div className="space-y-3">
+                        {service.parameters.map(param => {
+                          const activeTemplates = (param.taskTemplates || []).filter(t => t.active !== false);
+                          const inactiveTemplates = (param.taskTemplates || []).filter(t => t.active === false);
+                          return (
+                          <div key={param.id} className="rounded-xl bg-slate-50 border border-slate-100 overflow-hidden">
+                            {/* Param header */}
+                            <div className="flex items-center justify-between p-3">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 size={16} className={param.isRequired ? "text-blue-500" : "text-slate-300"} />
+                                <span className="text-sm font-medium text-slate-700">{param.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 bg-white border border-slate-200 rounded text-slate-500">
+                                  {param.dataType}
+                                </span>
+                                {canManageTemplates && (
+                                  <button
+                                    onClick={() => openAddTemplate(service.id, param.id, param.name)}
+                                    className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded transition-colors"
+                                  >
+                                    <Plus size={12} /> Task Template
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 bg-white border border-slate-200 rounded text-slate-500">
-                              {param.dataType}
-                            </span>
+
+                            {/* Task Templates sub-section */}
+                            {(activeTemplates.length > 0 || inactiveTemplates.length > 0) && (
+                              <div className="border-t border-slate-100 bg-white px-3 pb-3 pt-2">
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                                  <FileText size={10} /> Task Templates
+                                  <span className="ml-1 bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full">{activeTemplates.length} active</span>
+                                  {inactiveTemplates.length > 0 && (
+                                    <span className="bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full">{inactiveTemplates.length} inactive</span>
+                                  )}
+                                </div>
+                                <div className="space-y-2">
+                                  {(param.taskTemplates || []).map(tmpl => (
+                                    <div
+                                      key={tmpl.id}
+                                      className={`flex items-start justify-between gap-2 rounded-lg p-2 ${
+                                        tmpl.active !== false
+                                          ? 'bg-indigo-50 border border-indigo-100'
+                                          : 'bg-slate-50 border border-slate-100 opacity-60'
+                                      }`}
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-xs font-semibold text-slate-800 truncate">{tmpl.name}</span>
+                                          <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                            tmpl.priority === 'URGENT' ? 'bg-red-100 text-red-600' :
+                                            tmpl.priority === 'HIGH'   ? 'bg-orange-100 text-orange-600' :
+                                            tmpl.priority === 'MEDIUM' ? 'bg-amber-100 text-amber-600' :
+                                            'bg-green-100 text-green-600'
+                                          }`}>{tmpl.priority}</span>
+                                          <span className="text-[9px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{tmpl.frequency}</span>
+                                          {tmpl.estimatedHours > 0 && (
+                                            <span className="text-[9px] text-slate-400">{tmpl.estimatedHours}h</span>
+                                          )}
+                                        </div>
+                                        <div className="text-[10px] text-slate-500 mt-0.5">
+                                          Due: <span className="text-slate-700">{tmpl.dueDateRule}</span>
+                                          {tmpl.checklist && tmpl.checklist.length > 0 && (
+                                            <span className="ml-2">· {tmpl.checklist.length} checklist items</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {canManageTemplates && (
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            onClick={() => openEditTemplate(service.id, param.id, param.name, tmpl)}
+                                            title="Edit template"
+                                            className="p-1 rounded hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 transition-colors"
+                                          >
+                                            <Edit2 size={12} />
+                                          </button>
+                                          <button
+                                            onClick={() => {
+                                              if (confirm(`${tmpl.active !== false ? 'Deactivate' : 'This template is already inactive.'} "${tmpl.name}"?`)) {
+                                                if (tmpl.active !== false) deleteTaskTemplate(service.id, param.id, tmpl.id);
+                                              }
+                                            }}
+                                            title={tmpl.active !== false ? 'Deactivate template' : 'Already inactive'}
+                                            className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-colors"
+                                          >
+                                            {tmpl.active !== false ? <ToggleRight size={12} /> : <ToggleLeft size={12} />}
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Required Documents Section */}
+                    <div className="mt-6 pt-5 border-t border-slate-100">
+                      <div className="flex items-center justify-between mb-3">
+                        <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                          <Settings size={14} />
+                          Required Documents
+                        </h5>
+                        <button 
+                          onClick={() => {
+                            setTargetServiceId(service.id);
+                            setIsDocModalOpen(true);
+                          }}
+                          className="text-xs font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                        >
+                          <Plus size={14} /> Add Document
+                        </button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {service.requiredDocuments?.map(doc => (
+                          <div key={doc.id} className="flex flex-col justify-center p-3 rounded-xl bg-slate-50 border border-slate-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 size={16} className={doc.isRequired ? "text-emerald-500" : "text-slate-300"} />
+                                <span className="text-sm font-medium text-slate-700">{doc.name}</span>
+                              </div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 bg-white border border-slate-200 rounded text-slate-500">
+                                {doc.maxFileSize}MB max
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {doc.allowedFileTypes.map(t => (
+                                <span key={t} className="text-[9px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
+                                  {t}
+                                </span>
+                              ))}
+                              {doc.processingRequired && (
+                                <span className="text-[9px] font-bold uppercase bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded ml-auto">
+                                  Processing Required
+                                </span>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
                     </div>
+
                   </div>
                 ))}
                 
@@ -421,6 +624,113 @@ export const ServiceMasterView: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Document Modal */}
+      {isDocModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900">Add Document Requirement</h3>
+              <button onClick={() => setIsDocModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Document Name</label>
+                <input 
+                  type="text" 
+                  value={docForm.name} 
+                  onChange={e => setDocForm({...docForm, name: e.target.value})} 
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                  placeholder="e.g. Trial Balance" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Description (Optional)</label>
+                <input 
+                  type="text" 
+                  value={docForm.description} 
+                  onChange={e => setDocForm({...docForm, description: e.target.value})} 
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                  placeholder="e.g. FY 2023-2024" 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Max File Size (MB)</label>
+                  <input 
+                    type="number" 
+                    value={docForm.maxFileSize} 
+                    onChange={e => setDocForm({...docForm, maxFileSize: parseInt(e.target.value) || 25})} 
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Document Processing</label>
+                  <select 
+                    value={docForm.processingRequired ? "YES" : "NO"}
+                    onChange={e => setDocForm({...docForm, processingRequired: e.target.value === "YES"})}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                  >
+                    <option value="YES">Required</option>
+                    <option value="NO">Not Required</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Allowed File Types</label>
+                <div className="flex flex-wrap gap-2">
+                  {['pdf', 'xlsx', 'xls', 'csv'].map(type => (
+                    <label key={type} className="flex items-center gap-1.5 cursor-pointer bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
+                      <input 
+                        type="checkbox" 
+                        checked={docForm.allowedFileTypes.includes(type)}
+                        onChange={e => {
+                          if (e.target.checked) {
+                            setDocForm({...docForm, allowedFileTypes: [...docForm.allowedFileTypes, type]});
+                          } else {
+                            setDocForm({...docForm, allowedFileTypes: docForm.allowedFileTypes.filter(t => t !== type)});
+                          }
+                        }}
+                        className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="text-xs font-bold uppercase text-slate-600">{type}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer mt-2">
+                <input 
+                  type="checkbox" 
+                  checked={docForm.isRequired}
+                  onChange={e => setDocForm({...docForm, isRequired: e.target.checked})}
+                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                <span className="text-sm text-slate-700">Required Document</span>
+              </label>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button onClick={() => setIsDocModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                <button onClick={handleSaveDocReq} className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">
+                  Save Document
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Template Modal */}
+      <TaskTemplateModal
+        isOpen={templateModalOpen}
+        onClose={() => setTemplateModalOpen(false)}
+        serviceId={templateModalServiceId}
+        parameterId={templateModalParamId}
+        parameterName={templateModalParamName}
+        existingTemplate={templateModalExisting}
+      />
     </div>
   );
 };

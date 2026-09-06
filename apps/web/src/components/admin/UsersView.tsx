@@ -1,11 +1,26 @@
-import React, { useState } from 'react';
-import { useDashboardStore } from '../../store/dashboardStore';
-import { Plus, Search, ShieldAlert, UserCheck, Shield, MoreVertical, X } from 'lucide-react';
+'use client';
 
-export const UsersView = () => {
+import React, { useState, useEffect } from 'react';
+import { useDashboardStore } from '../../store/dashboardStore';
+import { Plus, Search, ShieldAlert, UserCheck, Shield, MoreVertical, X, Zap, Sparkles, Lock } from 'lucide-react';
+import { AutomationDashboardView } from './AutomationDashboardView';
+import { AiDashboardView } from './AiDashboardView';
+
+interface UsersViewProps {
+  initialSubTab?: 'users' | 'automation' | 'ai_usage';
+}
+
+export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' }) => {
   const { users, addUser, updateUser, deleteUser, setGlobalSuccessMsg, currentUser } = useDashboardStore();
+  const [activeSubTab, setActiveSubTab] = useState<'users' | 'automation' | 'ai_usage'>(initialSubTab);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
 
   // Modal State
   const [fullName, setFullName] = useState('');
@@ -40,7 +55,6 @@ export const UsersView = () => {
     setIsLoading(true);
 
     try {
-      // Simulate API call and directly add to state for UI demo
       const uid = `user-${Date.now()}`;
 
       addUser({
@@ -80,186 +94,225 @@ export const UsersView = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header & Metric Cards */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-on-surface font-outfit">User Management</h1>
-          <p className="text-sm text-outline mt-1">Provision credentials, manage access, and elevate roles.</p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="btn-primary flex items-center gap-2"
+    <div className="space-y-6 font-outfit text-slate-800 animate-in fade-in duration-300">
+      
+      {/* Access Control Top Navigation Pills */}
+      <div className="bg-white border border-slate-200/80 p-2 rounded-2xl shadow-sm flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setActiveSubTab('users')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeSubTab === 'users' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+          }`}
         >
-          <Plus size={18} />
-          Add New User
+          <Lock size={16} /> User Access & Permissions
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('automation')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeSubTab === 'automation' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Zap size={16} className="text-amber-400" /> Automation & Workflows
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('ai_usage')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            activeSubTab === 'ai_usage' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Sparkles size={16} className="text-blue-300" /> AI Usage & Config
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="premium-card p-5 bg-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <UserCheck size={24} />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-outline uppercase tracking-wide">Total Active Users</p>
-            <p className="text-2xl font-black text-on-surface font-outfit">{activeUsers.length}</p>
-          </div>
-        </div>
-        <div className="premium-card p-5 bg-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
-            <Shield size={24} />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-outline uppercase tracking-wide">Admins</p>
-            <p className="text-2xl font-black text-on-surface font-outfit">{admins.length}</p>
-          </div>
-        </div>
-        <div className="premium-card p-5 bg-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
-            <ShieldAlert size={24} />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-outline uppercase tracking-wide">Employees</p>
-            <p className="text-2xl font-black text-on-surface font-outfit">{employees.length}</p>
-          </div>
-        </div>
-        <div className="premium-card p-5 bg-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
-            <UserCheck size={24} />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-outline uppercase tracking-wide">Clients</p>
-            <p className="text-2xl font-black text-on-surface font-outfit">{clients.length}</p>
-          </div>
-        </div>
-      </div>
+      {/* RENDER AUTOMATION OR AI USAGE OR USER ACCESS */}
+      {activeSubTab === 'automation' && <AutomationDashboardView />}
+      {activeSubTab === 'ai_usage' && <AiDashboardView />}
 
-      {/* Users Table */}
-      <div className="premium-card bg-white overflow-hidden">
-        <div className="p-4 border-b border-outline-variant/30 flex justify-between items-center bg-slate-50/50">
-          <h2 className="font-bold text-on-surface font-outfit">Registered Users</h2>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-outline w-4 h-4" />
-            <input 
-              type="text" 
-              placeholder="Search users..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-1.5 border border-outline-variant rounded-full text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
+      {activeSubTab === 'users' && (
+        <div className="space-y-6">
+          {/* Header & Metric Cards */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-on-surface font-outfit">Access Control & User Provisioning</h1>
+              <p className="text-sm text-outline mt-1">Provision credentials, manage access permissions, and elevate admin roles.</p>
+            </div>
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Plus size={18} />
+              Add New User
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="premium-card p-5 bg-white flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <UserCheck size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-outline uppercase tracking-wide">Total Active Users</p>
+                <p className="text-2xl font-black text-on-surface font-outfit">{activeUsers.length}</p>
+              </div>
+            </div>
+            <div className="premium-card p-5 bg-white flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
+                <Shield size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-outline uppercase tracking-wide">Admins</p>
+                <p className="text-2xl font-black text-on-surface font-outfit">{admins.length}</p>
+              </div>
+            </div>
+            <div className="premium-card p-5 bg-white flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
+                <ShieldAlert size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-outline uppercase tracking-wide">Employees</p>
+                <p className="text-2xl font-black text-on-surface font-outfit">{employees.length}</p>
+              </div>
+            </div>
+            <div className="premium-card p-5 bg-white flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
+                <UserCheck size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-outline uppercase tracking-wide">Clients</p>
+                <p className="text-2xl font-black text-on-surface font-outfit">{clients.length}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Users Table */}
+          <div className="premium-card bg-white overflow-hidden">
+            <div className="p-4 border-b border-outline-variant/30 flex justify-between items-center bg-slate-50/50">
+              <h2 className="font-bold text-on-surface font-outfit">Registered System Users</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-outline w-4 h-4" />
+                <input 
+                  type="text" 
+                  placeholder="Search users..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-4 py-1.5 border border-outline-variant rounded-full text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-outline uppercase bg-slate-50 border-b border-outline-variant/30">
+                  <tr>
+                    <th className="px-6 py-4 font-bold tracking-wider">User / Email</th>
+                    <th className="px-6 py-4 font-bold tracking-wider">Current Role</th>
+                    <th className="px-6 py-4 font-bold tracking-wider">Linked Entity / Dept</th>
+                    <th className="px-6 py-4 font-bold tracking-wider">Status</th>
+                    <th className="px-6 py-4 font-bold tracking-wider text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/20">
+                  {filteredUsers.map((user) => (
+                    <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                            {user.name.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-on-surface">{user.name}</div>
+                            <div className="text-xs text-outline">{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getRoleBadgeColor(user.role || 'PENDING')}`}>
+                          {user.role || 'PENDING'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-on-surface-variant font-medium">
+                          {user.linkedEntity || user.department || '-'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${user.status === 'SUSPENDED' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                          {user.status || 'ACTIVE'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="relative group inline-block text-left">
+                          <button className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
+                            <MoreVertical size={16} />
+                          </button>
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-outline-variant/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 py-1">
+                            {user.role !== 'SUPER_ADMIN' && (
+                              <button 
+                                onClick={() => {
+                                  updateUser(user.id!, { role: 'SUPER_ADMIN' });
+                                  setGlobalSuccessMsg(`${user.name} elevated to Admin.`);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium"
+                              >
+                                Make Admin
+                              </button>
+                            )}
+                            {user.role === 'SUPER_ADMIN' && user.id !== currentUser?.id && (
+                              <button 
+                                onClick={() => {
+                                  updateUser(user.id!, { role: 'EMPLOYEE' });
+                                  setGlobalSuccessMsg(`${user.name} demoted to Employee.`);
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium"
+                              >
+                                Demote to Employee
+                              </button>
+                            )}
+                            <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">
+                              Reset Password
+                            </button>
+                            <div className="h-px bg-slate-100 my-1"></div>
+                            <button 
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to suspend/remove ${user.name}?`)) {
+                                  updateUser(user.id!, { status: 'SUSPENDED' });
+                                  setGlobalSuccessMsg(`${user.name} access revoked.`);
+                                }
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium"
+                            >
+                              Revoke Access
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (window.confirm(`Are you sure you want to permanently delete ${user.name}? This action cannot be undone.`)) {
+                                  deleteUser(user.id!);
+                                  setGlobalSuccessMsg(`${user.name} deleted permanently.`);
+                                }
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100 font-bold"
+                            >
+                              Delete Permanently
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredUsers.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-outline">
+                        No users found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-outline uppercase bg-slate-50 border-b border-outline-variant/30">
-              <tr>
-                <th className="px-6 py-4 font-bold tracking-wider">User / Email</th>
-                <th className="px-6 py-4 font-bold tracking-wider">Current Role</th>
-                <th className="px-6 py-4 font-bold tracking-wider">Linked Entity / Dept</th>
-                <th className="px-6 py-4 font-bold tracking-wider">Status</th>
-                <th className="px-6 py-4 font-bold tracking-wider text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/20">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                        {user.name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="font-bold text-on-surface">{user.name}</div>
-                        <div className="text-xs text-outline">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getRoleBadgeColor(user.role || 'PENDING')}`}>
-                      {user.role || 'PENDING'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-on-surface-variant font-medium">
-                      {user.linkedEntity || user.department || '-'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${user.status === 'SUSPENDED' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                      {user.status || 'ACTIVE'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="relative group inline-block text-left">
-                      <button className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
-                        <MoreVertical size={16} />
-                      </button>
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-outline-variant/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 py-1">
-                        {user.role !== 'SUPER_ADMIN' && (
-                          <button 
-                            onClick={() => {
-                              updateUser(user.id!, { role: 'SUPER_ADMIN' });
-                              setGlobalSuccessMsg(`${user.name} elevated to Admin.`);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium"
-                          >
-                            Make Admin
-                          </button>
-                        )}
-                        {user.role === 'SUPER_ADMIN' && user.id !== currentUser?.id && (
-                          <button 
-                            onClick={() => {
-                              updateUser(user.id!, { role: 'EMPLOYEE' });
-                              setGlobalSuccessMsg(`${user.name} demoted to Employee.`);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium"
-                          >
-                            Demote to Employee
-                          </button>
-                        )}
-                        <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">
-                          Reset Password
-                        </button>
-                        <div className="h-px bg-slate-100 my-1"></div>
-                        <button 
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to suspend/remove ${user.name}?`)) {
-                              updateUser(user.id!, { status: 'SUSPENDED' });
-                              setGlobalSuccessMsg(`${user.name} access revoked.`);
-                            }
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium"
-                        >
-                          Revoke Access
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to permanently delete ${user.name}? This action cannot be undone.`)) {
-                              deleteUser(user.id!);
-                              setGlobalSuccessMsg(`${user.name} deleted permanently.`);
-                            }
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100 font-bold"
-                        >
-                          Delete Permanently
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-outline">
-                    No users found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
 
       {/* Provision User Modal */}
       {isModalOpen && (
