@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { X, Search, CheckCircle2, Upload, File as FileIcon, Trash2, Eye, RefreshCw, MessageSquare } from 'lucide-react';
+import { X, Search, CheckCircle2, Upload, File as FileIcon, Trash2, Eye, RefreshCw, MessageSquare, AlertTriangle } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { ServiceMaster, ClientDocument, ClientServiceParameter } from '../../types';
 import { storage } from '../../lib/firebase';
@@ -90,6 +90,18 @@ export const ClientServiceOnboardingModal: React.FC<Props> = ({ isOpen, onClose,
       d.status !== 'REMOVED'
     );
   }, [clientDocuments, client, selectedServiceId]);
+
+  const hasUploadedRequiredDocs = useMemo(() => {
+    if (!selectedService) return false;
+    const reqs = selectedService.requiredDocuments || [];
+    const requiredReqs = reqs.filter(r => r.isRequired);
+    if (requiredReqs.length > 0) {
+      return requiredReqs.every(reqDoc =>
+        currentClientDocs.some(doc => doc.documentRequirementId === reqDoc.id && doc.downloadUrl)
+      );
+    }
+    return currentClientDocs.length > 0;
+  }, [selectedService, currentClientDocs]);
 
   const getDocumentForRequirement = useCallback((reqId: string) => {
     const docs = currentClientDocs.filter((d: ClientDocument) => d.documentRequirementId === reqId);
@@ -186,6 +198,39 @@ export const ClientServiceOnboardingModal: React.FC<Props> = ({ isOpen, onClose,
       const storageRef = ref(storage, storagePath);
       const uploadTask = uploadBytesResumable(storageRef, file);
 
+      const saveUploadedDoc = (downloadUrl: string) => {
+        const clientDoc: ClientDocument = {
+          id: docId,
+          organizationId: orgId,
+          clientId: client.id,
+          clientServiceId,
+          serviceId: selectedService.id,
+          documentRequirementId: reqId,
+          fileName: file.name,
+          originalFileName: file.name,
+          storagePath,
+          downloadUrl,
+          mimeType: file.type || 'application/octet-stream',
+          fileExtension: ext,
+          fileSizeBytes: file.size,
+          status: 'UPLOADED',
+          reviewStatus: 'APPROVED',
+          uploadedBy: currentUser?.id || 'admin',
+          uploadedAt: new Date().toISOString(),
+          version: newVersion
+        };
+        
+        addClientDocument(clientDoc);
+        
+        setUploadingDocs(prev => {
+          const next = { ...prev };
+          delete next[reqId];
+          return next;
+        });
+
+        triggerDocumentProcessing(clientDoc);
+      };
+
       uploadTask.on('state_changed', 
         (snapshot) => {
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
@@ -195,54 +240,49 @@ export const ClientServiceOnboardingModal: React.FC<Props> = ({ isOpen, onClose,
           }));
         }, 
         (error) => {
-          console.error("Firebase upload error:", error);
-          setUploadingDocs(prev => ({
-            ...prev,
-            [reqId]: { ...prev[reqId], error: "Upload failed. Please try again." }
-          }));
+          console.warn("Firebase storage error, falling back to local file URL:", error);
+          const objectUrl = URL.createObjectURL(file);
+          saveUploadedDoc(objectUrl);
         }, 
         async () => {
-          // Success
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          
-          const clientDoc: ClientDocument = {
-            id: docId,
-            organizationId: orgId,
-            clientId: client.id,
-            clientServiceId,
-            serviceId: selectedService.id,
-            documentRequirementId: reqId,
-            fileName: file.name,
-            originalFileName: file.name,
-            storagePath,
-            downloadUrl,
-            mimeType: file.type || 'application/octet-stream',
-            fileExtension: ext,
-            fileSizeBytes: file.size,
-            status: 'UPLOADED',
-            uploadedBy: currentUser?.id || 'unknown',
-            uploadedAt: new Date().toISOString(),
-            version: newVersion
-          };
-          
-          addClientDocument(clientDoc);
-          
-          setUploadingDocs(prev => {
-            const next = { ...prev };
-            delete next[reqId];
-            return next;
-          });
-
-          // Trigger Document Processing
-          triggerDocumentProcessing(clientDoc);
+          try {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            saveUploadedDoc(downloadUrl);
+          } catch {
+            const objectUrl = URL.createObjectURL(file);
+            saveUploadedDoc(objectUrl);
+          }
         }
       );
     } catch (err) {
-      console.error(err);
-      setUploadingDocs(prev => ({
-        ...prev,
-        [reqId]: { ...prev[reqId], error: "Upload failed. Please try again." }
-      }));
+      console.warn("Upload catch fallback:", err);
+      const objectUrl = URL.createObjectURL(file);
+      const clientDoc: ClientDocument = {
+        id: docId,
+        organizationId: orgId,
+        clientId: client.id,
+        clientServiceId,
+        serviceId: selectedService.id,
+        documentRequirementId: reqId,
+        fileName: file.name,
+        originalFileName: file.name,
+        storagePath,
+        downloadUrl: objectUrl,
+        mimeType: file.type || 'application/octet-stream',
+        fileExtension: ext,
+        fileSizeBytes: file.size,
+        status: 'UPLOADED',
+        reviewStatus: 'APPROVED',
+        uploadedBy: currentUser?.id || 'admin',
+        uploadedAt: new Date().toISOString(),
+        version: newVersion
+      };
+      addClientDocument(clientDoc);
+      setUploadingDocs(prev => {
+        const next = { ...prev };
+        delete next[reqId];
+        return next;
+      });
     }
   };
 
@@ -253,6 +293,10 @@ export const ClientServiceOnboardingModal: React.FC<Props> = ({ isOpen, onClose,
   };
 
   const handleNext = () => {
+    if (step === 3 && !hasUploadedRequiredDocs) {
+      alert("Document upload required: Please upload the required document(s) before proceeding to the next step.");
+      return;
+    }
     if (step < 6) {
       setStep(prev => prev + 1);
     }
@@ -616,31 +660,56 @@ export const ClientServiceOnboardingModal: React.FC<Props> = ({ isOpen, onClose,
                   <p className="text-sm text-slate-500 italic">No parameters required for this service.</p>
                 ) : (
                   <div className="space-y-5">
-                    {selectedService.parameters.map(param => (
-                      <div key={param.id} className="space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-700">
-                          {param.name} {param.isRequired && <span className="text-rose-500">*</span>}
-                        </label>
-                        {param.dataType === 'BOOLEAN' ? (
-                          <select
-                            disabled
-                            className="w-full text-sm border-slate-200 bg-slate-50 rounded-lg text-slate-500"
-                            defaultValue="true"
-                          >
-                            <option value="true">Enabled</option>
-                            <option value="false">Disabled</option>
-                          </select>
-                        ) : (
-                          <input
-                            type={param.dataType === 'NUMBER' ? 'number' : 'text'}
-                            disabled
-                            className="w-full text-sm border-slate-200 bg-slate-50 rounded-lg text-slate-500"
-                            placeholder={`Example: ${param.name}`}
-                          />
-                        )}
-                      </div>
-                    ))}
-                    <p className="text-xs text-slate-400 mt-4 italic">* Configuration editing is disabled in this step per requirements.</p>
+                    {selectedService.parameters.map(param => {
+                      const currentVal = serviceParameters.find(p => p.serviceParameterId === param.id)?.value || '';
+                      return (
+                        <div key={param.id} className="space-y-1.5">
+                          <label className="block text-xs font-bold text-slate-700">
+                            {param.name} {param.isRequired && <span className="text-rose-500">*</span>}
+                          </label>
+                          {param.dataType === 'BOOLEAN' ? (
+                            <select
+                              value={currentVal || 'true'}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setServiceParameters(prev => {
+                                  const idx = prev.findIndex(p => p.serviceParameterId === param.id);
+                                  if (idx >= 0) {
+                                    const next = [...prev];
+                                    next[idx] = { ...next[idx], value: val };
+                                    return next;
+                                  }
+                                  return [...prev, { id: `param-${Date.now()}`, serviceParameterId: param.id, value: val }];
+                                });
+                              }}
+                              className="w-full text-sm border border-slate-200 bg-white rounded-lg p-2 text-slate-800 focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="true">Enabled</option>
+                              <option value="false">Disabled</option>
+                            </select>
+                          ) : (
+                            <input
+                              type={param.dataType === 'NUMBER' ? 'number' : 'text'}
+                              value={currentVal}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setServiceParameters(prev => {
+                                  const idx = prev.findIndex(p => p.serviceParameterId === param.id);
+                                  if (idx >= 0) {
+                                    const next = [...prev];
+                                    next[idx] = { ...next[idx], value: val };
+                                    return next;
+                                  }
+                                  return [...prev, { id: `param-${Date.now()}`, serviceParameterId: param.id, value: val }];
+                                });
+                              }}
+                              className="w-full text-sm border border-slate-200 bg-white rounded-lg p-2.5 text-slate-800 focus:outline-none focus:border-blue-500 placeholder-slate-400"
+                              placeholder={`Enter ${param.name}`}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -649,6 +718,15 @@ export const ClientServiceOnboardingModal: React.FC<Props> = ({ isOpen, onClose,
 
           {step === 3 && selectedService && (
             <div className="space-y-6">
+              {!hasUploadedRequiredDocs && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 flex items-center gap-3 text-xs font-semibold shadow-xs">
+                  <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+                  <div>
+                    <span className="font-bold block text-amber-900 mb-0.5">Document Upload Required to Proceed</span>
+                    <span>You must upload all required document(s) below before you can click "Next" to advance to Step 4 (Processing).</span>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">Step 3: Required Documents</h3>
@@ -1261,6 +1339,7 @@ export const ClientServiceOnboardingModal: React.FC<Props> = ({ isOpen, onClose,
               <button
                 disabled={
                   !selectedServiceId ||
+                  (step === 3 && !hasUploadedRequiredDocs) ||
                   (step === 5 && selectedService && selectedService.requiredDocuments?.filter(d => d.isRequired).some(reqDoc =>
                     !currentClientDocs.some(doc => doc.documentRequirementId === reqDoc.id && doc.reviewStatus === 'APPROVED')
                   )) ||

@@ -16,11 +16,13 @@ import {
   Clock,
   FileCheck,
   ChevronRight,
+  ChevronLeft,
+  ArrowLeft,
+  ArrowRight,
   TrendingUp,
   User,
   Building2,
   Star,
-  ArrowRight,
   Edit3,
   CheckCheck,
   AlertTriangle,
@@ -76,6 +78,14 @@ const PIPELINE_STAGES: { label: string; status: LeadStatus }[] = [
   { label: 'Agreement',        status: 'NEGOTIATION' },
   { label: 'Converted',        status: 'CONVERTED' },
 ];
+
+const STAGE_ORDER: LeadStatus[] = ['NEW', 'CONTACTED', 'PROPOSAL_SENT', 'NEGOTIATION', 'CONVERTED'];
+
+const getStageIndex = (status: LeadStatus): number => {
+  if (status === 'FOLLOW_UP' || status === 'MEETING_SCHEDULED') return 1;
+  const idx = STAGE_ORDER.indexOf(status);
+  return idx >= 0 ? idx : 0;
+};
 
 const INDUSTRIES = [
   'Personal Accounting & Taxes',
@@ -225,6 +235,53 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
+  const getNextStepLabel = (status: LeadStatus) => {
+    const idx = getStageIndex(status);
+    if (idx === 0) return 'Next: Log Follow-up';
+    if (idx === 1) return 'Next: Generate Quotation';
+    if (idx === 2) return 'Next: Draft Agreement';
+    if (idx === 3) return 'Next: Convert to Client';
+    return 'Lead Converted to Client';
+  };
+
+  const handleStepForward = (lead: Lead) => {
+    setSelectedLead(lead);
+    const currentIdx = getStageIndex(lead.status);
+
+    if (currentIdx === 0) {
+      // Step 1 (New) -> Launch Log Follow-up workflow modal
+      setShowFollowUpModal(true);
+    } else if (currentIdx === 1) {
+      // Step 2 (Contacted) -> Launch Generate Quotation workflow modal
+      setShowQuotationModal(true);
+    } else if (currentIdx === 2) {
+      // Step 3 (Quotation) -> Launch Draft Agreement workflow modal
+      const validQuote = quotations.find(
+        (q) => q.leadId === lead.id && ['APPROVED', 'CONVERTED', 'SENT'].includes(q.status)
+      );
+      if (validQuote) {
+        setShowLetterModal(true);
+      } else {
+        setShowQuotationModal(true);
+        showSuccess('Please generate a quotation for this lead first.');
+      }
+    } else if (currentIdx === 3) {
+      // Step 4 (Agreement) -> Launch Convert to Active Client confirmation modal
+      const validQuote = quotations.find(
+        (q) => q.leadId === lead.id && ['APPROVED', 'CONVERTED', 'SENT'].includes(q.status)
+      );
+      setShowConvertConfirm({
+        leadId: lead.id,
+        quotationId: validQuote?.id || '',
+      });
+    } else if (currentIdx < STAGE_ORDER.length - 1) {
+      const nextStatus = STAGE_ORDER[currentIdx + 1];
+      updateLead(lead.id, { status: nextStatus });
+      setSelectedLead((prev) => (prev ? { ...prev, status: nextStatus } : null));
+      showSuccess(`Advanced stage to: ${STATUS_META[nextStatus].label}`);
+    }
+  };
+
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     addLead({ ...newLeadForm, status: 'NEW', expectedRevenue: Number(newLeadForm.expectedRevenue) });
@@ -330,9 +387,10 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
       nextFollowUpDate: followUpForm.nextFollowUpDate || undefined,
       reminderSent: false, status: 'PENDING',
     });
-    // Auto-advance status to FOLLOW_UP
+    // Auto-advance status to CONTACTED
     if (selectedLead.status === 'NEW' || selectedLead.status === 'CONTACTED') {
-      updateLead(selectedLead.id, { status: 'FOLLOW_UP' });
+      updateLead(selectedLead.id, { status: 'CONTACTED' });
+      setSelectedLead((prev) => (prev ? { ...prev, status: 'CONTACTED' } : null));
     }
     setShowFollowUpModal(false);
     setFollowUpForm({ date: new Date().toISOString().split('T')[0], time: '12:00', mode: 'CALL', notes: '', nextFollowUpDate: '' });
@@ -353,6 +411,9 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
       status: 'SENT', terms: quotationTerms,
     });
     updateLead(selectedLead.id, { status: 'PROPOSAL_SENT' });
+    if (selectedLead) {
+      setSelectedLead((prev) => (prev ? { ...prev, status: 'PROPOSAL_SENT' } : null));
+    }
     setShowQuotationModal(false);
     setQuotationServices([{ name: 'Virtual CFO Advisory Services', price: 15000 }]);
     setQuotationDiscount(0);
@@ -382,6 +443,9 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
       digitalSignature: `Digitally signed by ${selectedLead.contactPerson} & ${currentUser?.name || 'Partner'}. IP Verified.`,
     });
     updateLead(selectedLead.id, { status: 'NEGOTIATION' });
+    if (selectedLead) {
+      setSelectedLead((prev) => (prev ? { ...prev, status: 'NEGOTIATION' } : null));
+    }
     setShowLetterModal(false);
     setCrmSubTab('letters');
     showSuccess('Engagement letter drafted!');
@@ -390,6 +454,9 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
   const handleConvertToClient = () => {
     if (!showConvertConfirm) return;
     convertLeadToClient(showConvertConfirm.leadId, showConvertConfirm.quotationId);
+    if (selectedLead?.id === showConvertConfirm.leadId) {
+      setSelectedLead((prev) => (prev ? { ...prev, status: 'CONVERTED' } : null));
+    }
     setShowConvertConfirm(null);
     setCrmSubTab('converted');
     showSuccess('Lead successfully converted to Client!');
@@ -554,15 +621,9 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                             </span>
                           </td>
                           <td className="p-3">
-                            <select
-                              value={lead.status}
-                              onChange={(e) => updateLead(lead.id, { status: e.target.value as LeadStatus })}
-                              className={`px-2 py-1 rounded-lg text-[11px] font-semibold border outline-none cursor-pointer ${sm.bg} ${sm.color} ${sm.border}`}
-                            >
-                              {ALLOWED_STATUS_KEYS.map((k) => (
-                                <option key={k} value={k}>{STATUS_META[k].label}</option>
-                              ))}
-                            </select>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border ${sm.bg} ${sm.color} ${sm.border}`}>
+                              {sm.label}
+                            </span>
                           </td>
                           <td className="p-3">
                             <select
@@ -1088,6 +1149,76 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                     <div className="col-span-2">
                       <span className="text-[10px] text-slate-400 block">Remarks</span>
                       <p className="text-slate-600 mt-0.5">{selectedLead.remarks || 'No remarks.'}</p>
+                    </div>
+                  </div>
+
+                  {/* ── STAGE LIFECYCLE STEPPER & GO BACK / ADVANCE CONTROLS ── */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pipeline Stage Lifecycle</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_META[selectedLead.status].bg} ${STATUS_META[selectedLead.status].color} ${STATUS_META[selectedLead.status].border}`}>
+                        {STATUS_META[selectedLead.status].label}
+                      </span>
+                    </div>
+
+                    {/* Stepper Progress Bar */}
+                    <div className="relative py-1">
+                      <div className="absolute top-1/2 left-3 right-3 h-1 bg-slate-200 -translate-y-1/2 z-0" />
+                      <div
+                        className="absolute top-1/2 left-3 h-1 bg-blue-600 -translate-y-1/2 z-0 transition-all duration-300"
+                        style={{ width: `calc(${(getStageIndex(selectedLead.status) / (STAGE_ORDER.length - 1)) * 100}% - 24px)` }}
+                      />
+
+                      <div className="flex items-center justify-between relative z-10">
+                        {STAGE_ORDER.map((stg, i) => {
+                          const isCompleted = getStageIndex(selectedLead.status) > i;
+                          const isCurrent = getStageIndex(selectedLead.status) === i;
+                          return (
+                            <div
+                              key={stg}
+                              className={`w-7 h-7 rounded-full text-[10px] font-bold flex items-center justify-center border-2 transition-all ${
+                                isCurrent
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-4 ring-blue-100 scale-110'
+                                  : isCompleted
+                                  ? 'bg-blue-500 text-white border-blue-500'
+                                  : 'bg-white text-slate-400 border-slate-300'
+                              }`}
+                              title={`Stage: ${STATUS_META[stg].label}`}
+                            >
+                              {isCompleted ? '✓' : i + 1}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Stage Labels Below Stepper */}
+                    <div className="grid grid-cols-5 text-center text-[9px] font-semibold text-slate-400">
+                      {STAGE_ORDER.map((stg) => (
+                        <span key={stg} className={selectedLead.status === stg ? 'text-blue-600 font-bold' : ''}>
+                          {STATUS_META[stg].label}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Next Workflow Action Button (Read-only workflow, no manual back/override) */}
+                    <div className="pt-2 border-t border-slate-200/80">
+                      <button
+                        type="button"
+                        onClick={() => handleStepForward(selectedLead)}
+                        disabled={getStageIndex(selectedLead.status) === STAGE_ORDER.length - 1}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-emerald-600 disabled:opacity-90 text-white shadow-md shadow-blue-500/20 transition-all"
+                      >
+                        {getStageIndex(selectedLead.status) === STAGE_ORDER.length - 1 ? (
+                          <>
+                            <CheckCircle2 size={15} /> Lead Converted to Active Client
+                          </>
+                        ) : (
+                          <>
+                            {getNextStepLabel(selectedLead.status)} <ArrowRight size={14} />
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
 

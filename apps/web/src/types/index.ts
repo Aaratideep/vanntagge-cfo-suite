@@ -933,6 +933,8 @@ export interface Invoice {
   companyGstin?: string;
   clientGstin?: string;
   clientPan?: string;
+  placeOfSupply?: string;
+  reverseCharge?: 'Yes' | 'No';
   irn?: string; // Invoice Reference Number (E-invoicing)
   qrCodeUrl?: string;
   stateCode?: string;

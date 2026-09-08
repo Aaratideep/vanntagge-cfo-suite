@@ -73,18 +73,26 @@ export const AICfoAssistantModal: React.FC<AICfoAssistantModalProps> = ({
     }
   };
 
-  const quickPrompts = currentUser.role === 'CLIENT' ? [
-    'What reports were released this month?',
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'CFO' || pageContext === 'ADMIN';
+  const isClient = currentUser?.role === 'CLIENT';
+  const isEmployee = currentUser?.role === 'EMPLOYEE';
+
+  const roleLabel = isSuperAdmin ? 'ADMIN SCOPE' : isClient ? 'CLIENT SCOPE' : 'EMPLOYEE SCOPE';
+
+  const quickPrompts = isClient ? [
+    'What reports were released for my company?',
     'What invoice payments are pending?',
-    'What is our revenue & billing trend?',
-  ] : currentUser.role === 'EMPLOYEE' ? [
-    'What tasks are due today?',
+    'What is my company compliance & task status?',
+  ] : isEmployee ? [
+    'What tasks are assigned to me today?',
     'What is my workload this week?',
     'Are there any pending review corrections?',
   ] : [
+    'What is our current clients list?',
     'What is our total revenue & collection summary?',
     'Which invoices are currently overdue?',
-    'Show overall task completion status',
+    'Who is on our workspace team?',
+    'Show overall compliance & task status',
   ];
 
   return (
@@ -101,7 +109,7 @@ export const AICfoAssistantModal: React.FC<AICfoAssistantModalProps> = ({
               <h3 className="font-extrabold text-base tracking-tight text-white flex items-center gap-2">
                 VANNTAGGE AI CFO Assistant
                 <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] uppercase font-bold border border-blue-400/30">
-                  {pageContext} Scope
+                  {roleLabel}
                 </span>
               </h3>
               <p className="text-xs text-slate-300 font-medium">Verified Database Source Analytics Engine</p>

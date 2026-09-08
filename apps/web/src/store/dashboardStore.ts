@@ -121,6 +121,7 @@ interface DashboardState {
   notifications: Notification[];
   auditLogs: AuditLog[];
   clientDocuments: ClientDocument[];
+  customDataBankDocs: Record<string, Document[]>;
   standaloneInvoices: Invoice[];
   standaloneReceipts: Receipt[];
   leaves: LeaveRequest[];
@@ -229,6 +230,11 @@ interface DashboardState {
   rejectDocument: (id: string, userId: string, reason: string) => void;
   requestReuploadDocument: (id: string, userId: string, reason: string) => void;
   addDocumentReviewComment: (id: string, userId: string, comment: string) => void;
+  // Master Data Bank Repository Management
+  addMasterDataBankDocument: (clientId: string, doc: Omit<Document, 'id' | 'createdAt'>) => void;
+  updateMasterDataBankDocument: (clientId: string, docId: string, updates: Partial<Document>) => void;
+  deleteMasterDataBankDocument: (clientId: string, docId: string) => void;
+  populateInitialDataBankTemplate: (clientId: string, companyName?: string) => void;
   // Task Template Engine (Prompt 10)
   addTaskTemplate: (serviceId: string, parameterId: string, template: Omit<TaskTemplate, 'id' | 'createdAt'>) => void;
   updateTaskTemplate: (serviceId: string, parameterId: string, templateId: string, updates: Partial<TaskTemplate>) => void;
@@ -407,6 +413,7 @@ export const useDashboardStore = create<DashboardState>()(
   notifications: [],
   auditLogs: [],
   clientDocuments: [],
+  customDataBankDocs: {},
   standaloneInvoices: [],
   standaloneReceipts: [],
   billingConfigurations: [],
@@ -500,6 +507,363 @@ export const useDashboardStore = create<DashboardState>()(
     set((state) => ({ clientDocuments: [...state.clientDocuments, doc] }));
     get().addAuditLog('DOCUMENT_UPLOADED', `Document ${doc.fileName} uploaded successfully.`);
     pushRecordToFirebase('clientDocuments', doc.id, doc);
+  },
+
+  addMasterDataBankDocument: (clientId, docData) => {
+    const now = new Date().toISOString();
+    const newDoc: Document = {
+      id: `databank-custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: now,
+      updateFrequency: 'NO',
+      periodicity: 'Not Applicable',
+      uploaderName: 'Client Admin',
+      ...docData,
+      status: docData.status || 'PENDING',
+    };
+
+    set((state) => {
+      const existing = state.customDataBankDocs[clientId] || [];
+      const updatedCustomDocs = {
+        ...state.customDataBankDocs,
+        [clientId]: [newDoc, ...existing],
+      };
+
+      const updatedEngagements = state.engagements.map((e) => {
+        if (e.clientId === clientId || (e.clientCompanyName && e.clientCompanyName.toLowerCase().trim() === clientId.toLowerCase().trim())) {
+          return {
+            ...e,
+            documents: [newDoc, ...(e.documents || [])],
+          };
+        }
+        return e;
+      });
+
+      return {
+        customDataBankDocs: updatedCustomDocs,
+        engagements: updatedEngagements,
+      };
+    });
+
+    get().addAuditLog('DATABANK_ITEM_ADDED', `Added Master Data Bank record "${docData.name}" for client.`);
+    get().setGlobalSuccessMsg(`Successfully added "${docData.name}" to Master Data Bank.`);
+  },
+
+  updateMasterDataBankDocument: (clientId, docId, updates) => {
+    set((state) => {
+      const clientDocs = state.customDataBankDocs[clientId] || [];
+      const updatedClientDocs = clientDocs.map((d) => (d.id === docId ? { ...d, ...updates } : d));
+
+      const updatedEngagements = state.engagements.map((e) => {
+        if (e.clientId === clientId || (e.clientCompanyName && e.clientCompanyName.toLowerCase().trim() === clientId.toLowerCase().trim())) {
+          return {
+            ...e,
+            documents: (e.documents || []).map((d) => (d.id === docId ? { ...d, ...updates } : d)),
+          };
+        }
+        return e;
+      });
+
+      return {
+        customDataBankDocs: {
+          ...state.customDataBankDocs,
+          [clientId]: updatedClientDocs,
+        },
+        engagements: updatedEngagements,
+      };
+    });
+  },
+
+  deleteMasterDataBankDocument: (clientId, docId) => {
+    set((state) => {
+      const clientDocs = state.customDataBankDocs[clientId] || [];
+      const filtered = clientDocs.filter((d) => d.id !== docId);
+
+      const updatedEngagements = state.engagements.map((e) => {
+        if (e.clientId === clientId || (e.clientCompanyName && e.clientCompanyName.toLowerCase().trim() === clientId.toLowerCase().trim())) {
+          return {
+            ...e,
+            documents: (e.documents || []).filter((d) => d.id !== docId),
+          };
+        }
+        return e;
+      });
+
+      return {
+        customDataBankDocs: {
+          ...state.customDataBankDocs,
+          [clientId]: filtered,
+        },
+        engagements: updatedEngagements,
+      };
+    });
+    get().addAuditLog('DATABANK_ITEM_DELETED', `Deleted Data Bank record ${docId}`);
+  },
+
+  populateInitialDataBankTemplate: (clientId, companyName) => {
+    const now = new Date().toISOString();
+    const cName = companyName || 'Client';
+
+    const defaultTemplateItems: Omit<Document, 'id' | 'createdAt'>[] = [
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Entity Registration',
+        name: 'Certificate of Incorporation (COI) & Trade License',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Client Admin',
+        reviewerName: 'CA Audit Lead',
+        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-registration.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Articles & Memorandum',
+        name: 'Articles of Association (AOA) & Memorandum of Association (MOA)',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Subjective Change in org structure',
+        uploaderName: 'Client Admin',
+        reviewerName: 'CA Audit Lead',
+        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-moa-aoa.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Tax Identifiers',
+        name: 'Company PAN Card & TAN Allotment Letter',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Tax Desk',
+        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-pan-tan.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'GST Registrations',
+        name: 'GST Certificates (Operating State Branches)',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Branch Addition',
+        uploaderName: 'Tax Filing Desk',
+        filePath: `/docs/gst-certificates-master.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Entity Certifications',
+        name: 'StartUp India Registration & MSME Udyam Certificate',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Client Admin',
+        filePath: `/docs/msme-startup-cert.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Director KYC',
+        name: 'Director Master KYC (PAN, Aadhaar, DIN & ROC Master Records)',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Executive Team',
+        filePath: `/docs/directors-kyc-master.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Premises KYC',
+        name: 'Registered Office Address Details (Rent Agreement HO, Electricity Bill, NOC)',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Operations',
+        filePath: `/docs/rent-agreement-ebill.pdf`
+      },
+      {
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Group Subsidiaries',
+        name: 'Partnership Firms & Sister Entities Master',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Client Admin',
+        filePath: `/docs/subsidiaries-master.pdf`
+      },
+      {
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Agency Details',
+        name: 'Statutory Auditors, CS Firm, GST Lead, Legal & Valuer Directory',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'CA Audit Desk',
+        filePath: `/docs/agency-advisors-directory.pdf`
+      },
+      {
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Insurances',
+        name: 'Insurances Master (Keyman, Property, Cyber, D&O Policy)',
+        status: 'RECEIVED',
+        updateFrequency: 'YES',
+        periodicity: 'Refer to Summary File',
+        uploaderName: 'Client Admin',
+        filePath: `/docs/insurance-policies.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Audited Financials',
+        name: 'Audited Financial Statements (5-Year Historical FY 2019-20 to 2024-25)',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Statutory Auditor',
+        filePath: `/docs/audited-financials-5yr.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Bank Statements',
+        name: 'Bank Account Statements (Primary & Operating Accounts)',
+        status: 'PENDING',
+        updateFrequency: 'Monthly',
+        periodicity: 'Before 5th of every month',
+        comments: 'Accounts Dept Owner',
+        uploaderName: 'Accounts Dept'
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Credit Cards & Loans',
+        name: 'Credit Cards & Active Loan Agreements (Sanction Letters & EMI Schedules)',
+        status: 'RECEIVED',
+        updateFrequency: 'Monthly',
+        periodicity: 'Statement Date',
+        uploaderName: 'Accounts Dept',
+        filePath: `/docs/loans-credit-cards.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'MIS Reports',
+        name: 'Management Information System (Monthly MIS & 3-Year Projections)',
+        status: 'VERIFIED',
+        updateFrequency: 'Monthly',
+        periodicity: 'Before 10th of month',
+        uploaderName: 'Virtual CFO Desk',
+        filePath: `/docs/mis-projections-3yr.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Income Tax Returns',
+        name: 'Income Tax Returns & Computations (Last 3 Financial Years)',
+        status: 'VERIFIED',
+        updateFrequency: 'Annually',
+        periodicity: 'ITR Due Date',
+        uploaderName: 'Tax Filing Team',
+        filePath: `/docs/itr-returns-3yr.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Statutory Returns',
+        name: 'Statutory Returns Master (GSTR-1, GST-3B, TDS, PF/ESIC Monthly Filings)',
+        status: 'RECEIVED',
+        updateFrequency: 'Monthly / Quarterly',
+        periodicity: '15th & 20th of Month',
+        uploaderName: 'Tax Desk',
+        filePath: `/docs/periodic-statutory-returns.pdf`
+      },
+      {
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Investment Rounds',
+        name: 'Investor Details, FIRC Foreign Investment Records & Investor KYC Master',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Legal Desk',
+        filePath: `/docs/investor-firc-kyc.pdf`
+      },
+      {
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Share Certificates',
+        name: 'Promoter Share Certificates & Share Certificates (Round 1 & 2)',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Legal Desk',
+        filePath: `/docs/share-certificates.pdf`
+      },
+      {
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Cap Table & Valuation',
+        name: 'Cap Table (Seed / Series Rounds), Valuation Reports & Pre-Series PAS-3 & SHA',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'CFO Desk',
+        filePath: `/docs/cap-table-valuation.pdf`
+      },
+      {
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'COFO & Franchise',
+        name: 'COFO Agreements, Franchise Agreements & Store Lease Master',
+        status: 'VERIFIED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly',
+        uploaderName: 'Operations Team',
+        filePath: `/docs/franchise-lease-agreements.pdf`
+      },
+      {
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'Operational Licences',
+        name: 'FSSAI Licences, Kitchen Fire Safety NOC & Health Establishment Permits',
+        status: 'RECEIVED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly',
+        uploaderName: 'Operations Team',
+        filePath: `/docs/fssai-fire-licences.pdf`
+      },
+      {
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'Vendor & Brand Deals',
+        name: 'Vendor Contracts, Marketplace Agreements (Zomato/Swiggy/Amazon) & NDAs',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Contract Term',
+        uploaderName: 'Legal Desk',
+        filePath: `/docs/vendor-agreements-nda.pdf`
+      },
+      {
+        category: 'HR_OPERATIONS',
+        subCategory: 'Employee Directory',
+        name: 'Human Resources Employee Master & Regional Directory',
+        status: 'VERIFIED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly / as required',
+        uploaderName: 'Human Resource',
+        filePath: `/docs/employee-master.pdf`
+      },
+      {
+        category: 'HR_OPERATIONS',
+        subCategory: 'ESOPs & Acquisitions',
+        name: 'ESOP Scheme Policy 1st Round & M&A Expansion Agreements',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Management Desk',
+        filePath: `/docs/esop-acquisitions.pdf`
+      }
+    ];
+
+    const generatedDocs: Document[] = defaultTemplateItems.map((item, idx) => ({
+      ...item,
+      id: `template-doc-${clientId}-${idx + 1}`,
+      createdAt: now,
+      engagementId: '',
+    }));
+
+    set((state) => ({
+      customDataBankDocs: {
+        ...state.customDataBankDocs,
+        [clientId]: generatedDocs,
+      },
+    }));
+
+    get().addAuditLog('DATABANK_TEMPLATE_POPULATED', `Populated initial onboarding Data Bank template for client ${cName}`);
+    get().setGlobalSuccessMsg(`Initial Onboarding Master Data Bank Template populated for ${cName}!`);
   },
 
   updateClientCompanyProfile: (clientId, updates) => {
@@ -4294,7 +4658,8 @@ export const useDashboardStore = create<DashboardState>()(
         createdAt: new Date().toISOString(),
       }));
 
-      const mappedDocuments: ClientDocument[] = (draft.documents || []).map((d) => ({
+      const dDraft = draft as any;
+      const mappedDocuments: ClientDocument[] = (dDraft.documents || []).map((d: any) => ({
         id: d.id || `doc-leg-${Date.now()}`,
         clientId,
         docCategory: (d.category as any) || 'COMPANY_MASTER_DATA',
@@ -4305,7 +4670,7 @@ export const useDashboardStore = create<DashboardState>()(
         filePath: `/docs/${d.fileName || 'historical.pdf'}`,
       }));
 
-      const mappedInvoices: Invoice[] = (draft.historicalInvoices || []).map((inv, idx) => ({
+      const mappedInvoices: Invoice[] = (dDraft.historicalInvoices || []).map((inv: any, idx: number) => ({
         id: `inv-leg-${Date.now()}-${idx}`,
         invoiceNumber: inv.invoiceNumber,
         clientId,
@@ -4331,47 +4696,47 @@ export const useDashboardStore = create<DashboardState>()(
         ],
       }));
 
-      const newClient: Client = {
+      const newClient: any = {
         id: clientId,
         companyName,
-        tradeName: draft.basicInfo?.tradeName,
+        tradeName: dDraft.basicInfo?.tradeName,
         onboardingSource: 'LEGACY_MANUAL',
         legacyMigrationStatus: 'COMPLETED',
-        industry: draft.basicInfo?.industry || 'Financial Services',
-        entityType: draft.basicInfo?.entityType || 'Private Limited',
-        pan: draft.legalInfo?.pan || '',
-        gstin: draft.legalInfo?.gstin || '',
-        cin: draft.legalInfo?.cin || '',
-        tan: draft.legalInfo?.tan || '',
-        turnoverTier: draft.basicInfo?.turnoverTier || '10Cr-50Cr',
-        establishedDate: draft.basicInfo?.establishedDate,
-        website: draft.basicInfo?.website,
-        officeAddress: draft.basicInfo?.officeAddress,
-        city: draft.basicInfo?.city,
-        state: draft.basicInfo?.state,
-        country: draft.basicInfo?.country || 'India',
-        pinCode: draft.basicInfo?.pinCode,
+        industry: dDraft.basicInfo?.industry || 'Financial Services',
+        entityType: dDraft.basicInfo?.entityType || 'Private Limited',
+        pan: dDraft.legalInfo?.pan || '',
+        gstin: dDraft.legalInfo?.gstin || '',
+        cin: dDraft.legalInfo?.cin || '',
+        tan: dDraft.legalInfo?.tan || '',
+        turnoverTier: dDraft.basicInfo?.turnoverTier || '10Cr-50Cr',
+        establishedDate: dDraft.basicInfo?.establishedDate,
+        website: dDraft.basicInfo?.website,
+        officeAddress: dDraft.basicInfo?.officeAddress,
+        city: dDraft.basicInfo?.city,
+        state: dDraft.basicInfo?.state,
+        country: dDraft.basicInfo?.country || 'India',
+        pinCode: dDraft.basicInfo?.pinCode,
         primaryContact: {
-          name: draft.contactInfo?.primaryContactName || '',
-          email: draft.contactInfo?.primaryContactEmail || '',
-          phone: draft.contactInfo?.primaryContactPhone || '',
-          designation: draft.contactInfo?.primaryContactDesignation || 'Director',
+          name: dDraft.contactInfo?.primaryContactName || dDraft.contactInfo?.primaryContact || '',
+          email: dDraft.contactInfo?.primaryContactEmail || dDraft.contactInfo?.email || '',
+          phone: dDraft.contactInfo?.primaryContactPhone || dDraft.contactInfo?.phone || '',
+          designation: dDraft.contactInfo?.primaryContactDesignation || 'Director',
         },
-        billingContact: draft.contactInfo?.billingContactName ? {
-          name: draft.contactInfo.billingContactName,
-          email: draft.contactInfo.billingContactEmail || '',
-          phone: draft.contactInfo.billingContactPhone || '',
+        billingContact: dDraft.contactInfo?.billingContactName ? {
+          name: dDraft.contactInfo.billingContactName,
+          email: dDraft.contactInfo.billingContactEmail || '',
+          phone: dDraft.contactInfo.billingContactPhone || '',
           designation: 'Finance Lead',
         } : undefined,
-        complianceContact: draft.contactInfo?.complianceContactName ? {
-          name: draft.contactInfo.complianceContactName,
-          email: draft.contactInfo.complianceContactEmail || '',
-          phone: draft.contactInfo.complianceContactPhone || '',
+        complianceContact: dDraft.contactInfo?.complianceContactName ? {
+          name: dDraft.contactInfo.complianceContactName,
+          email: dDraft.contactInfo.complianceContactEmail || '',
+          phone: dDraft.contactInfo.complianceContactPhone || '',
           designation: 'Compliance Officer',
         } : undefined,
-        financialYearEnd: draft.financialInfo?.financialYearEnd || 'March 31',
-        historicalNotes: draft.historicalNotes,
-        historicalFinancialRecords: draft.financialInfo?.historicalFinancialRecords || [],
+        financialYearEnd: dDraft.financialInfo?.financialYearEnd || 'March 31',
+        historicalNotes: dDraft.historicalNotes,
+        historicalFinancialRecords: dDraft.financialInfo?.historicalFinancialRecords || [],
         status: 'ACTIVE',
         onboardingDate: onboardingDate,
         services: mappedServices,
@@ -4391,8 +4756,11 @@ export const useDashboardStore = create<DashboardState>()(
         startDate: onboardingDate,
         services: mappedServices.map((cs) => ({
           id: cs.id,
+          engagementId,
           serviceName: cs.serviceMasterId,
           status: 'ACTIVE',
+          price: 0,
+          billingCycle: 'Monthly',
         })),
         tasks: [],
         documents: [],

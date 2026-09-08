@@ -66,6 +66,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
     users,
     adminSettings,
     serviceCategories,
+    customDataBankDocs = {},
+    addMasterDataBankDocument,
+    updateMasterDataBankDocument,
+    deleteMasterDataBankDocument,
+    populateInitialDataBankTemplate,
   } = useDashboardStore();
 
   const [activeClientTab, setActiveClientTab] = useState<'directory' | 'onboarding' | 'services' | 'legacy'>(initialTab);
@@ -81,6 +86,31 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
   const [databankSearch, setDatabankSearch] = useState('');
   const [databankCategory, setDatabankCategory] = useState<string>('ALL');
   const [databankViewMode, setDatabankViewMode] = useState<'SPREADSHEET' | 'SECTIONS'>('SPREADSHEET');
+
+  // Data Bank Custom Item & Guide Modal State
+  const [showAddDataBankModal, setShowAddDataBankModal] = useState(false);
+  const [showFirstTimeGuideModal, setShowFirstTimeGuideModal] = useState(false);
+  const [newDataBankForm, setNewDataBankForm] = useState<{
+    category: DocCategory;
+    subCategory: string;
+    name: string;
+    filePath: string;
+    updateFrequency: string;
+    periodicity: string;
+    status: DocStatus;
+    uploaderName: string;
+    comments: string;
+  }>({
+    category: 'COMPANY_MASTER_DATA',
+    subCategory: 'Entity Registration',
+    name: '',
+    filePath: '',
+    updateFrequency: 'NO',
+    periodicity: 'Not Applicable',
+    status: 'PENDING',
+    uploaderName: 'Client Admin',
+    comments: '',
+  });
 
   // Legacy Onboarding State
   const [showLegacyWizard, setShowLegacyWizard] = useState(false);
@@ -167,90 +197,64 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
   // Complete ERP Data Sync: Compute all clients from store + implied clients from all sections
   const clientMap = new Map<string, any>();
 
-  // 1. Registered Clients
+  // 1. Registered Clients (highest priority)
   (clients || []).forEach((c) => {
     if (c && c.companyName) {
       clientMap.set(c.companyName.toLowerCase().trim(), c);
     }
   });
 
+  // Helper to resolve or construct clean client data
+  const getOrCreateClient = (name: string, fallbackId: string, fallbackSource: string) => {
+    const key = name.toLowerCase().trim();
+    if (clientMap.has(key)) return clientMap.get(key);
+
+    const matchingClient = clients?.find(c => c.companyName.toLowerCase().trim() === key || c.id === fallbackId);
+    if (matchingClient) {
+      clientMap.set(key, matchingClient);
+      return matchingClient;
+    }
+
+    const matchingUser = users?.find(u => u.role === 'CLIENT' && (u.companyName?.toLowerCase().trim() === key || u.email.toLowerCase().includes(key)));
+    const newClientObj = {
+      id: fallbackId,
+      companyName: name,
+      ownerName: matchingUser?.name || 'Corporate Account',
+      contactPerson: matchingUser?.name || 'Primary Contact',
+      email: matchingUser?.email || '',
+      phone: matchingUser?.phone || '',
+      industry: 'Services',
+      businessType: 'Pvt. Ltd.',
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+    };
+    clientMap.set(key, newClientObj);
+    return newClientObj;
+  };
+
   // 2. Clients from Engagements
   (engagements || []).forEach((e) => {
     const name = e.clientCompanyName?.trim();
-    if (name && !clientMap.has(name.toLowerCase())) {
-      clientMap.set(name.toLowerCase(), {
-        id: e.clientId || `client-eng-${e.id}`,
-        companyName: name,
-        contactPerson: 'Executive Contact',
-        email: `contact@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.com`,
-        phone: '',
-        industry: 'Services',
-        businessType: 'Pvt. Ltd.',
-        status: 'ACTIVE',
-        createdAt: e.createdAt || new Date().toISOString(),
-      });
-    }
+    if (name) getOrCreateClient(name, e.clientId || `client-eng-${e.id}`, 'Engagements');
   });
 
   // 3. Clients from Standalone Invoices
   (standaloneInvoices || []).forEach((inv) => {
     const rawName = inv.engagementName || (inv as any).clientName || '';
     const name = rawName.replace(/CFO Advisory|Services|Virtual CFO/gi, '').trim() || rawName.trim();
-    if (name && !clientMap.has(name.toLowerCase())) {
-      clientMap.set(name.toLowerCase(), {
-        id: `client-inv-${inv.id}`,
-        companyName: name,
-        contactPerson: 'Accounts Dept',
-        email: `billing@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.com`,
-        phone: '',
-        industry: 'B2B Corporate',
-        businessType: 'Pvt. Ltd.',
-        gstin: inv.clientGstin || '',
-        pan: inv.clientPan || '',
-        status: 'ACTIVE',
-        createdAt: inv.createdAt || new Date().toISOString(),
-      });
-    }
+    if (name) getOrCreateClient(name, `client-inv-${inv.id}`, 'Invoices');
   });
 
   // 4. Clients from Standalone Receipts
   (standaloneReceipts || []).forEach((rec) => {
     const name = rec.clientName?.trim();
-    if (name && !clientMap.has(name.toLowerCase())) {
-      clientMap.set(name.toLowerCase(), {
-        id: `client-rec-${rec.id}`,
-        companyName: name,
-        contactPerson: 'Finance Team',
-        email: `finance@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.com`,
-        phone: '',
-        industry: 'B2B Corporate',
-        businessType: 'Pvt. Ltd.',
-        gstin: rec.clientGstin || '',
-        pan: rec.clientPan || '',
-        status: 'ACTIVE',
-        createdAt: rec.createdAt || new Date().toISOString(),
-      });
-    }
+    if (name) getOrCreateClient(name, `client-rec-${rec.id}`, 'Receipts');
   });
 
   // 5. Clients from Quotations
   (quotations || []).forEach((q) => {
     const name = q.leadCompanyName?.trim();
-    if (name && !clientMap.has(name.toLowerCase())) {
-      clientMap.set(name.toLowerCase(), {
-        id: `client-q-${q.id}`,
-        companyName: name,
-        contactPerson: 'Prospect Contact',
-        email: `info@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.com`,
-        phone: '',
-        industry: 'Lead / Prospect',
-        businessType: 'Pvt. Ltd.',
-        gstin: q.clientGstin || '',
-        pan: q.clientPan || '',
-        status: 'ACTIVE',
-        createdAt: q.createdAt || new Date().toISOString(),
-      });
-    }
+    if (name) getOrCreateClient(name, `client-quot-${q.id}`, 'Quotations');
   });
 
   // Deduplicate client IDs to ensure strict React key uniqueness
@@ -298,7 +302,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         periodicity: 'Not Applicable',
         filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-registration.pdf`,
         uploaderName: 'Client Admin',
-        reviewerName: 'Priya Sharma (CA Lead)'
+        reviewerName: 'CA Audit Lead'
       },
       {
         id: `doc-${client?.id}-2`,
@@ -311,7 +315,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         periodicity: 'Subjective Change in org structure',
         filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-moa-aoa.pdf`,
         uploaderName: 'Client Admin',
-        reviewerName: 'Priya Sharma (CA Lead)'
+        reviewerName: 'CA Audit Lead'
       },
       {
         id: `doc-${client?.id}-3`,
@@ -324,26 +328,26 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         periodicity: 'Not Applicable',
         filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-pan-tan.pdf`,
         uploaderName: 'Client Admin',
-        reviewerName: 'Priya Sharma (CA Lead)'
+        reviewerName: 'CA Audit Lead'
       },
       {
         id: `doc-${client?.id}-4`,
         category: 'COMPANY_MASTER_DATA',
         subCategory: 'GST Registrations',
-        name: 'GST Certificates (Dombivli, Godrej Hills, Khadakpada, Metro Junction, Rambaag, Tisgaon, Kalyan)',
+        name: 'GST Certificates (Operating State & Branch Registrations)',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'NO',
         periodicity: 'Branch Addition',
         filePath: `/docs/gst-multi-certificates.pdf`,
         uploaderName: 'Tax Filing Desk',
-        reviewerName: 'Marcus Vance'
+        reviewerName: 'Tax Audit Lead'
       },
       {
         id: `doc-${client?.id}-5`,
         category: 'COMPANY_MASTER_DATA',
         subCategory: 'Entity Certifications',
-        name: 'StartUp India Registration & MSME Certificate',
+        name: 'StartUp India Registration & MSME Udyam Certificate',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'NO',
@@ -354,7 +358,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-6`,
         category: 'COMPANY_MASTER_DATA',
         subCategory: 'Director KYC',
-        name: 'Director Master KYC (Sunita Pawar, Mukul Pawar, Kishor Pawar, Priyanka Pawar, Krutika Pawar, ROC Master Data)',
+        name: 'Director Master KYC (Board of Directors, PAN, Aadhaar, DIN & ROC Master Records)',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'NO',
@@ -379,7 +383,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-8`,
         category: 'SUBSIDIARIES_AGENCIES',
         subCategory: 'Group Subsidiaries',
-        name: 'Other Partnership Firms & Subsidiaries Master (AM, Imperial, ASPS, Jiza, Marvi, PMR, PNP, Sunshine, Ram, Aradhvi, Jumbo24)',
+        name: 'Group Subsidiaries & Sister Partnership Entities Master',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'NO',
@@ -390,7 +394,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-9`,
         category: 'SUBSIDIARIES_AGENCIES',
         subCategory: 'Agency Details',
-        name: 'Agency Details Master (Statutory Auditors: Sarangdhar & Co, CS Firm, GST Consultant, HR, Legal, Valuer)',
+        name: 'Statutory Auditors, CS Firm, GST Lead, Legal Counsel & Valuer Directory',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'NO',
@@ -402,7 +406,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-10`,
         category: 'SUBSIDIARIES_AGENCIES',
         subCategory: 'Insurances',
-        name: 'Insurances Master (Bajaj Allianz General Insurance Co - D&A Policy)',
+        name: 'Insurance Policies Master (Keyman, Property, D&O & Cyber Policies)',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'YES',
@@ -415,7 +419,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-11`,
         category: 'FINANCIAL_VAULT_STATEMENTS',
         subCategory: 'Audited Financials',
-        name: 'Audited Financial Statements (5-Year Historical History: FY 2019-20 to FY 2024-25)',
+        name: 'Audited Financial Statements (5-Year Historical FY 2019-20 to FY 2024-25)',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'NO',
@@ -427,7 +431,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-12`,
         category: 'FINANCIAL_VAULT_STATEMENTS',
         subCategory: 'Bank Statements',
-        name: 'Bank Account Statements (LookWell Group & Subsidiaries)',
+        name: `Bank Account Statements (${cName} Operating Accounts)`,
         createdAt: now,
         status: 'PENDING',
         updateFrequency: 'Monthly',
@@ -438,7 +442,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-13`,
         category: 'FINANCIAL_VAULT_STATEMENTS',
         subCategory: 'Credit Cards & Loans',
-        name: 'Credit Cards & Loan Details (Summary + Active Folder)',
+        name: 'Credit Cards & Active Loan Agreements (Sanction Letters & EMI Schedules)',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'Monthly',
@@ -449,7 +453,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-14`,
         category: 'FINANCIAL_VAULT_STATEMENTS',
         subCategory: 'MIS Reports',
-        name: 'Management Information System (MIS 23-24, Comparative 3yr Financials, Projections 3 Years, Provisional 2024-25)',
+        name: 'Management Information System (Monthly MIS & 3-Year Financial Projections)',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'Monthly',
@@ -461,7 +465,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-15`,
         category: 'FINANCIAL_VAULT_STATEMENTS',
         subCategory: 'Income Tax Returns',
-        name: 'Income Tax Returns (FY 2022-23, FY 2023-24, FY 2024-25 with year-wise separate folders for GST/TDS)',
+        name: 'Income Tax Returns & Computations (Last 3 Financial Years)',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'Annually',
@@ -473,7 +477,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-16`,
         category: 'FINANCIAL_VAULT_STATEMENTS',
         subCategory: 'Statutory Returns',
-        name: 'Statutory Returns Master (ESOP Returns, FLA, GST 12-18 months, HR PF/PT, TDS monthly folders)',
+        name: 'Statutory Returns Master (GSTR-1, GST-3B, TDS, PF/ESIC Monthly Filings)',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'Monthly / Quarterly',
@@ -486,7 +490,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-17`,
         category: 'INVESTMENTS_CAP_TABLE',
         subCategory: 'Investment Rounds',
-        name: 'Investor Details, FIRC / Foreign Investor Records & Investor KYC Master',
+        name: 'Investor Details, FIRC Foreign Investment Records & Investor KYC Master',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'NO',
@@ -498,7 +502,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-18`,
         category: 'INVESTMENTS_CAP_TABLE',
         subCategory: 'Share Certificates',
-        name: 'Promoter Share Certificates & Share Certificates (Round 1 & Round 2)',
+        name: 'Promoter & Investor Share Certificates',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'NO',
@@ -509,7 +513,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-19`,
         category: 'INVESTMENTS_CAP_TABLE',
         subCategory: 'Cap Table & Valuation',
-        name: 'Cap Table (Seed, Pre Series A1/A2), Valuation Reports & Pre-Series Round 1/2 (Board Resolutions, PAS-3, CP, SHA, Term Sheet)',
+        name: 'Cap Table, Valuation Reports & Investment Round Filings (PAS-3, SHA)',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'NO',
@@ -523,7 +527,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-20`,
         category: 'AGREEMENTS_LICENCES',
         subCategory: 'COFO & Franchise',
-        name: 'COFO Agreements, FP Franchise Agreements & Lease Agreements (5 Mumbai stores COCO/COFO & Versova store)',
+        name: 'COFO Agreements, Franchise Agreements & Commercial Store Leases',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'YES',
@@ -535,7 +539,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-21`,
         category: 'AGREEMENTS_LICENCES',
         subCategory: 'Operational Licences',
-        name: 'FSSAI Licences (COCO/COFO, FP/Franchise, Expiry Sheet) & Kitchen Licences (Fire & Health Establishment)',
+        name: 'FSSAI Licences, Kitchen Fire Safety Permits & Health Establishment Licences',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'YES',
@@ -546,7 +550,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-22`,
         category: 'AGREEMENTS_LICENCES',
         subCategory: 'Vendor & Brand Deals',
-        name: 'MISC Agreements (Chef Suarabh NDA, Vendor contracts, Zomato, Swiggy, Magicpin, Amazon listing)',
+        name: 'Vendor Contracts, Marketplace Listing Agreements & NDAs',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'NO',
@@ -557,7 +561,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-23`,
         category: 'AGREEMENTS_LICENCES',
         subCategory: 'Strategic Deals',
-        name: 'Strategic Partnerships (Greenz, Watta Waffle, UpSouth, The Junglee Kitchen) & Trademark / IP Receipts',
+        name: 'Strategic Brand Partnerships & Trademark IP Registration Receipts',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'NO',
@@ -570,7 +574,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-24`,
         category: 'HR_OPERATIONS',
         subCategory: 'Employee Directory',
-        name: 'Human Resources Employee Data (Core Team, Corporate & Regional Employee Directory)',
+        name: 'Human Resources Employee Data & Regional Directory',
         createdAt: now,
         status: 'VERIFIED',
         updateFrequency: 'YES',
@@ -582,7 +586,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
         id: `doc-${client?.id}-25`,
         category: 'HR_OPERATIONS',
         subCategory: 'ESOPs & Acquisitions',
-        name: 'ESOPs 1st Round & Acquisitions & Expansion (Harry WTF Deal, Chef Vicky Ratnani, Shy Tiger, Badshah Deal, Say Chefs)',
+        name: 'ESOP Policy Scheme & Mergers / Acquisition Expansion Agreements',
         createdAt: now,
         status: 'RECEIVED',
         updateFrequency: 'NO',
@@ -1117,60 +1121,61 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
               ))}
             </div>
 
-            <div className="border-t border-slate-100 pt-4 space-y-2">
+            <div className="border-t border-slate-100 pt-4 space-y-2 font-outfit">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Client Profile</span>
-              <div className="text-xs space-y-1 text-slate-600">
+              <div className="text-xs space-y-1.5 text-slate-600">
                 <p><span className="font-semibold text-slate-800">Client:</span> {selectedClient.companyName}</p>
-                <p><span className="font-semibold text-slate-800">Owner/Contact:</span> {selectedClient.contactPerson}</p>
-                <p><span className="font-semibold text-slate-800">Email:</span> {selectedClient.email}</p>
-                <p><span className="font-semibold text-slate-800">Phone:</span> {selectedClient.phone}</p>
-                <p><span className="font-semibold text-slate-800">GSTIN:</span> {selectedClient.gstin || 'GST Verified'}</p>
-                <p className="pt-2"><span className="font-semibold text-slate-800">CFO Services:</span> {selectedEngagement ? selectedEngagement.name : 'Virtual CFO Retainer'}</p>
-                <p><span className="font-semibold text-slate-800">Status:</span> {selectedClient.status}</p>
+                <p><span className="font-semibold text-slate-800">Owner/Contact:</span> {
+                  selectedClient.ownerName && !selectedClient.ownerName.includes('Executive Contact')
+                    ? selectedClient.ownerName
+                    : selectedClient.contactPerson && !selectedClient.contactPerson.includes('Executive Contact')
+                    ? selectedClient.contactPerson
+                    : 'Not Provided'
+                }</p>
+                <p><span className="font-semibold text-slate-800">Email:</span> {
+                  selectedClient.email && !selectedClient.email.includes('contact@web.com') && !selectedClient.email.includes('@web.com') && !selectedClient.email.includes('@client.com')
+                    ? selectedClient.email
+                    : 'Not Provided'
+                }</p>
+                <p><span className="font-semibold text-slate-800">Phone:</span> {selectedClient.phone || selectedClient.ownerContact || 'Not Provided'}</p>
+                <p><span className="font-semibold text-slate-800">GSTIN:</span> {selectedClient.gstin || 'Not Provided'}</p>
+                <p className="pt-1"><span className="font-semibold text-slate-800">CFO Services:</span> {selectedEngagement ? selectedEngagement.name : `${selectedClient.companyName} Retainer`}</p>
+                <p><span className="font-semibold text-slate-800">Status:</span> <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">{selectedClient.status}</span></p>
               </div>
             </div>
           </div>
 
           {/* Onboarding Main Master Data Bank & Vault */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-4">
             
             {/* Search, View Switcher & Action Header Bar */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold">
-                    <FileSpreadsheet size={20} />
+            <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3 font-outfit">
+              <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold shrink-0 shadow-xs">
+                    <FileSpreadsheet size={22} />
                   </div>
                   <div>
-                    <h2 className="text-base font-extrabold text-slate-900 tracking-tight font-outfit">Master Data Bank Repository</h2>
+                    <h2 className="text-base font-extrabold text-slate-900 tracking-tight whitespace-nowrap">Master Data Bank Repository</h2>
                     <p className="text-xs text-slate-500 font-medium">Full master spreadsheet database of KYC, subsidiaries, financials, tax returns & deals</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* View Mode Toggle Buttons */}
-                  <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
-                    <button
-                      onClick={() => setDatabankViewMode('SPREADSHEET')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        databankViewMode === 'SPREADSHEET'
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <FileSpreadsheet size={13} /> Excel Tabular View
-                    </button>
-                    <button
-                      onClick={() => setDatabankViewMode('SECTIONS')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        databankViewMode === 'SECTIONS'
-                          ? 'bg-blue-600 text-white shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <Folder size={13} /> Category Cards
-                    </button>
-                  </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => setShowAddDataBankModal(true)}
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus size={16} /> + Add Master Data Item
+                  </button>
+
+                  <button
+                    onClick={() => populateInitialDataBankTemplate(selectedClient.id, selectedClient.companyName)}
+                    className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs px-3.5 py-2 rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                    title="Automatically load standard initial onboarding master data items"
+                  >
+                    <Sparkles size={14} /> ⚡ Initial Template Data
+                  </button>
 
                   <button
                     onClick={() => {
@@ -1180,54 +1185,79 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
                         `Sent master data bank collection reminders to ${selectedClient.companyName}`
                       );
                     }}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl transition-all border border-slate-200 flex items-center gap-1.5 cursor-pointer"
                   >
                     <AlertCircle size={14} /> Send Reminders
                   </button>
                 </div>
               </div>
 
-              {/* Search Bar & Category Filter Pills */}
-              <div className="pt-2 border-t border-slate-100 space-y-2.5">
-                <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              {/* View Switcher & Search Bar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                {/* View Mode Toggle Buttons */}
+                <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200 self-start">
+                  <button
+                    onClick={() => setDatabankViewMode('SPREADSHEET')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      databankViewMode === 'SPREADSHEET'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileSpreadsheet size={13} /> Excel Tabular View
+                  </button>
+                  <button
+                    onClick={() => setDatabankViewMode('SECTIONS')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      databankViewMode === 'SECTIONS'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Folder size={13} /> Category Cards
+                  </button>
+                </div>
+
+                <div className="relative flex-1 max-w-xl">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                   <input
                     type="text"
                     placeholder="Search Data Bank by folder, document title, update frequency, periodicity or owner..."
                     value={databankSearch}
                     onChange={(e) => setDatabankSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-outfit"
+                    className="w-full pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-outfit"
                   />
                 </div>
+              </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto pt-0.5 pb-0.5 no-scrollbar">
-                  {[
-                    { id: 'ALL', label: 'All Data Bank Folders', icon: Folder },
-                    { id: 'COMPANY_MASTER_DATA', label: '1. Company KYC & Master', icon: Building },
-                    { id: 'SUBSIDIARIES_AGENCIES', label: '2. Subsidiaries & Agencies', icon: Building2 },
-                    { id: 'FINANCIAL_VAULT_STATEMENTS', label: '3. Financials & Statements', icon: FileSpreadsheet },
-                    { id: 'INVESTMENTS_CAP_TABLE', label: '4. Investments & Cap Table', icon: TrendingUp },
-                    { id: 'AGREEMENTS_LICENCES', label: '5. Agreements & Licences', icon: ShieldCheck },
-                    { id: 'HR_OPERATIONS', label: '6. HR & Business Operations', icon: Users },
-                  ].map((cat) => {
-                    const CatIcon = cat.icon;
-                    const isActive = databankCategory === cat.id;
-                    return (
-                      <button
-                        key={cat.id}
-                        onClick={() => setDatabankCategory(cat.id)}
-                        className={`px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
-                          isActive
-                            ? 'bg-slate-900 text-white shadow-xs'
-                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60'
-                        }`}
-                      >
-                        <CatIcon size={12} />
-                        {cat.label}
-                      </button>
-                    );
-                  })}
-                </div>
+              {/* Category Filter Pills */}
+              <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+                {[
+                  { id: 'ALL', label: 'All Data Bank Folders', icon: Folder },
+                  { id: 'COMPANY_MASTER_DATA', label: '1. Company KYC & Master', icon: Building },
+                  { id: 'SUBSIDIARIES_AGENCIES', label: '2. Subsidiaries & Agencies', icon: Building2 },
+                  { id: 'FINANCIAL_VAULT_STATEMENTS', label: '3. Financials & Statements', icon: FileSpreadsheet },
+                  { id: 'INVESTMENTS_CAP_TABLE', label: '4. Investments & Cap Table', icon: TrendingUp },
+                  { id: 'AGREEMENTS_LICENCES', label: '5. Agreements & Licences', icon: ShieldCheck },
+                  { id: 'HR_OPERATIONS', label: '6. HR & Business Operations', icon: Users },
+                ].map((cat) => {
+                  const CatIcon = cat.icon;
+                  const isActive = databankCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setDatabankCategory(cat.id)}
+                      className={`px-3 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                        isActive
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/60'
+                      }`}
+                    >
+                      <CatIcon size={12} />
+                      {cat.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -1235,10 +1265,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
             {databankViewMode === 'SPREADSHEET' && (() => {
               const defaultDocs = getDefaultCADocuments(selectedClient);
               const engagementDocs = selectedEngagement?.documents || [];
-              const customDocs = engagementDocs.map(d => ({ ...d })) as Document[];
-              const defaultDocIds = new Set(defaultDocs.map(d => d.id));
-              const uniqueCustomDocs = customDocs.filter(d => !defaultDocIds.has(d.id));
-              const activeDocs = [...defaultDocs, ...uniqueCustomDocs];
+              const storeCustomDocs = customDataBankDocs[selectedClient?.id] || [];
+
+              const docMap = new Map<string, Document>();
+              defaultDocs.forEach(d => docMap.set(d.id, d));
+              engagementDocs.forEach(d => docMap.set(d.id, d));
+              storeCustomDocs.forEach(d => docMap.set(d.id, d));
+
+              const activeDocs = Array.from(docMap.values());
 
               const filteredDocs = activeDocs.filter(d => {
                 const matchesCategory = databankCategory === 'ALL' || d.category === databankCategory;
@@ -1445,10 +1479,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
 
               const defaultDocs = getDefaultCADocuments(selectedClient);
               const engagementDocs = selectedEngagement?.documents || [];
-              const customDocs = engagementDocs.map(d => ({ ...d })) as Document[];
-              const defaultDocIds = new Set(defaultDocs.map(d => d.id));
-              const uniqueCustomDocs = customDocs.filter(d => !defaultDocIds.has(d.id));
-              const activeDocs = [...defaultDocs, ...uniqueCustomDocs];
+              const storeCustomDocs = customDataBankDocs[selectedClient?.id] || [];
+
+              const docMap = new Map<string, Document>();
+              defaultDocs.forEach(d => docMap.set(d.id, d));
+              engagementDocs.forEach(d => docMap.set(d.id, d));
+              storeCustomDocs.forEach(d => docMap.set(d.id, d));
+
+              const activeDocs = Array.from(docMap.values());
 
               const filteredCategories = databankCategory === 'ALL'
                 ? allCategories
@@ -2026,6 +2064,316 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
             setActiveClientTab('legacy');
           }}
         />
+      )}
+
+      {/* ── 1. ADD MASTER DATA BANK ITEM MODAL ── */}
+      {showAddDataBankModal && selectedClient && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-outfit">
+          <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-400/30 flex items-center justify-center font-bold">
+                  <Plus size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight text-white">+ Add Master Data Item</h3>
+                  <p className="text-xs text-blue-200/80">Adding record to {selectedClient.companyName}&apos;s Master Data Bank Repository</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddDataBankModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newDataBankForm.name.trim()) {
+                  alert('Please enter a document or record title.');
+                  return;
+                }
+                addMasterDataBankDocument(selectedClient.id, newDataBankForm);
+                setShowAddDataBankModal(false);
+                setNewDataBankForm({
+                  category: 'COMPANY_MASTER_DATA',
+                  subCategory: 'Entity Registration',
+                  name: '',
+                  filePath: '',
+                  updateFrequency: 'NO',
+                  periodicity: 'Not Applicable',
+                  status: 'PENDING',
+                  uploaderName: 'Client Admin',
+                  comments: '',
+                });
+              }}
+              className="p-6 space-y-4"
+            >
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Main Category / Folder <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={newDataBankForm.category}
+                  onChange={(e) => setNewDataBankForm({ ...newDataBankForm, category: e.target.value as DocCategory })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="COMPANY_MASTER_DATA">1. Company KYC & Master Entity Data</option>
+                  <option value="SUBSIDIARIES_AGENCIES">2. Group Subsidiaries & Agency Details</option>
+                  <option value="FINANCIAL_VAULT_STATEMENTS">3. Financial Vault, Statements & Tax Returns</option>
+                  <option value="INVESTMENTS_CAP_TABLE">4. Investments, Capital Structure & Cap Table</option>
+                  <option value="AGREEMENTS_LICENCES">5. Agreements, Licences & IP Master</option>
+                  <option value="HR_OPERATIONS">6. Business Operations, HR & ESOP Master</option>
+                </select>
+              </div>
+
+              {/* SubCategory Tag & Owner */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Sub Folder / Tag <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Entity Registration, Bank Statements, GST"
+                    value={newDataBankForm.subCategory}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, subCategory: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Owner / Responsible Desk
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Client Admin, Tax Desk, Accounts"
+                    value={newDataBankForm.uploaderName}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, uploaderName: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Document Title */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Document / Record Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Audited Financial Statements FY 2024-25"
+                  value={newDataBankForm.name}
+                  onChange={(e) => setNewDataBankForm({ ...newDataBankForm, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Drive Link / File Link */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Drive Link / Document URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. https://drive.google.com/file/d/... or file path"
+                  value={newDataBankForm.filePath}
+                  onChange={(e) => setNewDataBankForm({ ...newDataBankForm, filePath: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Frequency, Periodicity & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Update Frequency
+                  </label>
+                  <select
+                    value={newDataBankForm.updateFrequency}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, updateFrequency: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="NO">NO (Static Record)</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                    <option value="Annually">Annually</option>
+                    <option value="YES">YES (Periodic Update)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Periodicity Rule
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Before 5th of month"
+                    value={newDataBankForm.periodicity}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, periodicity: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Initial Status
+                  </label>
+                  <select
+                    value={newDataBankForm.status}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, status: e.target.value as DocStatus })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="PENDING">Pending</option>
+                    <option value="RECEIVED">Received</option>
+                    <option value="VERIFIED">Verified</option>
+                    <option value="MISSING">Missing</option>
+                    <option value="REJECTED">Rejected</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Comments / Remarks */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Comments / Remarks (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Folder path or special instructions"
+                  value={newDataBankForm.comments}
+                  onChange={(e) => setNewDataBankForm({ ...newDataBankForm, comments: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddDataBankModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <Plus size={14} /> Add Item to Data Bank
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2. FIRST-TIME LOGIN MASTER DATA GUIDE MODAL ── */}
+      {showFirstTimeGuideModal && selectedClient && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-outfit">
+          <div className="bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center font-bold">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight text-white">First-Time Login Master Data Checklist</h3>
+                  <p className="text-xs text-blue-200/80">Recommended onboarding master dataset for {selectedClient.companyName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowFirstTimeGuideModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 font-medium leading-relaxed flex items-start gap-2">
+                <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Why is this required on First-Time Login?</span>
+                  <p className="mt-0.5">
+                    When onboarding a client or setting up their Virtual CFO & Statutory Compliance workspace, having complete KYC, historical audited financials, active bank account schedules, cap table details, and operating licences ensures seamless financial modeling, tax filing, and CFO advisory execution.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  {
+                    title: '1. Company KYC & Master Entity Data',
+                    items: ['Certificate of Incorporation (COI)', 'Articles & Memorandum (MOA/AOA)', 'Company PAN & TAN Allotment', 'GST Certificates (All state branches)', 'MSME Udyam / StartUp India Certificate', 'Director Master KYC (PAN, Aadhaar, DIN, ROC Data)', 'Registered Office Premises Proof (Rent Agreement, EB Bill)']
+                  },
+                  {
+                    title: '2. Group Subsidiaries & Agency Details',
+                    items: ['Sister Partnership Firms & Subsidiaries Master', 'Statutory Auditors, CS Firm, GST Consultant & Legal Contacts', 'Keyman, Property, D&O & Cyber Insurance Policies']
+                  },
+                  {
+                    title: '3. Financial Vault, Statements & Tax Returns',
+                    items: ['Audited Financial Statements (Last 5 FYs)', 'Monthly Bank Account Statements (Primary & Subsidiary Accounts)', 'Credit Card Statements & Loan Sanction Letters', 'Monthly MIS Reports & 3-Year Financial Projections', 'Income Tax Returns (ITR) & Computation Sheets (Last 3 FYs)', 'Periodic Statutory Returns (GSTR-1, GST-3B, TDS, PF/ESIC)']
+                  },
+                  {
+                    title: '4. Investments, Capital Structure & Cap Table',
+                    items: ['Cap Table & Valuation Reports (Seed / Series Rounds)', 'Investor Details & FIRC Foreign Investment Records', 'Promoter & Investor Share Certificates', 'Board Resolutions, PAS-3 & Shareholder Agreements (SHA)']
+                  },
+                  {
+                    title: '5. Agreements, Licences & Intellectual Property',
+                    items: ['Operational Licences (FSSAI, Fire NOC, Health Permit)', 'Store / Office Lease Contracts & Franchise Agreements', 'Vendor Contracts, NDAs & Marketplace Agreements (Zomato/Swiggy)', 'Trademark Registration Receipts & IP Master']
+                  },
+                  {
+                    title: '6. Business Operations, HR & ESOP Master',
+                    items: ['Human Resources Employee Directory & Salary Register', 'ESOP Policy Scheme & M&A Expansion Agreements']
+                  }
+                ].map((section, idx) => (
+                  <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 className="font-extrabold text-xs text-slate-900 font-outfit uppercase tracking-wider mb-2">{section.title}</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {section.items.map((item, i) => (
+                        <div key={i} className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
+                          <Check size={12} className="text-emerald-600 shrink-0" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-100 border-t border-slate-200 flex items-center justify-between gap-3">
+              <button
+                onClick={() => setShowFirstTimeGuideModal(false)}
+                className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+              >
+                Close Guide
+              </button>
+
+              <button
+                onClick={() => {
+                  populateInitialDataBankTemplate(selectedClient.id, selectedClient.companyName);
+                  setShowFirstTimeGuideModal(false);
+                }}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Sparkles size={14} /> ⚡ Populate All Initial Template Data Now
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
