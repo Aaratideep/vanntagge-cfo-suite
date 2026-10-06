@@ -142,11 +142,37 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   const baseAmount = Number(data.amount || data.price || data.amountReceived || data.fees || 0);
   const discountAmount = Number(data.discount || 0);
   const taxableAmount = baseAmount - discountAmount;
-  const gstAmount = Number(data.gst || (taxableAmount * 0.18));
-  const finalTotal = Number(data.finalAmount || (taxableAmount + gstAmount));
+  const isUnregistered = data.billingEntity && (
+    data.billingEntity.includes('HUF') ||
+    data.billingEntity.includes('LLP') ||
+    data.billingEntity.includes('Ajit Shinde')
+  );
+  const gstAmount = data.gst !== undefined 
+    ? Number(data.gst) 
+    : isUnregistered 
+    ? 0 
+    : Number(taxableAmount * 0.18);
+  const finalTotal = data.finalAmount !== undefined 
+    ? Number(data.finalAmount) 
+    : Number(taxableAmount + gstAmount);
 
-  const billingEntityName = data.billingEntity || 'Vanntagge CFO Services LLP';
+  const billingEntityName = data.billingEntity || 'CA TEJJASHRI S PAAWAR';
   const upperBillingEntityName = billingEntityName.toUpperCase();
+
+  const isTejjashriEntity = upperBillingEntityName.includes('TEJJASHRI') || upperBillingEntityName.includes('TEJASHRI');
+  const isHufEntity = upperBillingEntityName.includes('HUF');
+
+  const defaultSignatoryName = isTejjashriEntity
+    ? 'CA TEJJASHRI S PAAWAR'
+    : isHufEntity
+    ? 'TEJJASHRI S PAAWAR'
+    : 'CA TEJJASHRI S PAAWAR';
+
+  const defaultSignatoryRole = isTejjashriEntity
+    ? 'Partner & Authorized Signatory'
+    : isHufEntity
+    ? 'Authorized Signatory & Representative'
+    : 'Partner & Authorized Signatory';
 
   const getDraftedMessage = () => {
     if (isInvoice) {
@@ -430,13 +456,18 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                   <p className="font-bold uppercase tracking-wider text-sm">For {upperBillingEntityName}</p>
                   <div className="relative">
                     <div className="flex flex-col items-end border-b border-slate-400 pb-2 w-48 text-center">
-                      <img src="/signature.png" alt="Signature" className="h-12 w-auto object-contain opacity-80" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      <img 
+                        src="/signature-tejjashri.png" 
+                        alt="Signature" 
+                        className="h-12 w-auto object-contain mb-1 drop-shadow-xs" 
+                        onError={(e) => { (e.target as HTMLImageElement).src = '/signature.png'; }} 
+                      />
                       <span className="italic text-emerald-700 font-medium text-[10px] mt-1 block">Digitally Signed / E-Verified</span>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-sm">Priya Sharma</p>
-                    <p className="text-xs text-slate-500">Designated Partner & Chief Financial Lead</p>
+                    <p className="font-bold text-sm">{defaultSignatoryName}</p>
+                    <p className="text-xs text-slate-500">{defaultSignatoryRole}</p>
                     <p className="text-xs text-slate-500">Date: {new Date().toLocaleDateString()}</p>
                   </div>
                 </div>
@@ -459,7 +490,13 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                   Corporate Financial Consultants & Virtual CFO Advisors
                 </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">
-                  GSTIN: <span className="font-semibold text-slate-700">27AABCU9603R1ZX</span> &bull; PAN: <span className="font-semibold text-slate-700">AABCU9603R</span>
+                  GSTIN: <span className="font-semibold text-slate-700">
+                    {(billingEntityName.toUpperCase().includes('TEJJASHRI') || billingEntityName.includes('Tejashri')) 
+                      ? '27AAPFP7890C1Z4' 
+                      : isUnregistered 
+                      ? 'Not Applicable / Unregistered Entity (No GST)' 
+                      : '27AAPFP7890C1Z4'}
+                  </span> &bull; State: <span className="font-semibold text-slate-700">27 - Maharashtra</span>
                 </p>
               </div>
             </div>
@@ -640,22 +677,29 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                   <span className="font-semibold text-slate-800">{formatINR(baseAmount)}</span>
                 </div>
               )}
-              {data.gstType === 'Interstate' ? (
-                <div className="flex justify-between">
-                  <span>IGST @ 18.00%:</span>
-                  <span>{formatINR(gstAmount)}</span>
-                </div>
+              {gstAmount > 0 ? (
+                data.gstType === 'Interstate' ? (
+                  <div className="flex justify-between">
+                    <span>IGST @ 18.00%:</span>
+                    <span>{formatINR(gstAmount)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span>CGST @ 9.00%:</span>
+                      <span>{formatINR(gstAmount / 2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>SGST @ 9.00%:</span>
+                      <span>{formatINR(gstAmount / 2)}</span>
+                    </div>
+                  </>
+                )
               ) : (
-                <>
-                  <div className="flex justify-between">
-                    <span>CGST @ 9.00%:</span>
-                    <span>{formatINR(gstAmount / 2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>SGST @ 9.00%:</span>
-                    <span>{formatINR(gstAmount / 2)}</span>
-                  </div>
-                </>
+                <div className="flex justify-between text-amber-700 font-medium">
+                  <span>GST @ 0.00% (Unregistered Entity):</span>
+                  <span>₹0.00</span>
+                </div>
               )}
               
               <div className="border-t border-slate-200 pt-2 flex justify-between items-baseline text-slate-900">
@@ -685,14 +729,19 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
 
             <div className="text-right space-y-1">
               <div className="inline-block border-b border-slate-300 pb-1 px-4 mb-1 relative text-right flex flex-col items-end">
-                <img src="/signature.png" alt="Signature" className="h-8 w-auto object-contain opacity-80 mb-1" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                <img 
+                  src="/signature-tejjashri.png" 
+                  alt="Signature" 
+                  className="h-10 sm:h-12 w-auto object-contain mb-1 drop-shadow-xs select-none" 
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/signature.png'; }} 
+                />
                 <span 
                   className="font-serif italic font-semibold text-slate-800 text-xs block focus:outline-none hover:bg-slate-100 cursor-text rounded px-1 -mx-1 transition-colors"
                   contentEditable
                   suppressContentEditableWarning
                   title="Click to edit name"
                 >
-                  Priya Sharma
+                  {defaultSignatoryName}
                 </span>
                 <span 
                   className="text-[9px] font-sans text-slate-500 block focus:outline-none hover:bg-slate-100 cursor-text rounded px-1 -mx-1 transition-colors"
@@ -700,7 +749,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                   suppressContentEditableWarning
                   title="Click to edit qualifications"
                 >
-                  FCA (Membership No. 543210)
+                  {defaultSignatoryRole}
                 </span>
               </div>
               <span 
@@ -717,7 +766,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 suppressContentEditableWarning
                 title="Click to edit role"
               >
-                Authorized Signatory & Chief Financial Lead
+                Authorized Signatory
               </span>
             </div>
             </div>

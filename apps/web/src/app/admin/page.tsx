@@ -4,61 +4,76 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
-import { DashboardView } from '../../components/DashboardView';
-import { CRMView } from '../../components/admin/CRMView';
-import { EngagementsView } from '../../components/admin/EngagementsView';
-import { ClientsView } from '../../components/admin/ClientsView';
-import { WorkView } from '../../components/WorkView';
-import { ComplianceView } from '../../components/admin/ComplianceView';
-import { BillingView } from '../../components/admin/BillingView';
-import { ReportsView } from '../../components/admin/ReportsView';
-import { CalendarView } from '../../components/CalendarView';
-import { EmployeesView } from '../../components/admin/EmployeesView';
-import { SettingsView } from '../../components/admin/SettingsView';
-import { FinancialDocsView } from '../../components/admin/FinancialDocsView';
+import dynamic from 'next/dynamic';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { Search, ChevronRight, CheckCheck } from 'lucide-react';
 import { SessionManager } from '../../components/SessionManager';
 import { formatINR } from '../../lib/currency';
 import { StaleLeadsModal } from '../../components/StaleLeadsModal';
 import { DailyTaskReminderModal } from '../../components/DailyTaskReminderModal';
-import { UsersManagementView } from '../../components/admin/UsersManagementView';
-import { UsersView } from '../../components/admin/UsersView';
-import { ServiceMasterView } from '../../components/admin/ServiceMasterView';
+
+const DashboardView = dynamic(() => import('../../components/DashboardView').then(m => m.DashboardView), { ssr: false });
+const CRMView = dynamic(() => import('../../components/admin/CRMView').then(m => m.CRMView), { ssr: false });
+const EngagementsView = dynamic(() => import('../../components/admin/EngagementsView').then(m => m.EngagementsView), { ssr: false });
+const ClientsView = dynamic(() => import('../../components/admin/ClientsView').then(m => m.ClientsView), { ssr: false });
+const WorkView = dynamic(() => import('../../components/WorkView').then(m => m.WorkView), { ssr: false });
+const TimesheetView = dynamic(() => import('../../components/TimesheetView').then(m => m.TimesheetView), { ssr: false });
+const ComplianceView = dynamic(() => import('../../components/admin/ComplianceView').then(m => m.ComplianceView), { ssr: false });
+const BillingView = dynamic(() => import('../../components/admin/BillingView').then(m => m.BillingView), { ssr: false });
+const ReportsView = dynamic(() => import('../../components/admin/ReportsView').then(m => m.ReportsView), { ssr: false });
+const CalendarView = dynamic(() => import('../../components/CalendarView').then(m => m.CalendarView), { ssr: false });
+const EmployeesView = dynamic(() => import('../../components/admin/EmployeesView').then(m => m.EmployeesView), { ssr: false });
+const SettingsView = dynamic(() => import('../../components/admin/SettingsView').then(m => m.SettingsView), { ssr: false });
+const FinancialDocsView = dynamic(() => import('../../components/admin/FinancialDocsView').then(m => m.FinancialDocsView), { ssr: false });
+const UsersManagementView = dynamic(() => import('../../components/admin/UsersManagementView').then(m => m.UsersManagementView), { ssr: false });
+const UsersView = dynamic(() => import('../../components/admin/UsersView').then(m => m.UsersView), { ssr: false });
+const ServiceMasterView = dynamic(() => import('../../components/admin/ServiceMasterView').then(m => m.ServiceMasterView), { ssr: false });
+const CommunicationHistoryView = dynamic(() => import('../../components/admin/CommunicationHistoryView').then(m => m.CommunicationHistoryView), { ssr: false });
 
 export default function AdminPage() {
   const router = useRouter();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTarget, setSearchTarget] = useState('all');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const { leads, engagements, currentUser, globalSuccessMsg } = useDashboardStore();
 
   useEffect(() => {
     if (!currentUser) {
       router.push('/');
-    } else if (currentUser.role !== 'SUPER_ADMIN') {
+    } else if (currentUser.role === 'EMPLOYEE') {
+      router.push('/employee');
+    } else if (currentUser.role === 'CLIENT') {
+      router.push('/client');
+    } else if (currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'ADMIN') {
       router.push('/');
     }
   }, [currentUser, router]);
 
-  if (!currentUser || currentUser.role !== 'SUPER_ADMIN') {
+  if (!isMounted) return null;
+  if (!currentUser || (currentUser.role !== 'SUPER_ADMIN' && currentUser.role !== 'ADMIN')) {
     return null; 
   }
 
   const tabTitles: { [key: string]: string } = {
-    dashboard: 'Dashboard Overview',
-    crm: 'Consultancy CRM & Proposals',
-    service_master: 'Service Master Configuration',
-    work: 'Workloads & Tasks',
-    calendar: 'Operations Calendar',
-    hr_payroll: 'HR & Payroll Management',
-    client_management: 'Client Management',
-    invoicing: 'Invoicing & Revenue Engine',
-    settings: 'Suite Settings',
-    user_management: 'Access Control & Users',
-    notifications: 'Notifications',
+    dashboard: 'ClientPulse',
+    crm: 'Growth Hub',
+    service_master: 'Service Hub',
+    work: 'Task Hub',
+    calendar: 'Schedule Hub',
+    hr_payroll: 'Employee Hub',
+    client_management: 'Client Hub',
+    invoicing: 'Revenue Hub',
+    outbox: 'Communication Hub',
+    settings: 'Config Hub',
+    user_management: 'Secure Hub',
+    notifications: 'Alert Hub',
   };
 
   const currentTabTitle = tabTitles[currentTab] || 'Vantage CFO Suite';
@@ -204,6 +219,8 @@ export default function AdminPage() {
         return <ServiceMasterView />;
       case 'work':
         return <WorkView />;
+      case 'timesheet':
+        return <TimesheetView />;
       case 'calendar':
         return <CalendarView />;
       case 'hr_payroll':
@@ -216,6 +233,8 @@ export default function AdminPage() {
         return <SettingsView />;
       case 'user_management':
         return <UsersView />;
+      case 'outbox':
+        return <CommunicationHistoryView />;
       case 'compliance':
         return <ComplianceView />;
       case 'notifications':
@@ -237,7 +256,7 @@ export default function AdminPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-on-surface font-outfit">Notifications</h2>
+            <h2 className="text-xl font-bold text-on-surface font-outfit">Alert Hub</h2>
             <p className="text-xs text-outline mt-1">{notifications.filter(n => !n.isRead).length} unread</p>
           </div>
           {notifications.length > 0 && (
@@ -285,7 +304,7 @@ export default function AdminPage() {
     );
   };
 
-  const spacingClass = 'ml-16 peer-hover:ml-60';
+  const spacingClass = 'ml-0 md:ml-16 md:peer-hover:ml-60';
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
@@ -300,7 +319,7 @@ export default function AdminPage() {
       />
 
       <div className={`flex-1 flex flex-col min-w-0 ${spacingClass} transition-all duration-300`}>
-        <Header
+        <Header onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           setCurrentTab={setCurrentTab}

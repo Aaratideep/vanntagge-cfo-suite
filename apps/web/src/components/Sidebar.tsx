@@ -19,15 +19,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   if (!currentUser) return null;
 
   const allNavItems = [
-    { id: 'dashboard', label: 'Dashboard Overview', icon: 'dashboard' },
-    { id: 'crm', label: 'CRM & Proposals', icon: 'contact_page' },
-    { id: 'service_master', label: 'Service Master Configuration', icon: 'settings_applications' },
-    { id: 'work', label: 'Workloads & Tasks', icon: 'assignment' },
-    { id: 'hr_payroll', label: 'HR & Payroll', icon: 'groups' },
-    { id: 'client_management', label: 'Client Management', icon: 'handshake' },
-    { id: 'invoicing', label: 'Invoicing & Revenue', icon: 'payments' },
-    { id: 'user_management', label: 'Access Control', icon: 'manage_accounts' },
-    { id: 'calendar', label: 'Calendar View', icon: 'calendar_month' },
+    { id: 'dashboard', label: 'ClientPulse', icon: 'dashboard' },
+    { id: 'crm', label: 'Growth Hub', icon: 'handshake' },
+    { id: 'service_master', label: 'Service Hub', icon: 'CUSTOM_SERVICE_HUB' },
+    { id: 'work', label: 'Task Hub', icon: 'push_pin' },
+    { id: 'timesheet', label: 'Time Hub', icon: 'schedule' },
+    { id: 'hr_payroll', label: 'Employee Hub', icon: 'groups' },
+    { id: 'client_management', label: 'Client Hub', icon: 'handshake' },
+    { id: 'invoicing', label: 'Revenue Hub', icon: 'payments' },
+    { id: 'user_management', label: 'Secure Hub', icon: 'manage_accounts' },
+    { id: 'calendar', label: 'Schedule Hub', icon: 'calendar_month' },
+    { id: 'outbox', label: 'Communication Hub', icon: 'forward_to_inbox' },
     { id: 'financial_docs', label: 'Financial Documents', icon: 'description' },
     { id: 'reports', label: 'MIS Reporting', icon: 'monitoring' },
   ];
@@ -38,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     
     if (currentUser.role === 'EMPLOYEE') {
-      return ['dashboard', 'work', 'calendar', 'client_management'].includes(item.id);
+      return ['dashboard', 'work', 'timesheet', 'calendar', 'client_management', 'outbox'].includes(item.id);
     }
     
     if (currentUser.role === 'CLIENT') {
@@ -49,9 +51,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   });
 
   return (
-    <aside
-      className={`fixed left-0 top-0 h-full bg-slate-50 text-slate-800 border-r border-slate-200 flex flex-col items-center py-4 overflow-y-auto z-50 transition-all duration-300 w-16 group hover:w-60 shadow-xl peer`}
-    >
+    <>
+      {/* Mobile Overlay Backdrop */}
+      <div 
+        className={`md:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity duration-300 ${!collapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setCollapsed(true)}
+      />
+
+      <aside
+        className={`fixed left-0 top-0 h-full glass-sidebar text-foreground flex flex-col items-center py-4 overflow-y-auto overflow-x-hidden z-50 transition-all duration-300 w-60 md:w-16 group md:hover:w-60 shadow-xl peer ${!collapsed ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+      >
       {/* Branding Header */}
       <div className="mb-6 flex flex-col items-center w-full px-2">
         <div className="bg-white p-1 rounded-xl shadow-sm border border-slate-200 shrink-0 w-10 h-10 flex items-center justify-center">
@@ -61,23 +70,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="w-8 h-8 object-contain"
           />
         </div>
-        <div className="hidden group-hover:block mt-3 text-center">
+        <div className="mt-3 text-center transition-all duration-300 overflow-hidden max-h-[100px] opacity-100 md:max-h-0 md:opacity-0 md:group-hover:max-h-[100px] md:group-hover:opacity-100">
           <h1 className="text-sm font-extrabold text-slate-900 tracking-tight font-outfit leading-tight">VANNTAGGE</h1>
           <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold -mt-0.5">CFO SERVICES LLP</p>
         </div>
       </div>
 
-      {/* Quick Create Action Button */}
-      {currentUser.role === 'SUPER_ADMIN' && (
-        <button
-          onClick={() => setCurrentTab('crm')}
-          className="mb-6 flex items-center justify-center bg-blue-600 text-white rounded-xl w-10 h-10 group-hover:w-11/12 hover:bg-blue-700 shadow-sm transition-all"
-          title="Quick Create / Lead"
-        >
-          <span className="material-symbols-outlined text-[20px]">add</span>
-          <span className="hidden group-hover:block ml-2 text-xs font-bold">Quick Create / Lead</span>
-        </button>
-      )}
+
 
       {/* Navigation Links */}
       <nav className="flex-1 w-full flex flex-col space-y-1.5 px-2">
@@ -91,20 +90,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => setCurrentTab(item.id)}
               className={`w-full flex items-center p-2.5 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-blue-600 text-white font-bold shadow-md'
+                  ? 'bg-primary text-white font-bold shadow-md'
                   : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 font-medium'
               }`}
               title={item.label}
             >
               <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                <span
-                  className="material-symbols-outlined text-[20px]"
-                  style={{ fontVariationSettings: iconFillSettings }}
-                >
-                  {item.icon}
-                </span>
+                {item.icon === 'CUSTOM_SERVICE_HUB' ? (
+                  <img src="/service_hub_icon.png" alt="Service Hub" className={`w-[20px] h-[20px] ${isActive ? 'brightness-0 invert' : ''}`} style={{ objectFit: 'contain' }} />
+                ) : (
+                  <span
+                    className="material-symbols-outlined text-[20px]"
+                    style={{ fontVariationSettings: iconFillSettings }}
+                  >
+                    {item.icon}
+                  </span>
+                )}
               </div>
-              <span className="hidden group-hover:block ml-3 text-sm whitespace-nowrap">{item.label}</span>
+              <span className="text-sm whitespace-nowrap overflow-hidden transition-all duration-300 max-w-[200px] ml-3 opacity-100 md:max-w-0 md:ml-0 md:opacity-0 md:group-hover:max-w-[200px] md:group-hover:ml-3 md:group-hover:opacity-100 block">{item.label}</span>
             </button>
           );
         })}
@@ -115,30 +118,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           onClick={() => setCurrentTab('notifications')}
           className={`w-full flex items-center p-2.5 rounded-xl transition-all duration-200 ${
-            currentTab === 'notifications' ? 'bg-blue-600 text-white font-bold shadow-md' : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 font-medium'
+            currentTab === 'notifications' ? 'bg-primary text-white font-bold shadow-md' : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 font-medium'
           }`}
-          title="Notifications"
+          title="Alert Hub"
         >
           <div className="w-6 h-6 flex items-center justify-center shrink-0">
              <span className="material-symbols-outlined text-[20px]">notifications</span>
           </div>
-          <span className="hidden group-hover:block ml-3 text-sm whitespace-nowrap">Notifications</span>
+          <span className="text-sm whitespace-nowrap overflow-hidden transition-all duration-300 max-w-[200px] ml-3 opacity-100 md:max-w-0 md:ml-0 md:opacity-0 md:group-hover:max-w-[200px] md:group-hover:ml-3 md:group-hover:opacity-100 block">Alert Hub</span>
         </button>
-        {currentUser.role === 'SUPER_ADMIN' && (
+        {(currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'EMPLOYEE') && (
           <button
             onClick={() => setCurrentTab('settings')}
             className={`w-full flex items-center p-2.5 rounded-xl transition-all duration-200 ${
-              currentTab === 'settings' ? 'bg-blue-600 text-white font-bold shadow-md' : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 font-medium'
+              currentTab === 'settings' ? 'bg-primary text-white font-bold shadow-md' : 'text-slate-700 hover:bg-slate-200/60 hover:text-slate-900 font-medium'
             }`}
-            title="Settings"
+            title="Config Hub"
           >
             <div className="w-6 h-6 flex items-center justify-center shrink-0">
                <span className="material-symbols-outlined text-[20px]">settings</span>
             </div>
-            <span className="hidden group-hover:block ml-3 text-sm whitespace-nowrap">Settings</span>
+            <span className="text-sm whitespace-nowrap overflow-hidden transition-all duration-300 max-w-[200px] ml-3 opacity-100 md:max-w-0 md:ml-0 md:opacity-0 md:group-hover:max-w-[200px] md:group-hover:ml-3 md:group-hover:opacity-100 block">Config Hub</span>
           </button>
         )}
       </div>
     </aside>
+    </>
   );
 };

@@ -148,7 +148,7 @@ export const ComplianceView: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold whitespace-nowrap">
                       <th className="p-3">Filing Type</th>
                       <th className="p-3">DueDate</th>
                       <th className="p-3">Responsible Consultant</th>
@@ -160,7 +160,7 @@ export const ComplianceView: React.FC = () => {
                     {selectedEngagement.compliances.map((c) => {
                       const isOverdue = new Date(c.dueDate) < new Date() && c.status !== 'COMPLETED';
                       return (
-                        <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
+                        <tr key={c.id} className="hover:bg-slate-50/50 transition-colors whitespace-nowrap">
                           <td className="p-3 font-bold text-slate-700">{c.type} filing verification</td>
                           <td className={`p-3 font-semibold ${isOverdue ? 'text-red-500' : 'text-slate-600'}`}>
                             {new Date(c.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

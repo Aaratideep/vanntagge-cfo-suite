@@ -18,9 +18,21 @@ import {
   Send,
   Lock,
   XCircle,
+  Activity,
+  Pin,
 } from 'lucide-react';
-import { useDashboardStore } from '../store/dashboardStore';
+import { useDashboardStore, STANDARD_TASKS_BY_CATEGORY } from '../store/dashboardStore';
 import { Task, TaskStatus, Priority, ReviewSeverity, ReviewStatus } from '../types';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from 'recharts';
 
 export const WorkView: React.FC = () => {
   const {
@@ -33,9 +45,11 @@ export const WorkView: React.FC = () => {
     addTaskFollowUp,
     users,
     currentUser,
+    serviceCategories,
   } = useDashboardStore();
 
   const [activeEngId, setActiveEngId] = useState<string>('ALL');
+  const [activeEmployeeId, setActiveEmployeeId] = useState<string>('ALL');
   const [showAllocModal, setShowAllocModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null); // any to avoid TSTask missing errors
 
@@ -50,6 +64,10 @@ export const WorkView: React.FC = () => {
     reviewerId: '',
     notes: '',
     dueDate: '',
+    standardTaskCategory: '',
+    standardTask: '',
+    verificationSteps: '',
+    analysisSteps: '',
   });
 
   // Review Form
@@ -121,9 +139,13 @@ export const WorkView: React.FC = () => {
       }
     }
 
+    if (activeEmployeeId !== 'ALL') {
+      pool = pool.filter(t => t.employeeId === activeEmployeeId || (!t.employeeId && activeEmployeeId === 'UNASSIGNED'));
+    }
+
     if (currentUser?.role === 'SUPER_ADMIN') return pool;
     return pool.filter(isTaskForCurrentUser);
-  }, [engagements, activeEngId, currentUser]);
+  }, [engagements, activeEngId, activeEmployeeId, currentUser]);
 
   if (!currentUser) return null;
 
@@ -190,6 +212,8 @@ export const WorkView: React.FC = () => {
       status: 'NOT_STARTED',
       dependencies: '',
       notes: allocForm.notes,
+      verificationSteps: allocForm.verificationSteps,
+      analysisSteps: allocForm.analysisSteps,
       dueDate: allocForm.dueDate || undefined,
       employeeId: allocForm.employeeId || undefined,
       employeeName: emp ? emp.name : undefined,
@@ -208,6 +232,10 @@ export const WorkView: React.FC = () => {
       reviewerId: '',
       notes: '',
       dueDate: '',
+      standardTaskCategory: '',
+      standardTask: '',
+      verificationSteps: '',
+      analysisSteps: '',
     });
   };
 
@@ -219,13 +247,17 @@ export const WorkView: React.FC = () => {
     if (!targetEng) return;
 
     const newTime = Number(selectedTask.timeSpent) + Number(timeSpentInput);
+    const autoProgress = selectedTask.estimatedHours > 0 
+      ? Math.min(100, Math.round((newTime / selectedTask.estimatedHours) * 100))
+      : 0;
+
     updateTask(targetEng.id, selectedTask.id, {
       timeSpent: newTime,
-      progress: progressInput,
-      status: progressInput === 100 ? 'REVIEW_PENDING' : 'IN_PROGRESS',
+      progress: autoProgress,
+      status: autoProgress === 100 ? 'REVIEW_PENDING' : 'IN_PROGRESS',
     });
 
-    if (progressInput === 100) {
+    if (autoProgress === 100) {
       useDashboardStore.getState().addNotification(
         'Task Review Requested',
         `Task "${selectedTask.title}" has been submitted for partner audit approval.`,
@@ -327,7 +359,10 @@ export const WorkView: React.FC = () => {
       {/* View Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/30 pb-2 gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Task Management</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit flex items-center gap-2">
+            <Pin size={20} className="text-blue-600" />
+            Task Hub
+          </h1>
           <p className="text-xs text-outline">Manage active client engagement checklists, track progress metrics, and complete reviews.</p>
         </div>
         
@@ -345,20 +380,41 @@ export const WorkView: React.FC = () => {
       {/* Toolbar & Selectors */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         {viewMode !== 'dashboard' ? (
-          <div className="flex gap-2 items-center text-xs">
-            <span className="text-outline font-medium">Active Engagement:</span>
-            <select
-              value={activeEngId}
-              onChange={(e) => setActiveEngId(e.target.value)}
-              className="bg-surface border border-slate-200/50 rounded-xl px-3 py-1.5 font-semibold text-slate-800 outline-none"
-            >
-              <option value="ALL">All Engagements ({currentUser.role === 'SUPER_ADMIN' ? 'All Tasks' : 'My Assigned Tasks'})</option>
-              {engagements.map((eng) => (
-                <option key={eng.id} value={eng.id}>
-                  {eng.clientCompanyName} &mdash; {eng.name}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex gap-2 items-center text-xs">
+              <span className="text-outline font-medium">Active Engagement:</span>
+              <select
+                value={activeEngId}
+                onChange={(e) => setActiveEngId(e.target.value)}
+                className="bg-surface border border-slate-200/50 rounded-xl px-3 py-1.5 font-semibold text-slate-800 outline-none max-w-[300px] text-ellipsis"
+              >
+                <option value="ALL">All Engagements ({currentUser.role === 'SUPER_ADMIN' ? 'All Tasks' : 'My Assigned Tasks'})</option>
+                {engagements.map((eng) => (
+                  <option key={eng.id} value={eng.id}>
+                    {eng.clientCompanyName} &mdash; {eng.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {currentUser.role === 'SUPER_ADMIN' && (
+              <div className="flex gap-2 items-center text-xs">
+                <span className="text-outline font-medium">Assignee:</span>
+                <select
+                  value={activeEmployeeId}
+                  onChange={(e) => setActiveEmployeeId(e.target.value)}
+                  className="bg-surface border border-slate-200/50 rounded-xl px-3 py-1.5 font-semibold text-slate-800 outline-none"
+                >
+                  <option value="ALL">All Assignees</option>
+                  <option value="UNASSIGNED">Unassigned</option>
+                  {users.filter(u => u.role === 'EMPLOYEE').map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex gap-2 items-center text-xs">
@@ -443,12 +499,12 @@ export const WorkView: React.FC = () => {
                  <span className="text-sm font-medium text-slate-500 mb-1">Active Tasks</span>
                </div>
                <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden flex">
-                 <div className="bg-primary h-full" style={{ width: `${globalCompletionRate}%` }}></div>
-                 <div className="bg-amber-400 h-full" style={{ width: `${30}%` }}></div>
+                 <div className="bg-primary h-full" style={{ width: `${globalCompletionRate}%` }} title={`Completed: ${globalCompletionRate}%`}></div>
+                 <div className="bg-amber-400 h-full" style={{ width: `${100 - globalCompletionRate}%` }} title={`In Progress / Pending: ${100 - globalCompletionRate}%`}></div>
                </div>
-               <div className="flex justify-between text-[10px] font-bold text-outline mt-2">
-                 <span>Completed: {completedGlobalTasks}</span>
-                 <span>In Progress / Pending: {totalGlobalTasks - completedGlobalTasks}</span>
+               <div className="flex w-full text-[10px] font-bold text-outline mt-2">
+                 <span style={{ width: `${globalCompletionRate}%` }} className="text-left">Completed: {completedGlobalTasks}</span>
+                 <span style={{ width: `${100 - globalCompletionRate}%` }} className="text-right">In Progress: {totalGlobalTasks - completedGlobalTasks}</span>
                </div>
             </div>
 
@@ -471,42 +527,55 @@ export const WorkView: React.FC = () => {
           {/* Graph & Assessment Table Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* Custom Bar Graph */}
-            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30">
-              <h3 className="font-bold text-slate-800 text-sm mb-6">All Employees Task Graph</h3>
-              <div className="space-y-5">
-                {employeeData.map((emp) => {
-                  const compPct = emp.total === 0 ? 0 : Math.round((emp.completed / emp.total) * 100);
-                  return (
-                    <div key={emp.name} className="relative">
-                      <div className="flex justify-between text-xs font-bold mb-1.5">
-                        <span className="text-slate-800">{emp.name}</span>
-                        <span className="text-outline">{emp.completed} / {emp.total} Tasks ({compPct}%)</span>
-                      </div>
-                      <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden flex relative">
-                        {/* Background representing total tasks relative to max */}
-                        <div className="absolute inset-0 bg-primary/10" style={{ width: `${Math.max(10, (emp.total / Math.max(...employeeData.map(e => e.total))) * 100)}%` }}></div>
-                        {/* Foreground representing completed relative to assigned */}
-                        <div 
-                          className="h-full bg-primary relative z-10 transition-all duration-1000" 
-                          style={{ width: `${Math.max(10, (emp.total / Math.max(...employeeData.map(e => e.total))) * 100) * (emp.completed / (emp.total || 1))}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {employeeData.length === 0 && (
+            {/* Standard Bar Chart for Employees */}
+            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30 flex flex-col h-[360px]">
+              <h3 className="font-bold text-slate-800 text-sm mb-4">All Employees Task Graph</h3>
+              <div className="flex-1 w-full relative">
+                {employeeData.length === 0 ? (
                   <div className="text-center text-outline text-xs py-8">No consultants found.</div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      layout="vertical"
+                      data={employeeData.map(emp => ({
+                        name: emp.name,
+                        Completed: emp.completed,
+                        Pending: emp.total - emp.completed,
+                      }))}
+                      margin={{ top: 10, right: 30, left: 30, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={true} vertical={false} />
+                      <XAxis type="number" stroke="#94a3b8" fontSize={10} allowDecimals={false} />
+                      <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} width={80} />
+                      <Tooltip contentStyle={{ fontSize: 10, borderRadius: 8, border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} cursor={{fill: '#f8fafc'}} />
+                      <Legend wrapperStyle={{ fontSize: 10 }} />
+                      <Bar dataKey="Completed" stackId="a" fill="#10b981" barSize={24} />
+                      <Bar dataKey="Pending" stackId="a" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 )}
               </div>
             </div>
 
             {/* Assessment & Monitoring */}
-            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30">
-              <h3 className="font-bold text-slate-800 text-sm mb-6">Employee Wise Assessment & Monitoring</h3>
+            <div className="premium-card bg-slate-50est p-6 border border-slate-200/30 flex flex-col">
+              <h3 className="font-bold text-slate-800 text-sm mb-3">Employee Wise Assessment & Monitoring</h3>
+              
+              <div className="mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200 text-[10px] text-slate-600">
+                <div className="font-bold text-xs text-slate-800 mb-1.5 flex items-center gap-1.5">
+                  <Activity size={14} className="text-primary" />
+                  Efficiency Criteria (Logged / Estimated Hours)
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-green-500"></div> <b>&ge; 100%</b> (Highly Efficient)</span>
+                  <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div> <b>80% - 99%</b> (Slightly Inefficient)</span>
+                  <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500"></div> <b>&lt; 80%</b> (Highly Inefficient)</span>
+                </div>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
-                  <thead>
+                  <thead className="whitespace-nowrap">
                     <tr className="border-b border-slate-200/30 text-outline">
                       <th className="pb-3 font-semibold">Consultant Name</th>
                       <th className="pb-3 font-semibold text-center">Efficiency (Log/Est)</th>
@@ -516,13 +585,19 @@ export const WorkView: React.FC = () => {
                   </thead>
                   <tbody className="divide-y divide-outline-variant/20">
                     {employeeData.map((emp) => {
-                      const effRatio = emp.estHours > 0 ? (emp.logHours / emp.estHours) : 0;
-                      let effColor = 'text-green-600';
-                      if (effRatio > 1.1) effColor = 'text-amber-600'; // Over budget
-                      if (effRatio > 1.5) effColor = 'text-red-600'; // Highly over budget
+                      let effPercentage = 0;
+                      if (emp.logHours > 0) {
+                        effPercentage = Math.round((emp.estHours / emp.logHours) * 100);
+                      }
+                      
+                      let effColor = 'text-red-600';
+                      if (effPercentage >= 100) effColor = 'text-green-600';
+                      else if (effPercentage >= 80) effColor = 'text-amber-600';
+                      
+                      if (emp.logHours === 0) effColor = 'text-slate-400';
                       
                       return (
-                        <tr key={emp.name} className="hover:bg-surface-container/30 transition-colors">
+                        <tr key={emp.name} className="hover:bg-surface-container/30 transition-colors whitespace-nowrap">
                           <td className="py-3 font-bold text-slate-800 flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-primary/10 text-blue-600 flex items-center justify-center text-[9px]">
                               {emp.name.split(' ').map(n => n[0]).join('')}
@@ -530,7 +605,12 @@ export const WorkView: React.FC = () => {
                             {emp.name}
                           </td>
                           <td className="py-3 text-center font-bold">
-                            <span className={effColor}>{emp.logHours}h</span> / {emp.estHours}h
+                            {emp.logHours > 0 ? (
+                              <span className={effColor}>{effPercentage}%</span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                            <span className="text-slate-400 text-[10px] ml-1 font-medium">({emp.logHours}h / {emp.estHours}h)</span>
                           </td>
                           <td className="py-3 text-center">
                             {emp.pendingPoints > 0 ? (
@@ -674,8 +754,8 @@ export const WorkView: React.FC = () => {
                                   {pendingPoints} Issues
                                 </div>
                               ) : (
-                                <div className="w-6 h-6 bg-surface-container rounded-full flex items-center justify-center font-bold text-[9px] text-outline">
-                                  {task.employeeName ? task.employeeName.split(' ').map(n => n[0]).join('') : 'U'}
+                                <div className="bg-surface-container px-2 py-1 rounded-md flex items-center justify-center font-bold text-[9px] text-outline max-w-[120px] truncate" title={task.employeeName || 'Unassigned'}>
+                                  {task.employeeName ? task.employeeName : 'Unassigned'}
                                 </div>
                               )}
                             </div>
@@ -800,7 +880,7 @@ export const WorkView: React.FC = () => {
       {showAllocModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setShowAllocModal(false)} />
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg p-6 relative z-10 shadow-2xl">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl p-6 relative z-10 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-slate-800 text-sm mb-4">Allocate Engagement Task</h3>
             <form onSubmit={handleAllocateTask} className="space-y-4 text-xs">
               <div>
@@ -823,6 +903,49 @@ export const WorkView: React.FC = () => {
                     ))}
                   </select>
                 )}
+              </div>
+              {/* Standard Task Selector */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold text-[10px] uppercase tracking-wider">Service Category</label>
+                  <select
+                    value={allocForm.standardTaskCategory}
+                    onChange={(e) => {
+                      setAllocForm({ ...allocForm, standardTaskCategory: e.target.value, standardTask: '' });
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2 outline-none text-xs font-semibold"
+                  >
+                    <option value="">-- Custom Task --</option>
+                    {serviceCategories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold text-[10px] uppercase tracking-wider">Select Service Plan</label>
+                  <select
+                    disabled={!allocForm.standardTaskCategory}
+                    value={allocForm.standardTask}
+                    onChange={(e) => {
+                      const serviceId = e.target.value;
+                      const selectedCat = serviceCategories.find(c => c.id === allocForm.standardTaskCategory);
+                      const selectedService = selectedCat?.services.find(s => s.id === serviceId);
+                      
+                      setAllocForm({ 
+                        ...allocForm, 
+                        standardTask: serviceId, 
+                        title: selectedService ? selectedService.name : allocForm.title,
+                        priority: selectedService ? selectedService.priority : allocForm.priority,
+                      });
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2 outline-none text-xs font-semibold disabled:bg-slate-100 disabled:text-slate-400"
+                  >
+                    <option value="">-- Select Service --</option>
+                    {allocForm.standardTaskCategory && serviceCategories.find(c => c.id === allocForm.standardTaskCategory)?.services.map(svc => (
+                      <option key={svc.id} value={svc.id}>{svc.name} ({svc.frequency})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -912,12 +1035,41 @@ export const WorkView: React.FC = () => {
                   </select>
                 </div>
               </div>
+
+              {/* Verification & Analysis Steps Inputs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <CheckSquare size={12} className="text-blue-600" /> Verification Steps
+                  </label>
+                  <textarea
+                    value={allocForm.verificationSteps}
+                    onChange={(e) => setAllocForm({ ...allocForm, verificationSteps: e.target.value })}
+                    placeholder="Enter verification steps..."
+                    rows={3}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 outline-none focus:border-blue-500 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-700 mb-1 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1">
+                    <Activity size={12} className="text-purple-600" /> Analysis Steps
+                  </label>
+                  <textarea
+                    value={allocForm.analysisSteps}
+                    onChange={(e) => setAllocForm({ ...allocForm, analysisSteps: e.target.value })}
+                    placeholder="Enter analysis steps..."
+                    rows={3}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2.5 outline-none focus:border-purple-500 text-xs"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-slate-500 mb-1 font-bold">Rich Instructions & Notes</label>
                 <textarea
                   value={allocForm.notes}
                   onChange={(e) => setAllocForm({ ...allocForm, notes: e.target.value })}
-                  rows={4}
+                  rows={3}
                   placeholder="Provide detailed briefs, context links, and follow-up directives..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:bg-white focus:border-primary transition-colors text-sm"
                 />
@@ -995,6 +1147,37 @@ export const WorkView: React.FC = () => {
                   </div>
                 )}
               </div>
+
+              {/* Execution Guidelines */}
+              {(selectedTask.verificationSteps || selectedTask.analysisSteps) && (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-slate-200 bg-white">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Execution Guidelines</h4>
+                  </div>
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedTask.verificationSteps && (
+                      <div className="space-y-1.5">
+                        <h5 className="text-[10px] font-bold text-blue-700 flex items-center gap-1 uppercase tracking-wider">
+                          <CheckSquare size={12} /> Verification Steps
+                        </h5>
+                        <div className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs">
+                          {selectedTask.verificationSteps}
+                        </div>
+                      </div>
+                    )}
+                    {selectedTask.analysisSteps && (
+                      <div className="space-y-1.5">
+                        <h5 className="text-[10px] font-bold text-purple-700 flex items-center gap-1 uppercase tracking-wider">
+                          <Activity size={12} /> Analysis Steps
+                        </h5>
+                        <div className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed bg-white p-2.5 rounded-lg border border-slate-200 shadow-xs">
+                          {selectedTask.analysisSteps}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Review Points Logs */}
               {selectedTask.reviewPoints.length > 0 && (
@@ -1075,7 +1258,7 @@ export const WorkView: React.FC = () => {
                 <form onSubmit={handleUpdateTaskExecution} className="space-y-4 border-t border-slate-100 pt-4">
                   <h4 className="font-bold text-slate-800 uppercase tracking-wide">Update Task Progress</h4>
                   
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-slate-500 mb-1">Add Time Spent (Hours)</label>
                       <input
@@ -1088,28 +1271,38 @@ export const WorkView: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-500 mb-1">Completion Progress %</label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={progressInput}
-                          onChange={(e) => setProgressInput(Number(e.target.value))}
-                          className="flex-1"
-                        />
-                        <span className="font-bold text-slate-700 w-10 text-right">{progressInput}%</span>
+                      <label className="block text-slate-500 mb-1">Automatic Progress %</label>
+                      <div className="h-[38px] bg-slate-100 rounded-xl flex items-center px-4 overflow-hidden relative">
+                         {(() => {
+                           const newTime = Number(selectedTask.timeSpent) + Number(timeSpentInput || 0);
+                           const autoProgress = selectedTask.estimatedHours > 0 ? Math.min(100, Math.round((newTime / selectedTask.estimatedHours) * 100)) : 0;
+                           return (
+                             <>
+                               <div className="absolute left-0 top-0 bottom-0 bg-blue-100" style={{ width: `${autoProgress}%` }}></div>
+                               <span className="relative z-10 font-bold text-blue-700 text-sm">{autoProgress}%</span>
+                               <span className="relative z-10 text-slate-400 text-[10px] ml-auto">
+                                 {newTime}h / {selectedTask.estimatedHours}h
+                               </span>
+                             </>
+                           );
+                         })()}
                       </div>
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-500/10 flex items-center justify-center gap-1"
-                  >
-                    <Send size={12} />
-                    {progressInput === 100 ? 'Submit for Partner Review' : 'Save Progress Update'}
-                  </button>
+                  {(() => {
+                    const newTime = Number(selectedTask.timeSpent) + Number(timeSpentInput || 0);
+                    const autoProgress = selectedTask.estimatedHours > 0 ? Math.min(100, Math.round((newTime / selectedTask.estimatedHours) * 100)) : 0;
+                    return (
+                      <button
+                        type="submit"
+                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-500/10 flex items-center justify-center gap-1"
+                      >
+                        <Send size={12} />
+                        {autoProgress === 100 ? 'Submit for Partner Review' : 'Save Progress Update'}
+                      </button>
+                    );
+                  })()}
                 </form>
               )}
 

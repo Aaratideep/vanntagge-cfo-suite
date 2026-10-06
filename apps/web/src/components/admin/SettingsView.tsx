@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings as SettingsIcon, ShieldCheck, Database, Bot, Share2, Mail, Users, Check } from 'lucide-react';
+import { Settings as SettingsIcon, ShieldCheck, Database, Bot, Share2, Mail, Users, Check, Calendar, Key } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 
 import { isFirebaseConfigured } from '../../lib/firebase';
 import { pushRecordToFirebase } from '../../lib/firebaseSync';
 
 export const SettingsView: React.FC = () => {
-  const { currentUser, addAuditLog, adminSettings, setAdminSettings } = useDashboardStore();
+  const { currentUser, addAuditLog, adminSettings, setAdminSettings, updateProfile } = useDashboardStore();
 
   const [tallyEnabled, setTallyEnabled] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
@@ -67,151 +67,195 @@ export const SettingsView: React.FC = () => {
       
       {/* Header */}
       <div className="border-b border-slate-200 pb-2">
-        <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Suite System Settings</h1>
+        <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Config Hub</h1>
         <p className="text-xs text-slate-500">Configure parameters, role access control limits, and third-party integrations.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <div className="space-y-6 lg:col-span-1">
-          {/* Admin Sender Identity */}
-          <div className="premium-card p-5 space-y-4 bg-white">
-            <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
-              <Users size={14} className="text-blue-500" />
-              Admin Sender Identity
-            </h3>
-            
-            <div className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-500 mb-1 font-semibold">Official Name</label>
-                <input
-                  type="text"
-                  value={adminSettings.adminName}
-                  onChange={(e) => setAdminSettings({ adminName: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
-                />
+          {currentUser.role === 'SUPER_ADMIN' && (
+            <>
+              {/* Admin Sender Identity */}
+              <div className="premium-card p-5 space-y-4 bg-white">
+                <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                  <Users size={14} className="text-blue-500" />
+                  Admin Sender Identity
+                </h3>
+                
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Official Name</label>
+                    <input
+                      type="text"
+                      value={adminSettings.adminName}
+                      onChange={(e) => setAdminSettings({ adminName: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Official Email</label>
+                    <input
+                      type="email"
+                      value={adminSettings.adminEmail}
+                      onChange={(e) => setAdminSettings({ adminEmail: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">WhatsApp Number (e.g. 919876543210)</label>
+                    <input
+                      type="text"
+                      value={adminSettings.adminPhone}
+                      onChange={(e) => setAdminSettings({ adminPhone: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Firm Name</label>
+                    <input
+                      type="text"
+                      value={adminSettings.companyName}
+                      onChange={(e) => setAdminSettings({ companyName: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">SMTP App Password (For Email Dispatch)</label>
+                    <input
+                      type="password"
+                      placeholder="16-digit App Password"
+                      value={adminSettings.smtpPassword || ''}
+                      onChange={(e) => setAdminSettings({ smtpPassword: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
               </div>
-              <div>
-                <label className="block text-slate-500 mb-1 font-semibold">Official Email</label>
-                <input
-                  type="email"
-                  value={adminSettings.adminEmail}
-                  onChange={(e) => setAdminSettings({ adminEmail: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-500 mb-1 font-semibold">WhatsApp Number (e.g. 919876543210)</label>
-                <input
-                  type="text"
-                  value={adminSettings.adminPhone}
-                  onChange={(e) => setAdminSettings({ adminPhone: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-500 mb-1 font-semibold">Firm Name</label>
-                <input
-                  type="text"
-                  value={adminSettings.companyName}
-                  onChange={(e) => setAdminSettings({ companyName: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-500 mb-1 font-semibold">SMTP App Password (For Email Dispatch)</label>
-                <input
-                  type="password"
-                  placeholder="16-digit App Password"
-                  value={adminSettings.smtpPassword || ''}
-                  onChange={(e) => setAdminSettings({ smtpPassword: e.target.value })}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
-                />
-              </div>
-            </div>
-          </div>
 
-          {/* Firebase Cloud Database */}
-          <div className="premium-card p-5 space-y-4 bg-white">
-            <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
-              <span className="material-symbols-outlined text-[16px] text-blue-500">cloud</span>
-              Firebase Cloud Database
-            </h3>
-            <div className="space-y-4 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Connection Status:</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isFirebaseConfigured ? 'bg-green-50 text-green-700 border-green-150' : 'bg-amber-50 text-amber-700 border-amber-150'}`}>
-                  {isFirebaseConfigured ? 'Connected' : 'Disconnected (Sandbox)'}
-                </span>
-              </div>
-              
-              {isFirebaseConfigured ? (
-                <div className="space-y-3">
-                  <p className="text-[10px] text-slate-400 leading-normal">
-                    Your Cloud Firestore database is active. If this is a fresh setup, you can seed the default mock datasets (leads, clients, engagements, compliance timelines) using the trigger below.
-                  </p>
+              {/* Firebase Cloud Database */}
+              <div className="premium-card p-5 space-y-4 bg-white">
+                <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                  <span className="material-symbols-outlined text-[16px] text-blue-500">cloud</span>
+                  Firebase Cloud Database
+                </h3>
+                <div className="space-y-4 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Connection Status:</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isFirebaseConfigured ? 'bg-green-50 text-green-700 border-green-150' : 'bg-amber-50 text-amber-700 border-amber-150'}`}>
+                      {isFirebaseConfigured ? 'Connected' : 'Disconnected (Sandbox)'}
+                    </span>
+                  </div>
                   
-                  {seedSuccess ? (
-                    <div className="p-2.5 bg-green-50 text-green-800 border border-green-100 rounded-lg font-semibold text-[10px]">
-                      ✓ Cloud collections successfully seeded with schemas!
+                  {isFirebaseConfigured ? (
+                    <div className="space-y-3">
+                      <p className="text-[10px] text-slate-400 leading-normal">
+                        Your Cloud Firestore database is active. If this is a fresh setup, you can seed the default mock datasets (leads, clients, engagements, compliance timelines) using the trigger below.
+                      </p>
+                      
+                      {seedSuccess ? (
+                        <div className="p-2.5 bg-green-50 text-green-800 border border-green-100 rounded-lg font-semibold text-[10px]">
+                          ✓ Cloud collections successfully seeded with schemas!
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSeedFirebase}
+                            disabled={seeding}
+                            className="flex-1 bg-primary text-on-primary py-2.5 rounded-lg font-semibold shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                          >
+                            {seeding ? (
+                              <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                            ) : (
+                              <>
+                                <span className="material-symbols-outlined text-[16px]">database</span>
+                                <span>Sync to Firebase</span>
+                              </>
+                            )}
+                          </button>
+                          
+                          <button
+                            onClick={() => useDashboardStore.getState().seedDummyData()}
+                            className="flex-1 bg-slate-800 text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-slate-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">magic_button</span>
+                            <span>Seed Dummy Data</span>
+                          </button>
+                        </div>
+                      )}
+                      {seedError && (
+                        <div className="p-2.5 bg-red-50 text-red-700 border border-red-100 rounded-lg text-[10px]">
+                          ⚠ {seedError}
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleSeedFirebase}
-                        disabled={seeding}
-                        className="flex-1 bg-primary text-on-primary py-2.5 rounded-lg font-semibold shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                      >
-                        {seeding ? (
-                          <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                        ) : (
-                          <>
-                            <span className="material-symbols-outlined text-[16px]">database</span>
-                            <span>Sync to Firebase</span>
-                          </>
-                        )}
-                      </button>
+                    <div className="space-y-3">
+                      <p className="text-[10px] text-slate-400 leading-normal">
+                        To connect a live Firebase instance, enter your credentials in <code>.env.local</code> and restart the Next.js dev server. Follow the guide in <code>firebase_setup.md</code>.
+                      </p>
                       
                       <button
                         onClick={() => useDashboardStore.getState().seedDummyData()}
-                        className="flex-1 bg-slate-800 text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-slate-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                        className="w-full bg-slate-800 text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-slate-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                       >
                         <span className="material-symbols-outlined text-[16px]">magic_button</span>
-                        <span>Seed Dummy Data</span>
+                        <span>Populate Local Dummy Data</span>
                       </button>
                     </div>
                   )}
-                  {seedError && (
-                    <div className="p-2.5 bg-red-50 text-red-700 border border-red-100 rounded-lg text-[10px]">
-                      ⚠ {seedError}
-                    </div>
-                  )}
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-[10px] text-slate-400 leading-normal">
-                    To connect a live Firebase instance, enter your credentials in <code>.env.local</code> and restart the Next.js dev server. Follow the guide in <code>firebase_setup.md</code>.
-                  </p>
-                  
-                  <button
-                    onClick={() => useDashboardStore.getState().seedDummyData()}
-                    className="w-full bg-slate-800 text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-slate-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">magic_button</span>
-                    <span>Populate Local Dummy Data</span>
-                  </button>
+              </div>
+            </>
+          )}
+
+          {/* Personal Settings & Integrations */}
+          <div className="premium-card p-5 space-y-4 bg-white">
+            <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
+              <Calendar size={14} className="text-purple-500" />
+              Personal Calendar Sync
+            </h3>
+            <div className="space-y-4 text-xs">
+              <p className="text-[10px] text-slate-400 leading-normal">
+                Connect your workspace calendar with your personal Google Calendar account to sync meetings and deadlines in both directions.
+              </p>
+              <div>
+                <label className="block text-slate-500 mb-1 font-semibold flex items-center gap-1">
+                  <Key size={12} /> Google Calendar API Key
+                </label>
+                <input
+                  type="password"
+                  placeholder="AIzaSyA..."
+                  value={currentUser.googleCalendarApiKey || ''}
+                  onChange={(e) => updateProfile({ googleCalendarApiKey: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-purple-500 transition-colors"
+                />
+              </div>
+              
+              <details className="group cursor-pointer">
+                <summary className="text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors list-none flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] group-open:rotate-90 transition-transform">chevron_right</span>
+                  Guide: How to get your personalized Google API Key
+                </summary>
+                <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded-xl space-y-2 text-[10px] text-blue-900 leading-relaxed">
+                  <p><strong>Step 1:</strong> Go to the <a href="https://console.cloud.google.com/" target="_blank" rel="noreferrer" className="underline font-semibold">Google Cloud Console</a>.</p>
+                  <p><strong>Step 2:</strong> Create a new Project or select an existing one.</p>
+                  <p><strong>Step 3:</strong> Navigate to <strong>APIs & Services</strong> &gt; <strong>Library</strong> and enable the <strong>Google Calendar API</strong>.</p>
+                  <p><strong>Step 4:</strong> Go to <strong>Credentials</strong> &gt; <strong>Create Credentials</strong> &gt; <strong>API key</strong>.</p>
+                  <p><strong>Step 5:</strong> Copy the generated API key and paste it above.</p>
+                  <p className="italic mt-1 opacity-80">Note: Ensure you restrict the API key to only allow access to the Calendar API for security.</p>
                 </div>
-              )}
+              </details>
             </div>
           </div>
         </div>
 
-        {/* Future Integrations / Add-ons */}
-        <div className="premium-card p-5 space-y-4 lg:col-span-2 bg-white">
-          <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
-            <Database size={14} className="text-blue-500" />
-            Integrations & Scalability Channels
-          </h3>
+        {currentUser.role === 'SUPER_ADMIN' && (
+          <div className="premium-card p-5 space-y-4 lg:col-span-2 bg-white">
+            <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
+              <Database size={14} className="text-blue-500" />
+              Integrations & Scalability Channels
+            </h3>
 
           <div className="divide-y divide-slate-100">
             
@@ -236,6 +280,42 @@ export const SettingsView: React.FC = () => {
                 <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
               </label>
             </div>
+            {tallyEnabled && (
+              <div className="p-4 bg-slate-50 rounded-xl space-y-3 border border-slate-100 mb-3 mx-4">
+                <div>
+                  <label className="block text-slate-500 mb-1 font-semibold">Tally Server URL</label>
+                  <input
+                    type="text"
+                    placeholder="http://localhost:9000"
+                    value={adminSettings.tallyServerUrl || ''}
+                    onChange={(e) => setAdminSettings({ tallyServerUrl: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Tally Username</label>
+                    <input
+                      type="text"
+                      placeholder="Username"
+                      value={adminSettings.tallyUsername || ''}
+                      onChange={(e) => setAdminSettings({ tallyUsername: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Tally Password</label>
+                    <input
+                      type="password"
+                      placeholder="Password"
+                      value={adminSettings.tallyPassword || ''}
+                      onChange={(e) => setAdminSettings({ tallyPassword: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* AI Financial assistant */}
             <div className="py-3 flex items-center justify-between text-xs">
@@ -261,6 +341,31 @@ export const SettingsView: React.FC = () => {
                 <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
               </label>
             </div>
+            {aiEnabled && (
+              <div className="p-4 bg-slate-50 rounded-xl space-y-3 border border-slate-100 mb-3 mx-4">
+                <div>
+                  <label className="block text-slate-500 mb-1 font-semibold">Gemini API Key</label>
+                  <input
+                    type="password"
+                    placeholder="AIzaSyB..."
+                    value={adminSettings.geminiApiKey || ''}
+                    onChange={(e) => setAdminSettings({ geminiApiKey: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-500 mb-1 font-semibold">Model Selection</label>
+                  <select
+                    value={adminSettings.aiModelSelection || 'gemini-1.5-pro'}
+                    onChange={(e) => setAdminSettings({ aiModelSelection: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                  >
+                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
             {/* WhatsApp Integration */}
             <div className="py-3 flex flex-col text-xs border-b border-slate-50 last:border-0">
@@ -345,9 +450,46 @@ export const SettingsView: React.FC = () => {
                 <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
               </label>
             </div>
+            {powerBiEnabled && (
+              <div className="p-4 bg-slate-50 rounded-xl space-y-3 border border-slate-100 mb-3 mx-4">
+                <div>
+                  <label className="block text-slate-500 mb-1 font-semibold">Workspace ID</label>
+                  <input
+                    type="text"
+                    placeholder="Workspace ID"
+                    value={adminSettings.powerBiWorkspaceId || ''}
+                    onChange={(e) => setAdminSettings({ powerBiWorkspaceId: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Client ID</label>
+                    <input
+                      type="text"
+                      placeholder="Client ID"
+                      value={adminSettings.powerBiClientId || ''}
+                      onChange={(e) => setAdminSettings({ powerBiClientId: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 mb-1 font-semibold">Client Secret</label>
+                    <input
+                      type="password"
+                      placeholder="Client Secret"
+                      value={adminSettings.powerBiClientSecret || ''}
+                      onChange={(e) => setAdminSettings({ powerBiClientSecret: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         </div>
+        )}
 
       </div>
 

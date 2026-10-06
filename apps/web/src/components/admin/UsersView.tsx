@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useDashboardStore } from '../../store/dashboardStore';
-import { Plus, Search, ShieldAlert, UserCheck, Shield, MoreVertical, X } from 'lucide-react';
+import { Role } from '../../types';
+import { Plus, Search, UserCheck, Shield, Briefcase, Building2, MoreVertical, X, Check, Lock, ArrowRight } from 'lucide-react';
 
 export const UsersView = () => {
-  const { users, addUser, updateUser, deleteUser, setGlobalSuccessMsg, currentUser } = useDashboardStore();
+  const { users, addUser, updateUser, deleteUser, setGlobalSuccessMsg, currentUser, switchPersona } = useDashboardStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -11,9 +12,8 @@ export const UsersView = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [targetRole, setTargetRole] = useState<'EMPLOYEE' | 'CLIENT' | 'SUPER_ADMIN'>('EMPLOYEE');
+  const [targetRole, setTargetRole] = useState<Role>('EMPLOYEE');
   const [linkedEntity, setLinkedEntity] = useState('');
-  const [autoDispatch, setAutoDispatch] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   const activeUsers = users.filter((u) => u.status !== 'SUSPENDED');
@@ -23,52 +23,27 @@ export const UsersView = () => {
 
   const filteredUsers = users.filter((u) => 
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+    u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const generatePassword = () => {
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
-    let pass = '';
-    for (let i = 0; i < 12; i++) {
-      pass += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setPassword(pass);
-  };
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/admin/users/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fullName,
-          email,
-          password: password || undefined,
-          role: targetRole,
-          linkedEntity,
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create user');
-      }
-
       addUser({
-        id: data.uid,
+        id: `u-${Date.now()}`,
         name: fullName,
         email,
         role: targetRole,
-        permissions: targetRole === 'SUPER_ADMIN' ? ['all'] : targetRole === 'CLIENT' ? ['read'] : ['work'],
+        permissions: targetRole === 'SUPER_ADMIN' || targetRole === 'ADMIN' ? ['all'] : targetRole === 'CLIENT' ? ['read'] : ['work'],
         status: 'ACTIVE',
         linkedEntity: linkedEntity || undefined,
+        isOnboarded: true,
       });
 
-      setGlobalSuccessMsg(`User ${fullName} provisioned successfully${autoDispatch ? ' and credentials dispatched' : ''}!`);
+      setGlobalSuccessMsg(`User ${fullName} (${targetRole}) created successfully!`);
       setIsModalOpen(false);
       
       // Reset form
@@ -78,279 +53,307 @@ export const UsersView = () => {
       setTargetRole('EMPLOYEE');
       setLinkedEntity('');
     } catch (err: any) {
-      alert(`Error provisioning user: ${err.message}`);
+      alert(`Error creating user: ${err.message}`);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getRoleBadgeColor = (role: string) => {
+  const getRoleBadge = (role: string) => {
     switch(role) {
       case 'SUPER_ADMIN':
-      case 'ADMIN': return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'EMPLOYEE': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'CLIENT': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'ADMIN':
+        return {
+          icon: '👑',
+          label: 'Admin',
+          badgeClass: 'bg-purple-100 text-purple-800 border border-purple-200',
+        };
+      case 'EMPLOYEE':
+        return {
+          icon: '💼',
+          label: 'Employee',
+          badgeClass: 'bg-blue-100 text-blue-800 border border-blue-200',
+        };
+      case 'CLIENT':
+        return {
+          icon: '🏢',
+          label: 'Client',
+          badgeClass: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+        };
+      default:
+        return {
+          icon: '👤',
+          label: role,
+          badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+        };
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header & Metric Cards */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-on-surface font-outfit">User Management</h1>
-          <p className="text-sm text-outline mt-1">Provision credentials, manage access, and elevate roles.</p>
+          <h1 className="text-2xl font-bold text-slate-800 font-outfit">User Accounts & Role Personas</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Streamlined access control for the 3 primary platform personas: <span className="font-semibold text-purple-700">Admin</span>, <span className="font-semibold text-blue-700">Employee</span>, and <span className="font-semibold text-emerald-700">Client</span>.
+          </p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex items-center gap-2 self-start sm:self-auto cursor-pointer"
         >
           <Plus size={18} />
-          Add New User
+          Add User
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="premium-card p-5 bg-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <UserCheck size={24} />
+      {/* 3 Active Personas Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {/* Admin Persona */}
+        <div className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1">
+                <span>👑</span> Administrator
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">1 Account</span>
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Aarati Mule</h3>
+            <p className="text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">Email:</span> admin@vantage.com
+            </p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Full control over multi-entity GST billing, CRM sales pipeline, client onboarding signoffs, and timesheet approvals.
+            </p>
           </div>
-          <div>
-            <p className="text-xs font-bold text-outline uppercase tracking-wide">Total Active Users</p>
-            <p className="text-2xl font-black text-on-surface font-outfit">{activeUsers.length}</p>
-          </div>
+          <button
+            onClick={() => switchPersona('ADMIN')}
+            className="mt-4 w-full py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-bold transition-all border border-purple-200 flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Switch to Admin Dashboard</span>
+            <ArrowRight size={14} />
+          </button>
         </div>
-        <div className="premium-card p-5 bg-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center text-purple-700">
-            <Shield size={24} />
+
+        {/* Employee Persona */}
+        <div className="bg-white rounded-2xl p-5 border border-blue-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1">
+                <span>💼</span> Employee / Analyst
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">1 Account</span>
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Priya Sharma</h3>
+            <p className="text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">Email:</span> employee@vantage.com
+            </p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Assigned deliverables & compliance tasks, daily client timesheet submission, leave balances (12 CLs), and payroll payslips.
+            </p>
           </div>
-          <div>
-            <p className="text-xs font-bold text-outline uppercase tracking-wide">Admins</p>
-            <p className="text-2xl font-black text-on-surface font-outfit">{admins.length}</p>
-          </div>
+          <button
+            onClick={() => switchPersona('EMPLOYEE')}
+            className="mt-4 w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200 flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Switch to Employee Workspace</span>
+            <ArrowRight size={14} />
+          </button>
         </div>
-        <div className="premium-card p-5 bg-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
-            <ShieldAlert size={24} />
+
+        {/* Client Persona */}
+        <div className="bg-white rounded-2xl p-5 border border-emerald-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                <span>🏢</span> Client Stakeholder
+              </span>
+              <span className="text-[11px] font-bold text-slate-400">1 Account</span>
+            </div>
+            <h3 className="text-base font-bold text-slate-900">Rajesh Mehta (Acme Corp)</h3>
+            <p className="text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">Email:</span> client@vantage.com
+            </p>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Client portal view: Milestone invoices (paid & pending), GST/ROC compliance statuses, deliverables, and secure KYC vault.
+            </p>
           </div>
-          <div>
-            <p className="text-xs font-bold text-outline uppercase tracking-wide">Employees</p>
-            <p className="text-2xl font-black text-on-surface font-outfit">{employees.length}</p>
-          </div>
-        </div>
-        <div className="premium-card p-5 bg-white flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700">
-            <UserCheck size={24} />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-outline uppercase tracking-wide">Clients</p>
-            <p className="text-2xl font-black text-on-surface font-outfit">{clients.length}</p>
-          </div>
+          <button
+            onClick={() => switchPersona('CLIENT')}
+            className="mt-4 w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all border border-emerald-200 flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Switch to Client Portal</span>
+            <ArrowRight size={14} />
+          </button>
         </div>
       </div>
 
-      {/* Users Table */}
-      <div className="premium-card bg-white overflow-hidden">
-        <div className="p-4 border-b border-outline-variant/30 flex justify-between items-center bg-slate-50/50">
-          <h2 className="font-bold text-on-surface font-outfit">Registered Users</h2>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-outline w-4 h-4" />
+      {/* Users Directory Table */}
+      <div className="premium-card bg-white overflow-hidden shadow-sm">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-50/50">
+          <h2 className="font-bold text-slate-800 font-outfit text-sm">Active Platform Accounts ({users.length})</h2>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <input 
               type="text" 
-              placeholder="Search users..." 
+              placeholder="Search by name, email or role..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-1.5 border border-outline-variant rounded-full text-sm w-64 focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="pl-9 pr-4 py-1.5 border border-slate-200 rounded-xl text-xs w-full focus:outline-none focus:ring-2 focus:ring-purple-200 bg-white"
             />
           </div>
         </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-outline uppercase bg-slate-50 border-b border-outline-variant/30">
+          <table className="w-full text-xs text-left">
+            <thead className="text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200 font-bold tracking-wider whitespace-nowrap">
               <tr>
-                <th className="px-6 py-4 font-bold tracking-wider">User / Email</th>
-                <th className="px-6 py-4 font-bold tracking-wider">Current Role</th>
-                <th className="px-6 py-4 font-bold tracking-wider">Linked Entity / Dept</th>
-                <th className="px-6 py-4 font-bold tracking-wider">Status</th>
-                <th className="px-6 py-4 font-bold tracking-wider text-right">Actions</th>
+                <th className="px-6 py-3.5">User / Persona</th>
+                <th className="px-6 py-3.5">Role</th>
+                <th className="px-6 py-3.5">Designation / Department</th>
+                <th className="px-6 py-3.5">Status</th>
+                <th className="px-6 py-3.5 text-right">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-outline-variant/20">
-              {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                        {user.name.charAt(0)}
+            <tbody className="divide-y divide-slate-100">
+              {filteredUsers.map((user) => {
+                const badge = getRoleBadge(user.role);
+                const isCurrent = currentUser?.id === user.id || currentUser?.role === user.role;
+
+                return (
+                  <tr key={user.id} className={`hover:bg-slate-50/70 transition-colors ${isCurrent ? 'bg-purple-50/30' : ''}`}>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={user.avatar || "https://ui-avatars.com/api/?name=" + encodeURIComponent(user.name) + "&background=0D8ABC&color=fff"}
+                          alt={user.name}
+                          className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                        />
+                        <div>
+                          <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                            <span>{user.name}</span>
+                            {isCurrent && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-purple-600 text-white">Active</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-400">{user.email}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="font-bold text-on-surface">{user.name}</div>
-                        <div className="text-xs text-outline">{user.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getRoleBadgeColor(user.role || 'PENDING')}`}>
-                      {user.role || 'PENDING'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-on-surface-variant font-medium">
-                      {user.linkedEntity || user.department || '-'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${user.status === 'SUSPENDED' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                      {user.status || 'ACTIVE'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="relative group inline-block text-left">
-                      <button className="p-1.5 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
-                        <MoreVertical size={16} />
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1 ${badge.badgeClass}`}>
+                        <span>{badge.icon}</span>
+                        <span>{badge.label}</span>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-slate-600 font-medium">
+                      <div>{user.designation || user.linkedEntity || '—'}</div>
+                      <div className="text-[10px] text-slate-400">{user.department || ''}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                        {user.status || 'ACTIVE'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <button
+                        onClick={() => {
+                          if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') switchPersona('ADMIN');
+                          else if (user.role === 'EMPLOYEE') switchPersona('EMPLOYEE');
+                          else if (user.role === 'CLIENT') switchPersona('CLIENT');
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all bg-slate-100 hover:bg-purple-600 hover:text-white text-slate-700 border border-slate-200 cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <span>Open Dashboard</span>
+                        <ArrowRight size={12} />
                       </button>
-                      <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-outline-variant/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 py-1">
-                        {user.role !== 'SUPER_ADMIN' && (
-                          <button 
-                            onClick={() => {
-                              updateUser(user.id!, { role: 'SUPER_ADMIN' });
-                              setGlobalSuccessMsg(`${user.name} elevated to Admin.`);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium"
-                          >
-                            Make Admin
-                          </button>
-                        )}
-                        {user.role === 'SUPER_ADMIN' && user.id !== currentUser?.id && (
-                          <button 
-                            onClick={() => {
-                              updateUser(user.id!, { role: 'EMPLOYEE' });
-                              setGlobalSuccessMsg(`${user.name} demoted to Employee.`);
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium"
-                          >
-                            Demote to Employee
-                          </button>
-                        )}
-                        <button className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 font-medium">
-                          Reset Password
-                        </button>
-                        <div className="h-px bg-slate-100 my-1"></div>
-                        <button 
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to suspend/remove ${user.name}?`)) {
-                              updateUser(user.id!, { status: 'SUSPENDED' });
-                              setGlobalSuccessMsg(`${user.name} access revoked.`);
-                            }
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-medium"
-                        >
-                          Revoke Access
-                        </button>
-                        <button 
-                          onClick={() => {
-                            if (window.confirm(`Are you sure you want to permanently delete ${user.name}? This action cannot be undone.`)) {
-                              deleteUser(user.id!);
-                              setGlobalSuccessMsg(`${user.name} deleted permanently.`);
-                            }
-                          }}
-                          className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100 font-bold"
-                        >
-                          Delete Permanently
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-outline">
-                    No users found.
-                  </td>
-                </tr>
-              )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Provision User Modal */}
+      {/* Add New User Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-outline-variant/30 bg-slate-50/50">
-              <h2 className="text-xl font-bold text-on-surface font-outfit">Provision New Account</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
-                <X size={20} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 relative">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900 text-base font-outfit">Add New Platform User</h3>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+              >
+                <X size={18} />
               </button>
             </div>
-            
-            <form onSubmit={handleCreateUser} className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-on-surface uppercase tracking-wide">Full Name</label>
-                  <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Rohan Varma" />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-on-surface uppercase tracking-wide">Email Address</label>
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="rohan@example.com" />
-                </div>
-              </div>
-              
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-on-surface uppercase tracking-wide">Password (Optional)</label>
-                <div className="flex gap-2">
-                  <input type="text" value={password} onChange={e => setPassword(e.target.value)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="Leave blank to generate randomly" />
-                  <button type="button" onClick={generatePassword} className="btn-secondary whitespace-nowrap text-xs">Generate</button>
-                </div>
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Ramesh Kulkarni"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 bg-slate-50 focus:bg-white"
+                />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-on-surface uppercase tracking-wide">Target Role</label>
-                  <select value={targetRole} onChange={e => setTargetRole(e.target.value as any)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none bg-white">
-                    <option value="EMPLOYEE">Employee</option>
-                    <option value="CLIENT">Client</option>
-                    <option value="SUPER_ADMIN">Admin</option>
-                  </select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-on-surface uppercase tracking-wide">
-                    {targetRole === 'CLIENT' ? 'Company Name' : 'Department'}
-                  </label>
-                  {targetRole === 'CLIENT' ? (
-                    <input type="text" value={linkedEntity} onChange={e => setLinkedEntity(e.target.value)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none" placeholder="TechNova Solutions" />
-                  ) : (
-                    <select value={linkedEntity || 'General'} onChange={e => setLinkedEntity(e.target.value)} className="w-full p-2.5 border border-outline-variant rounded-xl text-sm focus:ring-2 focus:ring-primary/20 outline-none bg-white">
-                      <option value="General">General</option>
-                      <option value="Operations">Operations</option>
-                      <option value="Finance">Finance</option>
-                      <option value="HR">HR</option>
-                      <option value="Sales">Sales</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="IT">IT</option>
-                    </select>
-                  )}
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="user@vantage.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 bg-slate-50 focus:bg-white"
+                />
               </div>
 
-              <div className="pt-2">
-                <label className="flex items-center gap-3 p-3 border border-outline-variant rounded-xl bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors">
-                  <input type="checkbox" checked={autoDispatch} onChange={e => setAutoDispatch(e.target.checked)} className="w-4 h-4 text-primary rounded border-outline" />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-on-surface">Auto-Dispatch Credentials</span>
-                    <span className="text-xs text-outline">Send login credentials via Email & WhatsApp automatically.</span>
-                  </div>
-                </label>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">User Role *</label>
+                <select
+                  value={targetRole}
+                  onChange={(e) => setTargetRole(e.target.value as Role)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 bg-slate-50 focus:bg-white"
+                >
+                  <option value="SUPER_ADMIN">👑 Administrator (Full Platform Access)</option>
+                  <option value="EMPLOYEE">💼 Employee (Timesheets, Tasks, Operations)</option>
+                  <option value="CLIENT">🏢 Client (Invoices, Documents, Deliverables)</option>
+                </select>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-outline-variant/30 mt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn-secondary">Cancel</button>
-                <button type="submit" disabled={isLoading} className="btn-primary flex items-center gap-2">
-                  {isLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <UserCheck size={18} />}
-                  Provision User
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Linked Entity / Department</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Acme Corp or Virtual CFO Operations"
+                  value={linkedEntity}
+                  onChange={(e) => setLinkedEntity(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 bg-slate-50 focus:bg-white"
+                />
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-md cursor-pointer transition-all disabled:opacity-50"
+                >
+                  {isLoading ? 'Creating...' : 'Create User'}
                 </button>
               </div>
             </form>

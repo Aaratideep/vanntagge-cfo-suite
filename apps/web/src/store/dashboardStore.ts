@@ -61,6 +61,18 @@ import {
   OnboardingTask,
   Meeting,
   AvailabilityBlock,
+  BillingEntity,
+  TimesheetEntry,
+  LeadInteraction,
+  ClientTemplatePack,
+  CFORolePermission,
+  CompanyAsset,
+  PerformanceReview,
+  ServiceMasterCategory,
+  ServiceMasterService,
+  ServiceMasterParameter,
+  TimeLog,
+  CommunicationLog
 } from '../types';
 
 export interface AdminSettings {
@@ -72,6 +84,14 @@ export interface AdminSettings {
   twilioAccountSid?: string;
   twilioAuthToken?: string;
   twilioWhatsAppNumber?: string;
+  tallyServerUrl?: string;
+  tallyUsername?: string;
+  tallyPassword?: string;
+  geminiApiKey?: string;
+  aiModelSelection?: string;
+  powerBiWorkspaceId?: string;
+  powerBiClientId?: string;
+  powerBiClientSecret?: string;
 }
 
 interface DashboardState {
@@ -91,6 +111,14 @@ interface DashboardState {
   onboardingTasks: OnboardingTask[];
   meetings: Meeting[];
   availabilityBlocks: AvailabilityBlock[];
+  billingEntities: BillingEntity[];
+  timesheets: TimesheetEntry[];
+  leadInteractions: LeadInteraction[];
+  clientTemplatePacks: ClientTemplatePack[];
+  cfoRolePermissions: CFORolePermission[];
+  assets: CompanyAsset[];
+  performanceReviews: PerformanceReview[];
+  communicationLogs: CommunicationLog[];
   currentUser: User | null;
   adminSettings: AdminSettings;
   setAdminSettings: (settings: Partial<AdminSettings>) => void;
@@ -99,8 +127,10 @@ interface DashboardState {
   activeInvoiceForModal: Invoice | null;
   setActiveInvoiceForModal: (invoice: Invoice | null) => void;
   setGlobalSuccessMsg: (msg: string | null) => void;
+  addCommunicationLog: (log: Omit<CommunicationLog, 'id' | 'timestamp'>) => void;
   updateRegistrationCode: (code: string) => void;
   loginUser: (email: string) => boolean;
+  switchPersona: (role: 'ADMIN' | 'EMPLOYEE' | 'CLIENT') => void;
   registerUser: (name: string, email: string, role: Role) => void;
   logoutUser: () => void;
   
@@ -111,7 +141,18 @@ interface DashboardState {
   generateMonthlyPayroll: () => void;
   updateOnboardingTask: (id: string, status: 'COMPLETED') => void;
 
+  // HR Extension Actions
+  addAsset: (asset: Omit<CompanyAsset, 'id'>) => void;
+  updateAssetStatus: (id: string, status: CompanyAsset['status']) => void;
+  addPerformanceReview: (review: Omit<PerformanceReview, 'id'>) => void;
+
   // Actions
+  addBillingEntity: (entity: Omit<BillingEntity, 'id'>) => void;
+  submitTimesheet: (entry: Omit<TimesheetEntry, 'id' | 'createdAt' | 'status'>) => void;
+  approveTimesheet: (id: string, approverName: string) => void;
+  rejectTimesheet: (id: string) => void;
+  addLeadInteraction: (interaction: Omit<LeadInteraction, 'id' | 'createdAt'>) => void;
+  applyTemplateToEngagement: (engagementId: string, templateId: string) => void;
   addUser: (user: Omit<User, 'id'> & { id?: string }) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -142,6 +183,9 @@ interface DashboardState {
   convertQuotationToInvoice: (quotationId: string) => void;
   updateClientStatus: (id: string, status: ClientStatus) => void;
   updateClient: (id: string, updates: Partial<Client>) => void;
+  updateClientDeliverables: (clientId: string, reports: import('../types').DeliverableReportDef[]) => void;
+  toggleDeliverablePin: (clientId: string, reportId: string) => void;
+  updateClientFeaturedGraph: (clientId: string, graphType: 'REVENUE_EXPENSE' | 'CASHFLOW' | 'PROFIT_MARGIN' | 'OPEX' | undefined) => void;
   deleteClient: (id: string, companyName?: string) => void;
   updateChecklistDocStatus: (
     engagementId: string,
@@ -151,6 +195,7 @@ interface DashboardState {
     reviewerId?: string
   ) => void;
   uploadDocumentFile: (engagementId: string, docId: string, filePath: string, uploaderId: string) => void;
+  addDocument: (engagementId: string, document: Omit<Document, 'id' | 'createdAt'>) => void;
   addTask: (engagementId: string, task: Omit<Task, 'id' | 'createdAt' | 'reviewPoints'>) => void;
   updateTask: (engagementId: string, taskId: string, updates: Partial<Task>) => void;
   deleteTask: (engagementId: string, taskId: string) => void;
@@ -176,41 +221,811 @@ interface DashboardState {
   updateProfile: (updates: Partial<User>) => void;
   seedDummyData: () => void;
   addDirectEngagement: (clientName: string, engagementName: string) => void;
+  serviceCategories: ServiceMasterCategory[];
+  addServiceCategory: (name: string) => void;
+  removeServiceCategory: (categoryId: string) => void;
+  addServiceToCategory: (categoryId: string, service: Omit<ServiceMasterService, 'id'>) => void;
+  removeServiceFromCategory: (categoryId: string, serviceId: string) => void;
+  toggleServiceAutomation: (categoryId: string, serviceId: string, isAutomated: boolean) => void;
 }
+
+export const STANDARD_DELIVERABLE_REPORTS = [
+  "Month end closure reports extraction",
+  "Monthly MIS Preparation P&L",
+  "Monthly MIS Preparation BS",
+  "Monthly MIS Preparation Cashflow",
+  "Monthly MIS Preparation Ops metrics wise",
+  "Monthly Key parameters review report",
+  "Monthly budgeting & forecasting",
+  "Quarterly BOM Review",
+  "Monthly Sales prices review",
+  "Monthly Consumption report review",
+  "Monthly Retail Audit diff review",
+  "Monthly Ops metrics review & revision",
+  "Monthly Campaign wise analysis",
+  "Monthly New Business cases tracking",
+  "Monthly Actual Vs Budgeted P&L review",
+  "Monthly cashflow budget vs actual tracking",
+  "Capex budget tracking",
+  "Marketing budget tracking",
+  "Exceptional business deal/ commercials",
+  "Funding assistance as & when needed"
+];
+
+export const STANDARD_TASKS_BY_CATEGORY = {
+  "Sales & Debtors": [
+    "Sales project wise tracking & billing",
+    "Debtors Recovery Tracker"
+  ],
+  "Purchase": [
+    "Purchase of material projectwise & billing",
+    "Labour charges projectwise & billing",
+    "Other purchases projectwise & billing",
+    "Purchase returns (if nay) projectwise & billing",
+    "Product transfer inward & outwards projectwise & billing",
+    "Product transfer inter company matching"
+  ],
+  "Bank": [
+    "Vendor payment",
+    "Vendor Reconciliation",
+    "Creditor ageing tracker",
+    "Bank receipt entries in Tally",
+    "Bank payment entries in Tally",
+    "Bank transfer Inter company entries in Tally",
+    "Bank Reconciliations",
+    "BG recovery",
+    "Clear Unidentified/ Suspense entries in Tally"
+  ],
+  "Other Exp": [
+    "Royalty Entry",
+    "Software Charges Entry",
+    "Consultation Charges Entry",
+    "Review of Bank Charges & forex",
+    "Rent & amenities exp booking & payment",
+    "Marketing Invoices entry",
+    "Electricity exp booking & payment"
+  ],
+  "HR & Payroll Process": [
+    "Attendance Review",
+    "Salary calculation"
+  ],
+  "Salary & Wages": [
+    "Salary payment : cash",
+    "Salary payment : bank",
+    "Salary slips print out & distribution",
+    "Salary exp & payment booking in tally"
+  ],
+  "Statutory Dues": [
+    "PF Payment",
+    "PT Payment",
+    "ESIC Payment",
+    "MLWF Payment",
+    "GSTR 1",
+    "GSTR 3B",
+    "GSTR 2 ReCo",
+    "GST Annual Audit",
+    "GST pendancy : recovery",
+    "TDS Working (exp booking & payment review)",
+    "TDS Payment",
+    "TDS Return filing",
+    "Advance tax working with CA team",
+    "Advance tax payment"
+  ],
+  "Other Tasks": [
+    "Petty cash as per cash register",
+    "Petty cash as per HO Exp not captured",
+    "Fixed assets bill boooking",
+    "Share capital entries",
+    "Review of Journal Vouchers",
+    "Review of Exceptional items",
+    "Review of Inter Company ledger balances",
+    "Review of payment",
+    "Balance Sheet & Profit and Loss preparation & finalisation with Auditor & filling Annual Report"
+  ],
+  "Financials": [
+    "Monthly Profit & Loss Consolidated",
+    "Monthly Profit & Loss Project wise"
+  ]
+};
+
+export const FIXED_USERS: User[] = [
+  {
+    id: 'u-admin',
+    name: 'Aarati Mule',
+    email: 'admin@vantage.com',
+    role: 'SUPER_ADMIN',
+    permissions: ['all'],
+    designation: 'Managing Partner & Principal CFO',
+    department: 'Executive Leadership',
+    joinDate: '2023-01-15',
+    salaryBasic: 150000,
+    status: 'ACTIVE',
+    isOnboarded: true,
+    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'u-employee',
+    name: 'Priya Sharma',
+    email: 'employee@vantage.com',
+    role: 'EMPLOYEE',
+    permissions: ['work'],
+    designation: 'Senior Financial Analyst & Associate',
+    department: 'Virtual CFO Operations',
+    joinDate: '2024-03-01',
+    salaryBasic: 85000,
+    status: 'ACTIVE',
+    isOnboarded: true,
+    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'u-client',
+    name: 'Rajesh Mehta',
+    email: 'client@vantage.com',
+    role: 'CLIENT',
+    permissions: ['read'],
+    linkedEntity: 'Acme Corp',
+    designation: 'Managing Director, Acme Corp',
+    status: 'ACTIVE',
+    isOnboarded: true,
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  }
+];
+
+export const getInitialCurrentUser = (): User => {
+  if (typeof window !== 'undefined') {
+    try {
+      const savedUserStr = localStorage.getItem('cfo_current_user');
+      if (savedUserStr) {
+        const parsed = JSON.parse(savedUserStr);
+        if (parsed && parsed.id && parsed.role) {
+          const matched = FIXED_USERS.find(u => u.id === parsed.id || u.role === parsed.role);
+          return matched ? { ...matched, ...parsed } : parsed;
+        }
+      }
+
+      const path = window.location.pathname;
+      if (path.startsWith('/employee')) {
+        return FIXED_USERS[1];
+      }
+      if (path.startsWith('/client')) {
+        return FIXED_USERS[2];
+      }
+      if (path.startsWith('/admin')) {
+        return FIXED_USERS[0];
+      }
+    } catch (e) {
+      console.error('Error resolving initial user:', e);
+    }
+  }
+  return FIXED_USERS[0];
+};
 
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
-  users: [
+  users: FIXED_USERS,
+  leaves: [
     {
-      id: 'u-aarati',
-      name: 'Aarati Mule',
-      email: 'aaratimule006@gmail.com',
-      role: 'SUPER_ADMIN',
-      permissions: ['all'],
-      designation: 'Managing Partner / Virtual CFO',
-      department: 'Executive',
-      joinDate: '2023-01-15',
-      salaryBasic: 150000,
-      status: 'ACTIVE',
+      id: 'lv-1',
+      userId: 'u-employee',
+      userName: 'Priya Sharma',
+      startDate: '2026-10-12',
+      endDate: '2026-10-13',
+      type: 'CASUAL',
+      status: 'APPROVED',
+      reason: 'Family festival celebration & Diwali holidays',
+      days: 2,
+      createdAt: '2026-09-10T10:00:00.000Z',
     }
   ],
-  leaves: [],
-  payrolls: [],
+  payrolls: [
+    {
+      id: 'pr-1',
+      userId: 'u-employee',
+      userName: 'Priya Sharma',
+      month: 'August',
+      year: 2026,
+      basic: 65000,
+      hra: 15000,
+      statutoryBonus: 5000,
+      deductionsTds: 4500,
+      deductionsPfEsi: 2400,
+      netPay: 78100,
+      status: 'DISBURSED',
+      createdAt: '2026-08-31T10:00:00.000Z',
+    }
+  ],
   onboardingTasks: [],
   meetings: [],
   availabilityBlocks: [],
-  leads: [],
+  leads: [
+    {
+      id: 'lead-1',
+      companyName: 'Apex Solutions Pvt Ltd',
+      contactPerson: 'Rajesh Kumar',
+      email: 'rajesh@apexsolutions.com',
+      phone: '+91-9812345678',
+      industry: 'SaaS & Enterprise Tech',
+      businessType: 'Private Limited Company',
+      leadSource: 'Client Referral',
+      expectedRevenue: 1200000,
+      priority: 'HIGH',
+      status: 'PROPOSAL_SENT',
+      nextFollowUp: '2026-09-22',
+      remarks: 'Interested in full Virtual CFO mandate + ROC statutory filings.',
+      createdAt: '2026-09-08T10:00:00.000Z',
+      updatedAt: '2026-09-14T12:00:00.000Z',
+    },
+    {
+      id: 'lead-2',
+      companyName: 'Zenith Logistics LLP',
+      contactPerson: 'Vikram Malhotra',
+      email: 'vikram@zenithlogistics.in',
+      phone: '+91-9876543210',
+      industry: 'Supply Chain & Freight',
+      businessType: 'Limited Liability Partnership',
+      leadSource: 'LinkedIn Outreach',
+      expectedRevenue: 850000,
+      priority: 'MEDIUM',
+      status: 'MEETING_SCHEDULED',
+      nextFollowUp: '2026-09-20',
+      remarks: 'Working capital model and multi-state GST audit required.',
+      createdAt: '2026-09-10T11:00:00.000Z',
+      updatedAt: '2026-09-15T15:00:00.000Z',
+    },
+    {
+      id: 'lead-3',
+      companyName: 'BioHealth Diagnostics',
+      contactPerson: 'Dr. Sunita Rao',
+      email: 'dr.sunita@biohealth.co.in',
+      phone: '+91-9922334455',
+      industry: 'Healthcare & Diagnostics',
+      businessType: 'Private Limited Company',
+      leadSource: 'Direct Inbound',
+      expectedRevenue: 1500000,
+      priority: 'URGENT',
+      status: 'NEGOTIATION',
+      nextFollowUp: '2026-09-19',
+      remarks: 'Final fee negotiations underway for 12-month retainer.',
+      createdAt: '2026-09-11T09:30:00.000Z',
+      updatedAt: '2026-09-16T16:45:00.000Z',
+    }
+  ],
   followUps: [],
   quotations: [],
   engagementLetters: [],
-  clients: [],
-  engagements: [],
+  clients: [
+    {
+      id: 'client-1',
+      companyName: 'Acme Corp',
+      contactPerson: 'Rajesh Mehta',
+      email: 'client@vantage.com',
+      phone: '+91-9823456789',
+      ownerName: 'Rajesh Mehta',
+      ownerContact: '+91-9823456789',
+      industry: 'Manufacturing & Industrial',
+      businessType: 'Private Limited Company',
+      gstin: '27AABCA1234F1Z5',
+      pan: 'AABCA1234F',
+      address: 'Plot 45, MIDC Industrial Area, Bhosari, Pune 411026',
+      billingEntity: 'CA TEJJASHRI S PAAWAR',
+      spaceConsumedMB: 1840,
+      costEstimateINR: 4200,
+      onboardingDate: '2026-01-10',
+      status: 'ACTIVE',
+      createdAt: '2026-01-10T10:00:00.000Z',
+    },
+    {
+      id: 'client-2',
+      companyName: 'TechVision Labs',
+      contactPerson: 'Aditi Deshmukh',
+      email: 'aditi@techvisionlabs.io',
+      phone: '+91-9890123456',
+      ownerName: 'Aditi Deshmukh',
+      ownerContact: '+91-9890123456',
+      industry: 'Enterprise Software & AI',
+      businessType: 'Private Limited Company',
+      gstin: '27AABCT9988E1Z2',
+      pan: 'AABCT9988E',
+      address: 'Cyber City, Magarpatta, Hadapsar, Pune 411028',
+      billingEntity: 'Vanntagge CFO Services LLP',
+      spaceConsumedMB: 3450,
+      costEstimateINR: 7800,
+      onboardingDate: '2026-02-15',
+      status: 'ACTIVE',
+      createdAt: '2026-02-15T11:00:00.000Z',
+    }
+  ],
+  engagements: [
+    {
+      id: 'eng-1',
+      clientId: 'u-client',
+      clientCompanyName: 'Acme Corp',
+      leadId: 'lead-1',
+      name: 'Acme Corp - Virtual CFO Advisory & Compliance',
+      status: 'ACTIVE',
+      startDate: '2026-01-15',
+      createdAt: '2026-01-15T10:00:00.000Z',
+      services: [
+        { id: 's-1', engagementId: 'eng-1', serviceName: 'Virtual CFO Leadership', price: 50000, billingCycle: 'Monthly' },
+        { id: 's-2', engagementId: 'eng-1', serviceName: 'GST & Statutory Compliance', price: 25000, billingCycle: 'Monthly' },
+      ],
+      tasks: [
+        {
+          id: 't-1',
+          engagementId: 'eng-1',
+          title: 'Executive MIS & Board Financial Deck',
+          milestone: 'Monthly Virtual CFO Review Pack',
+          estimatedHours: 8,
+          timeSpent: 5,
+          progress: 65,
+          priority: 'HIGH',
+          status: 'IN_PROGRESS',
+          notes: 'Prepare P&L, balance sheet, and KPI flash report with departmental burn analysis.',
+          dueDate: '2026-09-25T18:30:00.000Z',
+          employeeId: 'u-employee',
+          employeeName: 'Priya Sharma',
+          reviewPoints: [],
+          createdAt: '2026-09-01T10:00:00.000Z',
+        },
+        {
+          id: 't-2',
+          engagementId: 'eng-1',
+          title: 'GSTR-3B Sales Ledger Reconciliation',
+          milestone: 'GST & Indirect Tax Filing Protocol',
+          estimatedHours: 6,
+          timeSpent: 2.5,
+          progress: 40,
+          priority: 'HIGH',
+          status: 'IN_PROGRESS',
+          notes: 'Match sales register with e-way bills and GSTR-1 outward invoices.',
+          dueDate: '2026-09-20T18:30:00.000Z',
+          employeeId: 'u-employee',
+          employeeName: 'Priya Sharma',
+          reviewPoints: [],
+          createdAt: '2026-09-02T10:00:00.000Z',
+        },
+        {
+          id: 't-3',
+          engagementId: 'eng-1',
+          title: 'Vendor TDS 26AS & AIS Audit Review',
+          milestone: 'Statutory Audit & Tax Readiness Pack',
+          estimatedHours: 10,
+          timeSpent: 0,
+          progress: 0,
+          priority: 'MEDIUM',
+          status: 'NOT_STARTED',
+          notes: 'Match Form 26AS, AIS, and vendor ledger tax deductions with nil variance.',
+          dueDate: '2026-09-30T18:30:00.000Z',
+          employeeId: 'u-employee',
+          employeeName: 'Priya Sharma',
+          reviewPoints: [],
+          createdAt: '2026-09-05T10:00:00.000Z',
+        },
+        {
+          id: 't-4',
+          engagementId: 'eng-1',
+          title: 'Annual Statutory Audit Readiness Close',
+          milestone: 'Statutory Audit',
+          estimatedHours: 14,
+          timeSpent: 14,
+          progress: 100,
+          priority: 'URGENT',
+          status: 'COMPLETED',
+          notes: 'Signed balance sheet and finalized trial balance schedules.',
+          dueDate: '2026-09-10T18:30:00.000Z',
+          employeeId: 'u-employee',
+          employeeName: 'Priya Sharma',
+          reviewPoints: [],
+          createdAt: '2026-08-20T10:00:00.000Z',
+        }
+      ],
+      invoices: [
+        {
+          id: 'inv-1',
+          invoiceNumber: 'VAN/26-27/0142',
+          engagementId: 'eng-1',
+          engagementName: 'Acme Corp - Virtual CFO Advisory & Compliance',
+          milestone: 'Virtual CFO Retainer - September 2026',
+          amount: 75000,
+          gst: 13500,
+          finalAmount: 88500,
+          cgst: 6750,
+          sgst: 6750,
+          dueDate: '2026-09-15',
+          issueDate: '2026-09-01',
+          status: 'PAID',
+          billingEntity: 'CA TEJJASHRI S PAAWAR',
+          companyGstin: '27AAPFP7890C1Z4',
+          clientGstin: '27AABCA1234F1Z5',
+          gstType: 'Intrastate',
+          createdAt: '2026-09-01T10:00:00.000Z',
+        },
+        {
+          id: 'inv-2',
+          invoiceNumber: 'VAN/26-27/0189',
+          engagementId: 'eng-1',
+          engagementName: 'Acme Corp - Virtual CFO Advisory & Compliance',
+          milestone: 'Statutory Audit & Tax Filing Preparation',
+          amount: 60000,
+          gst: 10800,
+          finalAmount: 70800,
+          cgst: 5400,
+          sgst: 5400,
+          dueDate: '2026-09-30',
+          issueDate: '2026-09-15',
+          status: 'SENT',
+          billingEntity: 'CA TEJJASHRI S PAAWAR',
+          companyGstin: '27AAPFP7890C1Z4',
+          clientGstin: '27AABCA1234F1Z5',
+          gstType: 'Intrastate',
+          createdAt: '2026-09-15T11:30:00.000Z',
+        },
+        {
+          id: 'inv-3',
+          invoiceNumber: 'VAN/26-27/0204',
+          engagementId: 'eng-1',
+          engagementName: 'Acme Corp - Virtual CFO Advisory & Compliance',
+          milestone: 'Quarterly Due Diligence & Working Capital Setup',
+          amount: 45000,
+          gst: 0,
+          finalAmount: 45000,
+          dueDate: '2026-10-15',
+          issueDate: '2026-09-16',
+          status: 'DRAFT',
+          billingEntity: 'Vanntagge CFO Services LLP',
+          gstType: 'Intrastate',
+          createdAt: '2026-09-16T14:00:00.000Z',
+        }
+      ],
+      compliances: [
+        {
+          id: 'comp-1',
+          engagementId: 'eng-1',
+          type: 'GST',
+          dueDate: '2026-09-20',
+          status: 'IN_PROGRESS',
+          responsibleEmployeeId: 'u-employee',
+          responsibleEmployeeName: 'Priya Sharma',
+          createdAt: '2026-09-01T10:00:00.000Z',
+        },
+        {
+          id: 'comp-2',
+          engagementId: 'eng-1',
+          type: 'TDS',
+          dueDate: '2026-10-07',
+          status: 'PENDING',
+          responsibleEmployeeId: 'u-employee',
+          responsibleEmployeeName: 'Priya Sharma',
+          createdAt: '2026-09-01T10:00:00.000Z',
+        },
+        {
+          id: 'comp-3',
+          engagementId: 'eng-1',
+          type: 'ROC',
+          dueDate: '2026-10-30',
+          status: 'PENDING',
+          responsibleEmployeeId: 'u-employee',
+          responsibleEmployeeName: 'Priya Sharma',
+          createdAt: '2026-09-01T10:00:00.000Z',
+        }
+      ],
+      documents: [
+        {
+          id: 'doc-1',
+          engagementId: 'eng-1',
+          category: 'COMPANY_MASTER_DATA',
+          name: 'Certificate of Incorporation - Acme Corp.pdf',
+          status: 'VERIFIED',
+          createdAt: '2026-01-15T10:00:00.000Z',
+        },
+        {
+          id: 'doc-2',
+          engagementId: 'eng-1',
+          category: 'LEGAL_COMPLIANCE',
+          name: 'GST Registration Certificate - Form REG-06.pdf',
+          status: 'VERIFIED',
+          createdAt: '2026-01-15T10:00:00.000Z',
+        },
+        {
+          id: 'doc-3',
+          engagementId: 'eng-1',
+          category: 'FINANCIAL_COMPLIANCE',
+          name: 'Signed Virtual CFO Engagement Agreement 2026-27.pdf',
+          status: 'VERIFIED',
+          createdAt: '2026-01-16T10:00:00.000Z',
+        },
+        {
+          id: 'doc-4',
+          engagementId: 'eng-1',
+          category: 'FINANCIAL_COMPLIANCE',
+          name: 'FY 2025-26 Audited Financial Statements.pdf',
+          status: 'VERIFIED',
+          createdAt: '2026-08-30T10:00:00.000Z',
+        }
+      ],
+      collections: [
+        {
+          id: 'col-1',
+          engagementId: 'eng-1',
+          engagementName: 'Acme Corp - Virtual CFO Advisory & Compliance',
+          invoiceId: 'inv-1',
+          invoiceNumber: 'VAN/26-27/0142',
+          outstanding: 0,
+          collected: 88500,
+          overdue: 0,
+          status: 'PAID',
+          paymentDate: '2026-09-14',
+          paymentMethod: 'NEFT Bank Remittance',
+          transactionId: 'HDFC-TXN-98472918',
+          createdAt: '2026-09-14T10:00:00.000Z',
+        },
+        {
+          id: 'col-2',
+          engagementId: 'eng-1',
+          engagementName: 'Acme Corp - Virtual CFO Advisory & Compliance',
+          invoiceId: 'inv-2',
+          invoiceNumber: 'VAN/26-27/0189',
+          outstanding: 70800,
+          collected: 0,
+          overdue: 0,
+          status: 'PENDING',
+          paymentDate: '2026-09-30',
+          paymentMethod: 'Net 15 Invoice Terms',
+          transactionId: 'Awaiting Remittance',
+          createdAt: '2026-09-15T11:30:00.000Z',
+        }
+      ],
+      reports: [
+        {
+          id: 'rep-1',
+          engagementId: 'eng-1',
+          engagementName: 'Acme Corp - Virtual CFO Advisory & Compliance',
+          type: 'MIS',
+          status: 'APPROVED',
+          version: 1,
+          notes: 'August 2026 Executive Financial Performance & Variance Report',
+          createdAt: '2026-09-05T10:00:00.000Z',
+        }
+      ]
+    }
+  ],
+  assets: [],
+  performanceReviews: [],
   notifications: [],
   auditLogs: [],
   standaloneInvoices: [],
   standaloneReceipts: [],
-  currentUser: null,
+  billingEntities: [
+    {
+      id: 'be-1',
+      name: 'CA TEJJASHRI S PAAWAR',
+      isGstRegistered: true,
+      gstin: '27AAPFP7890C1Z4',
+      pan: 'AAPFP7890C',
+      state: 'Maharashtra',
+      stateCode: '27',
+      address: 'Suite 402, Vantage Tower, Senapati Bapat Road, Pune 411016',
+      certificateUrl: 'https://gst.gov.in/cert/27AAPFP7890C1Z4.pdf'
+    },
+    {
+      id: 'be-2',
+      name: 'Sachin Pawar (HUF)',
+      isGstRegistered: false,
+      pan: 'AAHPS1234F',
+      state: 'Maharashtra',
+      stateCode: '27',
+      address: 'B-12 Prabhat Road, Pune 411004'
+    },
+    {
+      id: 'be-3',
+      name: 'Vanntagge CFO Services LLP',
+      isGstRegistered: false,
+      pan: 'AAFFV9876K',
+      state: 'Maharashtra',
+      stateCode: '27',
+      address: 'Level 5, ICC Trade Tower, Pune 411016'
+    },
+    {
+      id: 'be-4',
+      name: 'Ajit Shinde & CO',
+      isGstRegistered: false,
+      pan: 'AALPA4567L',
+      state: 'Maharashtra',
+      stateCode: '27',
+      address: 'Office 301, City Centre, Pune 411001'
+    }
+  ],
+  timesheets: [
+    {
+      id: 'ts-1',
+      employeeId: 'u-employee',
+      employeeName: 'Priya Sharma',
+      clientId: 'u-client',
+      clientName: 'Acme Corp',
+      date: new Date().toISOString().split('T')[0],
+      hours: 6.5,
+      description: 'GSTR-3B preparation & sales ledger reconciliation with books.',
+      status: 'PENDING',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'ts-2',
+      employeeId: 'u-employee',
+      employeeName: 'Priya Sharma',
+      clientId: 'u-client',
+      clientName: 'Acme Corp',
+      date: new Date().toISOString().split('T')[0],
+      hours: 7,
+      description: 'Virtual CFO monthly variance review and 13-week cashflow model update.',
+      status: 'APPROVED',
+      approvedAt: new Date().toISOString(),
+      approvedBy: 'Aarati Mule',
+      createdAt: new Date().toISOString()
+    }
+  ],
+  leadInteractions: [
+    {
+      id: 'li-1',
+      leadId: 'lead-1',
+      type: 'CALL',
+      date: '2026-09-12',
+      time: '14:30',
+      contactPerson: 'Rahul Verma',
+      summary: 'Discussed virtual CFO scope, MIS reporting frequency, and audit requirements.',
+      outcome: 'Client requested comprehensive quotation for 12 months.',
+      nextFollowUpDate: '2026-09-18',
+      createdBy: 'Aarati Mule',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'li-2',
+      leadId: 'lead-1',
+      type: 'MEETING',
+      date: '2026-09-15',
+      time: '11:00',
+      contactPerson: 'Rahul Verma',
+      summary: 'Virtual Google Meet demo of Vantage CFO portal and client document exchange.',
+      outcome: 'Agreed on milestone structure. Preparing engagement letter.',
+      nextFollowUpDate: '2026-09-20',
+      createdBy: 'Aarati Mule',
+      createdAt: new Date().toISOString()
+    }
+  ],
+  clientTemplatePacks: [
+    {
+      id: 'pack-cfo-monthly',
+      name: 'Monthly Virtual CFO Review Pack',
+      category: 'CFO_REVIEW',
+      description: 'Standard monthly governance package for mid-market and funded businesses.',
+      estimatedHours: 24,
+      tasks: [
+        { title: 'Executive MIS & Board Financial Deck', description: 'Prepare P&L, balance sheet, and KPI flash report by 7th of the month.', priority: 'HIGH', daysDueFromStart: 7 },
+        { title: 'Bank & Ledger Reconciliations Sign-off', description: 'Reconcile all operational bank accounts, loan lines, and clearing ledgers.', priority: 'HIGH', daysDueFromStart: 10 },
+        { title: 'Budget vs Actual Variance Analysis', description: 'Analyze overheads and departmental budget slippages with actionables.', priority: 'MEDIUM', daysDueFromStart: 12 },
+        { title: '13-Week Rolling Cashflow Forecasting', description: 'Update collections pipeline, supplier dues, and statutory tax obligations.', priority: 'HIGH', daysDueFromStart: 14 }
+      ]
+    },
+    {
+      id: 'pack-audit-prep',
+      name: 'Statutory Audit & Tax Readiness Pack',
+      category: 'AUDIT_PREP',
+      description: 'Pre-audit reconciliation pack to streamline statutory and tax auditor sign-offs.',
+      estimatedHours: 35,
+      tasks: [
+        { title: 'Fixed Asset Register & Depreciation Schedule', description: 'Update asset additions/deletions as per Companies Act & Income Tax Act.', priority: 'MEDIUM', daysDueFromStart: 15 },
+        { title: 'Vendor TDS & 26AS/AIS Reconciliation', description: 'Match Form 26AS, AIS, and vendor ledger tax deductions with nil variance.', priority: 'HIGH', daysDueFromStart: 20 },
+        { title: 'Related Party Transaction Disclosures', description: 'Verify Section 188 compliance and arm’s length pricing documentation.', priority: 'MEDIUM', daysDueFromStart: 25 },
+        { title: 'Deferred Tax Working & Final Trial Balance', description: 'Compute deferred tax asset/liability and close audit adjustments.', priority: 'HIGH', daysDueFromStart: 30 }
+      ]
+    },
+    {
+      id: 'pack-gst-compliance',
+      name: 'GST & Indirect Tax Filing Protocol',
+      category: 'STATUTORY_COMPLIANCE',
+      description: 'Monthly statutory compliance routine for GST registered clients.',
+      estimatedHours: 16,
+      tasks: [
+        { title: 'GSTR-1 Sales Outward Invoices Verification', description: 'Verify B2B, B2C invoices and e-invoicing QR codes before 11th.', priority: 'HIGH', daysDueFromStart: 10 },
+        { title: 'GSTR-2B Input Tax Credit (ITC) Reconciliation', description: 'Reconcile purchase register with GSTR-2B auto-drafted statement.', priority: 'HIGH', daysDueFromStart: 14 },
+        { title: 'GSTR-3B Tax Liability Computation & Challan Payment', description: 'Compute net cash tax liability and file GSTR-3B before 20th.', priority: 'URGENT', daysDueFromStart: 19 }
+      ]
+    },
+    {
+      id: 'pack-cashflow-engine',
+      name: 'Working Capital & Cashflow Engine',
+      category: 'CASHFLOW_ENGINE',
+      description: 'Liquidity preservation and working capital optimization framework.',
+      estimatedHours: 20,
+      tasks: [
+        { title: 'Accounts Receivable Ageing & Recovery Action List', description: 'Review 30/60/90+ day dues and dispatch reminder notices.', priority: 'HIGH', daysDueFromStart: 5 },
+        { title: 'Creditors Payment Cycle Planning', description: 'Prioritize essential vendor payments against cash inflow projections.', priority: 'MEDIUM', daysDueFromStart: 8 },
+        { title: 'Working Capital Ratio & Cash Runway Review', description: 'Assess quick ratio, current ratio, and burn rate runway.', priority: 'HIGH', daysDueFromStart: 15 }
+      ]
+    }
+  ],
+  cfoRolePermissions: [
+    {
+      role: 'SUPER_ADMIN',
+      title: 'Super Administrator',
+      label: 'Super Administrator',
+      description: 'Unrestricted control over system settings, multi-entity GST billing, user provisioning, and financial records.',
+      badgeColor: 'bg-purple-100 text-purple-800 border border-purple-200',
+      canManageLeads: true,
+      canIssueInvoices: true,
+      canManageClients: true,
+      canApproveWork: true,
+      canManagePayroll: true,
+      canManageSettings: true,
+    },
+    {
+      role: 'PARTNER',
+      title: 'Partner / Practice Lead',
+      label: 'Partner / Practice Lead',
+      description: 'Directs practice client portfolios, signs off milestone invoices & engagement letters, approves KYC and timesheets.',
+      badgeColor: 'bg-blue-100 text-blue-800 border border-blue-200',
+      canManageLeads: true,
+      canIssueInvoices: true,
+      canManageClients: true,
+      canApproveWork: true,
+      canManagePayroll: false,
+      canManageSettings: false,
+    },
+    {
+      role: 'ENGAGEMENT_MANAGER',
+      title: 'Engagement Manager',
+      label: 'Engagement Manager',
+      description: 'Manages client deliveries, schedules reviews, deploys turnkey CFO task packs, monitors SLA adherence.',
+      badgeColor: 'bg-sky-100 text-sky-800 border border-sky-200',
+      canManageLeads: true,
+      canIssueInvoices: false,
+      canManageClients: true,
+      canApproveWork: true,
+      canManagePayroll: false,
+      canManageSettings: false,
+    },
+    {
+      role: 'ASSOCIATE',
+      title: 'Associate / Executive',
+      label: 'Associate / Executive',
+      description: 'Executes day-to-day bookkeeping, submits daily client timesheets, uploads documents, logs sales interactions.',
+      badgeColor: 'bg-slate-100 text-slate-800 border border-slate-200',
+      canManageLeads: false,
+      canIssueInvoices: false,
+      canManageClients: false,
+      canApproveWork: false,
+      canManagePayroll: false,
+      canManageSettings: false,
+    },
+    {
+      role: 'CLIENT_ADMIN',
+      title: 'Client Administrator',
+      label: 'Client Administrator',
+      description: 'Authorized client signee; uploads statutory KYC, approves deliverables, downloads tax invoices & payment receipts.',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      canManageLeads: false,
+      canIssueInvoices: false,
+      canManageClients: false,
+      canApproveWork: false,
+      canManagePayroll: false,
+      canManageSettings: false,
+    },
+    {
+      role: 'CLIENT_VIEWER',
+      title: 'Client Stakeholder / Viewer',
+      label: 'Client Stakeholder / Viewer',
+      description: 'Read-only access to MIS financial dashboards, compliance progress, and cloud archived deliverables.',
+      badgeColor: 'bg-amber-100 text-amber-800 border border-amber-200',
+      canManageLeads: false,
+      canIssueInvoices: false,
+      canManageClients: false,
+      canApproveWork: false,
+      canManagePayroll: false,
+      canManageSettings: false,
+    }
+  ],
+  communicationLogs: [],
+  currentUser: getInitialCurrentUser(),
   adminSettings: {
     adminName: "Aarati Mule",
     adminEmail: "billing@vanntaggecfo.com",
@@ -222,6 +1037,18 @@ export const useDashboardStore = create<DashboardState>()(
   activeInvoiceForModal: null,
 
   setActiveInvoiceForModal: (invoice) => set({ activeInvoiceForModal: invoice }),
+
+  addCommunicationLog: (log) => set((state) => {
+    const newLog: import('../types').CommunicationLog = {
+      ...log,
+      id: `comm-${Date.now()}`,
+      timestamp: new Date().toISOString()
+    };
+    import('../lib/firebaseSync').then(({ pushRecordToFirebase }) => {
+      pushRecordToFirebase('communicationLogs', newLog.id, newLog);
+    });
+    return { communicationLogs: [newLog, ...state.communicationLogs] };
+  }),
 
 
   updateRegistrationCode: (code) => set({ registrationCode: code }),
@@ -236,7 +1063,11 @@ export const useDashboardStore = create<DashboardState>()(
     }
   },
 
-  updateLeaveStatus: (id, status) => set((state) => ({ leaves: state.leaves.map(l => l.id === id ? { ...l, status } : l) })),
+  updateLeaveStatus: (id, status) => {
+    set((state) => ({ leaves: state.leaves.map(l => l.id === id ? { ...l, status } : l) }));
+    const leave = get().leaves.find(l => l.id === id);
+    if (leave) pushRecordToFirebase('leaves', id, leave);
+  },
   applyLeave: (leave) => {
     const newLeave: LeaveRequest = {
       ...leave,
@@ -245,18 +1076,27 @@ export const useDashboardStore = create<DashboardState>()(
     };
     set((state) => ({ leaves: [newLeave, ...state.leaves] }));
     get().addNotification('New Leave Request', `${leave.userName} applied for leave.`, '/hr');
+    pushRecordToFirebase('leaves', newLeave.id, newLeave);
   },
-  processPayroll: (id) => set((state) => ({ payrolls: state.payrolls.map(p => p.id === id ? { ...p, status: 'PROCESSED' } : p) })),
-  updatePayrollRecord: (id, updates) => set((state) => ({ 
-    payrolls: state.payrolls.map(p => {
-      if (p.id === id) {
-        const updated = { ...p, ...updates };
-        updated.netPay = updated.basic + updated.hra + updated.statutoryBonus - updated.deductionsTds - updated.deductionsPfEsi;
-        return updated;
-      }
-      return p;
-    }) 
-  })),
+  processPayroll: (id) => {
+    set((state) => ({ payrolls: state.payrolls.map(p => p.id === id ? { ...p, status: 'PROCESSED' } : p) }));
+    const payroll = get().payrolls.find(p => p.id === id);
+    if (payroll) pushRecordToFirebase('payrolls', id, payroll);
+  },
+  updatePayrollRecord: (id, updates) => {
+    set((state) => ({ 
+      payrolls: state.payrolls.map(p => {
+        if (p.id === id) {
+          const updated = { ...p, ...updates };
+          updated.netPay = updated.basic + updated.hra + updated.statutoryBonus - updated.deductionsTds - updated.deductionsPfEsi;
+          return updated;
+        }
+        return p;
+      }) 
+    }));
+    const payroll = get().payrolls.find(p => p.id === id);
+    if (payroll) pushRecordToFirebase('payrolls', id, payroll);
+  },
   generateMonthlyPayroll: () => {
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const currentMonth = monthNames[new Date().getMonth()];
@@ -293,48 +1133,193 @@ export const useDashboardStore = create<DashboardState>()(
         }
       });
       
+      const newCreatedPayrolls = newPayrolls.filter(p => p.month === currentMonth && p.year === currentYear && !state.payrolls.some(existing => existing.id === p.id));
+      newCreatedPayrolls.forEach(p => {
+        pushRecordToFirebase('payrolls', p.id, p);
+      });
+
       if (generatedCount > 0) {
-        get().addAuditLog('PAYROLL_RUN', `Generated ${generatedCount} payroll records for ${currentMonth} ${currentYear}`);
+        get().addAuditLog('PAYROLL_GENERATED', `Monthly payroll generated for ${generatedCount} employees for ${currentMonth} ${currentYear}`);
+        get().setGlobalSuccessMsg(`Monthly payroll generated for ${generatedCount} employees!`);
+      } else {
+        get().setGlobalSuccessMsg(`Payroll already generated for all active employees for ${currentMonth} ${currentYear}.`);
       }
       
       return { payrolls: newPayrolls };
     });
-    get().setGlobalSuccessMsg(`Monthly payroll run generated successfully!`);
   },
-  updateOnboardingTask: (id, status) => set((state) => ({ onboardingTasks: state.onboardingTasks.map(t => t.id === id ? { ...t, status } : t) })),
+  updateOnboardingTask: (id, status) => {
+    set((state) => ({ onboardingTasks: state.onboardingTasks.map(t => t.id === id ? { ...t, status } : t) }));
+    const task = get().onboardingTasks.find(t => t.id === id);
+    if (task) pushRecordToFirebase('onboardingTasks', id, task);
+  },
+
+  addBillingEntity: (entity) => {
+    const newEntity: BillingEntity = {
+      ...entity,
+      id: `be-${Date.now()}`
+    };
+    set((state) => ({ billingEntities: [...state.billingEntities, newEntity] }));
+    get().addAuditLog('BILLING_ENTITY_ADDED', `New billing entity added: ${entity.name}`);
+    get().setGlobalSuccessMsg(`Billing entity "${entity.name}" created successfully!`);
+    pushRecordToFirebase('billingEntities', newEntity.id, newEntity);
+  },
+
+  submitTimesheet: (entry) => {
+    const newEntry: TimesheetEntry = {
+      ...entry,
+      id: `ts-${Date.now()}`,
+      status: 'PENDING',
+      createdAt: new Date().toISOString()
+    };
+    set((state) => ({ timesheets: [newEntry, ...state.timesheets] }));
+    get().addNotification('Timesheet Submitted', `${entry.employeeName} submitted ${entry.hours} hrs for ${entry.clientName}.`, '/hr');
+    get().setGlobalSuccessMsg(`Timesheet for ${entry.clientName} submitted for Admin approval.`);
+    pushRecordToFirebase('timesheets', newEntry.id, newEntry);
+  },
+
+  approveTimesheet: (id, approverName) => {
+    set((state) => {
+      const entry = state.timesheets.find(t => t.id === id);
+      if (!entry) return state;
+
+      const updatedTimesheets = state.timesheets.map(t =>
+        t.id === id
+          ? { ...t, status: 'APPROVED' as const, approvedAt: new Date().toISOString(), approvedBy: approverName }
+          : t
+      );
+
+      get().addAuditLog('TIMESHEET_APPROVED', `Admin ${approverName} approved timesheet ${id} for ${entry.employeeName} (${entry.hours}h) - Attendance marked PRESENT.`);
+      get().setGlobalSuccessMsg(`Timesheet approved! Attendance marked as PRESENT for ${entry.employeeName}.`);
+
+      return { timesheets: updatedTimesheets };
+    });
+    const ts = get().timesheets.find(t => t.id === id);
+    if (ts) pushRecordToFirebase('timesheets', id, ts);
+  },
+
+  rejectTimesheet: (id) => {
+    set((state) => ({
+      timesheets: state.timesheets.map(t => t.id === id ? { ...t, status: 'REJECTED' as const } : t)
+    }));
+    get().setGlobalSuccessMsg(`Timesheet rejected.`);
+    const ts = get().timesheets.find(t => t.id === id);
+    if (ts) pushRecordToFirebase('timesheets', id, ts);
+  },
+
+  addLeadInteraction: (interaction) => {
+    const newInteraction: LeadInteraction = {
+      ...interaction,
+      id: `li-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    set((state) => {
+      let updatedLeads = state.leads;
+      if (interaction.nextFollowUpDate) {
+        updatedLeads = state.leads.map(l =>
+          l.id === interaction.leadId
+            ? { ...l, status: l.status === 'NEW' ? 'CONTACTED' : l.status }
+            : l
+        );
+      }
+      return {
+        leadInteractions: [newInteraction, ...state.leadInteractions],
+        leads: updatedLeads
+      };
+    });
+    if (interaction.nextFollowUpDate) {
+      const l = get().leads.find(lead => lead.id === interaction.leadId);
+      if (l) pushRecordToFirebase('leads', l.id, l);
+    }
+    pushRecordToFirebase('leadInteractions', newInteraction.id, newInteraction);
+    get().addAuditLog('LEAD_INTERACTION_LOGGED', `Interaction (${interaction.type}) logged for lead ${interaction.leadId}`);
+    get().setGlobalSuccessMsg(`Interaction conversation logged successfully!`);
+  },
+
+  applyTemplateToEngagement: (arg1, arg2) => {
+    let engagementId = arg1;
+    let templateId = arg2;
+    const t1 = get().clientTemplatePacks.find(p => p.id === arg1);
+    if (t1) {
+      templateId = arg1;
+      engagementId = arg2;
+    }
+    const template = get().clientTemplatePacks.find(p => p.id === templateId);
+    if (!template) return;
+
+    template.tasks.forEach((t, idx) => {
+      const dueDate = new Date(Date.now() + (t.daysDueFromStart || (idx + 1) * 3) * 24 * 60 * 60 * 1000).toISOString();
+      get().addTask(engagementId, {
+        engagementId,
+        title: t.title || t.name || 'CFO Milestone Task',
+        milestone: t.milestone || template.name || template.title || 'CFO Service Delivery',
+        estimatedHours: t.estimatedHours || 6,
+        timeSpent: 0,
+        progress: 0,
+        notes: t.description || t.notes || '',
+        status: 'NOT_STARTED',
+        priority: t.priority || 'MEDIUM',
+        dueDate,
+      });
+    });
+
+    get().addAuditLog('TEMPLATE_APPLIED', `Template pack "${template.name || template.title}" applied to engagement ${engagementId} with ${template.tasks.length} tasks.`);
+    get().setGlobalSuccessMsg(`Applied "${template.name || template.title}"! Added ${template.tasks.length} tasks to engagement.`);
+  },
+
+  switchPersona: (role) => {
+    let target = get().users.find((u) => role === 'ADMIN' ? (u.role === 'SUPER_ADMIN' || u.role === 'ADMIN') : u.role === role);
+    if (!target) {
+      if (role === 'ADMIN') target = FIXED_USERS[0];
+      else if (role === 'EMPLOYEE') target = FIXED_USERS[1];
+      else target = FIXED_USERS[2];
+    }
+    if (target) {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('cfo_current_user', JSON.stringify(target));
+          document.cookie = `userRole=${target.role}; path=/; max-age=${60 * 60 * 24 * 7}`;
+          document.cookie = `userId=${target.id}; path=/; max-age=${60 * 60 * 24 * 7}`;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      set({ currentUser: target });
+      get().addAuditLog('PERSONA_SWITCH', `Switched active dashboard to ${target.name} (${target.role})`);
+      get().setGlobalSuccessMsg(`Switched to ${target.name} (${target.role})`);
+      if (typeof window !== 'undefined') {
+        const dest = (target.role === 'SUPER_ADMIN' || target.role === 'ADMIN') ? '/admin' : target.role === 'EMPLOYEE' ? '/employee' : '/client';
+        window.location.href = dest;
+      }
+    }
+  },
 
   loginUser: (email) => {
     const cleanEmail = email.toLowerCase().trim();
-    const user = get().users.find((u) => u.email.toLowerCase() === cleanEmail);
-    const isSuperAdmin = cleanEmail === 'aaratimule006@gmail.com';
-    const isClient = cleanEmail === 'aaratideepak29@gmail.com';
-    const isEmployee = cleanEmail === 'aarati123@gmail.com' || cleanEmail === 'kiranm@gmail.com';
+    let matchedUser = get().users.find((u) => u.email.toLowerCase() === cleanEmail);
 
-    if (user || isSuperAdmin || isClient || isEmployee) {
-      const roleToSet: Role = isSuperAdmin ? 'SUPER_ADMIN' : isClient ? 'CLIENT' : isEmployee ? 'EMPLOYEE' : (user?.role || 'PENDING');
-      const perms = isSuperAdmin ? ['all'] : isClient ? ['read'] : ['work'];
+    if (!matchedUser) {
+      if (cleanEmail === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'aaratimule006@gmail.com') {
+        matchedUser = get().users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
+      } else if (cleanEmail === 'employee' || cleanEmail.includes('employee') || cleanEmail === 'aarati123@gmail.com' || cleanEmail === 'kiranm@gmail.com') {
+        matchedUser = get().users.find((u) => u.role === 'EMPLOYEE');
+      } else if (cleanEmail === 'client' || cleanEmail.includes('client') || cleanEmail === 'aaratideepak29@gmail.com') {
+        matchedUser = get().users.find((u) => u.role === 'CLIENT');
+      }
+    }
 
-      const targetUser: User = user
-        ? {
-            ...user,
-            role: roleToSet,
-            permissions: perms,
-          }
-        : {
-            id: isSuperAdmin ? 'u-aarati' : isClient ? 'u-aarati-client' : (cleanEmail === 'kiranm@gmail.com' ? 'u-kiran-employee' : 'u-aarati-employee'),
-            name: isSuperAdmin ? 'Aarati Mule' : isClient ? 'Aarati Deepak' : (cleanEmail === 'kiranm@gmail.com' ? 'Kiran' : 'Aarati (Employee)'),
-            email: cleanEmail,
-            role: roleToSet,
-            permissions: perms,
-          };
-      set((state) => {
-        const userExists = state.users.some(u => u.id === targetUser.id);
-        return {
-          currentUser: targetUser,
-          users: userExists ? state.users : [...state.users, targetUser]
-        };
-      });
-      get().addAuditLog('USER_LOGIN', `User ${targetUser.name} logged in successfully as ${targetUser.role}.`);
+    if (matchedUser) {
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('cfo_current_user', JSON.stringify(matchedUser));
+          document.cookie = `userRole=${matchedUser.role}; path=/; max-age=${60 * 60 * 24 * 7}`;
+          document.cookie = `userId=${matchedUser.id}; path=/; max-age=${60 * 60 * 24 * 7}`;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      set({ currentUser: matchedUser });
+      get().addAuditLog('USER_LOGIN', `User ${matchedUser.name} logged in successfully as ${matchedUser.role}.`);
       return true;
     }
     return false;
@@ -459,14 +1444,18 @@ export const useDashboardStore = create<DashboardState>()(
   addReceipt: (receipt) => {
     const newReceipt = { ...receipt, id: `rec-${Date.now()}`, createdAt: new Date().toISOString() };
     set((state) => ({ standaloneReceipts: [...state.standaloneReceipts, newReceipt as Receipt] }));
+    pushRecordToFirebase('receipts', newReceipt.id, newReceipt);
   },
 
-  updateReceipt: (id, updates) =>
+  updateReceipt: (id, updates) => {
     set((state) => ({
       standaloneReceipts: state.standaloneReceipts.map((r) =>
         r.id === id ? { ...r, ...updates } : r
       ),
-    })),
+    }));
+    const r = get().standaloneReceipts.find(rec => rec.id === id);
+    if (r) pushRecordToFirebase('receipts', id, r);
+  },
 
   addMeeting: (m) => {
     const newMeeting: Meeting = {
@@ -475,6 +1464,7 @@ export const useDashboardStore = create<DashboardState>()(
       createdAt: new Date().toISOString(),
     };
     set((state) => ({ meetings: [...state.meetings, newMeeting] }));
+    pushRecordToFirebase('meetings', newMeeting.id, newMeeting);
   },
 
   addAvailabilityBlock: (b) => {
@@ -483,21 +1473,36 @@ export const useDashboardStore = create<DashboardState>()(
       id: Math.random().toString(36).substr(2, 9),
     };
     set((state) => ({ availabilityBlocks: [...state.availabilityBlocks, newBlock] }));
+    pushRecordToFirebase('availabilityBlocks', newBlock.id, newBlock);
   },
 
-  removeAvailabilityBlock: (id) =>
+  removeAvailabilityBlock: (id) => {
     set((state) => ({
       availabilityBlocks: state.availabilityBlocks.filter((b) => b.id !== id),
-    })),
+    }));
+    deleteRecordFromFirebase('availabilityBlocks', id);
+  },
 
   logoutUser: async () => {
     const user = get().currentUser;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('cfo_current_user');
+        document.cookie = 'userRole=; path=/; max-age=0';
+        document.cookie = 'userId=; path=/; max-age=0';
+      } catch (err) {
+        console.error(err);
+      }
+    }
     set({ currentUser: null });
     if (user) {
       get().addAuditLog('USER_LOGOUT', `User ${user.name} logged out.`);
     }
     if (isFirebaseConfigured && auth) {
       await signOut(auth).catch((err) => console.error('Signout error:', err));
+    }
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
     }
   },
 
@@ -962,6 +1967,46 @@ export const useDashboardStore = create<DashboardState>()(
     }
   },
 
+  updateClientDeliverables: (clientId, reports) => {
+    set((state) => ({
+      clients: state.clients.map((c) => (c.id === clientId ? { ...c, deliverableReports: reports } : c)),
+    }));
+    const updatedClient = get().clients.find((c) => c.id === clientId);
+    if (updatedClient) {
+      pushRecordToFirebase('clients', clientId, updatedClient);
+      get().addAuditLog('UPDATE_DELIVERABLES', `Updated deliverable reports for client ${updatedClient.companyName}`);
+    }
+  },
+
+  toggleDeliverablePin: (clientId, reportId) => {
+    set((state) => ({
+      clients: state.clients.map((c) => {
+        if (c.id === clientId && c.deliverableReports) {
+          const updatedReports = c.deliverableReports.map(r => 
+            r.id === reportId ? { ...r, isPinned: !r.isPinned } : r
+          );
+          return { ...c, deliverableReports: updatedReports };
+        }
+        return c;
+      }),
+    }));
+    const updatedClient = get().clients.find((c) => c.id === clientId);
+    if (updatedClient) {
+      pushRecordToFirebase('clients', clientId, updatedClient);
+    }
+  },
+
+  updateClientFeaturedGraph: (clientId, graphType) => {
+    set((state) => ({
+      clients: state.clients.map((c) => (c.id === clientId ? { ...c, featuredGraph: graphType } : c)),
+    }));
+    const updatedClient = get().clients.find((c) => c.id === clientId);
+    if (updatedClient) {
+      pushRecordToFirebase('clients', clientId, updatedClient);
+      get().addAuditLog('UPDATE_FEATURED_GRAPH', `Updated featured graph for client ${updatedClient.companyName}`);
+    }
+  },
+
   updateClientStatus: (id, status) => {
     set((state) => ({
       clients: state.clients.map((c) => (c.id === id ? { ...c, status } : c)),
@@ -1115,6 +2160,27 @@ export const useDashboardStore = create<DashboardState>()(
     }
   },
 
+  addDocument: (engagementId, documentData) => {
+    const newDoc: Document = {
+      ...documentData,
+      id: `doc-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      engagements: state.engagements.map((e) =>
+        e.id === engagementId ? { ...e, documents: [...(e.documents || []), newDoc] } : e
+      ),
+    }));
+    get().addAuditLog('ADD_DOCUMENT', `Added document "${documentData.name}" to Master Data Bank.`);
+    get().setGlobalSuccessMsg(`Added Document: ${documentData.name}`);
+    
+    // Sync to Firestore
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (eng) {
+      pushRecordToFirebase('engagements', engagementId, eng);
+    }
+  },
+
   addTask: (engagementId, taskData) => {
     const newTask: Task = {
       ...taskData,
@@ -1136,6 +2202,49 @@ export const useDashboardStore = create<DashboardState>()(
       pushRecordToFirebase('engagements', engagementId, eng);
     }
     pushRecordToFirebase('tasks', newTask.id, newTask);
+  },
+
+  addOnboardingTask: (task: any) => {
+    const newTask = {
+      ...task,
+      id: task.id || `ob-${Date.now()}`
+    };
+    set((state) => ({
+      onboardingTasks: [newTask, ...(state.onboardingTasks || [])],
+    }));
+    get().addAuditLog('ADD_ONBOARDING_TASK', `Added onboarding task ${task.id}`);
+    pushRecordToFirebase('onboardingTasks', newTask.id, newTask);
+  },
+
+  // HR Extension Actions
+  addAsset: (assetData) => {
+    const newAsset = {
+      ...assetData,
+      id: `asset-${Date.now()}`
+    };
+    set((state) => ({
+      assets: [...state.assets, newAsset as CompanyAsset],
+    }));
+    pushRecordToFirebase('assets', newAsset.id, newAsset);
+  },
+
+  updateAssetStatus: (id, status) => {
+    set((state) => ({
+      assets: state.assets.map(a => a.id === id ? { ...a, status } : a)
+    }));
+    const asset = get().assets.find(a => a.id === id);
+    if (asset) pushRecordToFirebase('assets', id, asset);
+  },
+
+  addPerformanceReview: (reviewData) => {
+    const newReview = {
+      ...reviewData,
+      id: `review-${Date.now()}`
+    };
+    set((state) => ({
+      performanceReviews: [...state.performanceReviews, newReview as PerformanceReview],
+    }));
+    pushRecordToFirebase('performanceReviews', newReview.id, newReview);
   },
 
   updateTask: (engagementId, taskId, updates) => {
@@ -1558,7 +2667,6 @@ export const useDashboardStore = create<DashboardState>()(
     pushRecordToFirebase('auditLogs', log.id, log);
   },
 
-
   seedDummyData: () => {
     import('../lib/dummyData').then((dummy) => {
       const currentUser = get().currentUser;
@@ -1591,6 +2699,73 @@ export const useDashboardStore = create<DashboardState>()(
       get().setGlobalSuccessMsg('Data wiped and Dashboard populated with fresh realistic dummy data!');
     }).catch(console.error);
   },
+  
+  serviceCategories: Object.entries(STANDARD_TASKS_BY_CATEGORY).map(([catName, tasks], i) => ({
+    id: `c-std-${i}`,
+    name: catName,
+    services: tasks.map((taskName, j) => ({
+      id: `s-std-${i}-${j}`,
+      name: taskName,
+      frequency: 'Monthly',
+      priority: 'MEDIUM' as Priority,
+      parameters: [],
+      isAutomated: false
+    }))
+  })),
+
+  addServiceCategory: (name) => {
+    const newCategory = { id: `c-${Date.now()}`, name, services: [] };
+    set((state) => ({
+      serviceCategories: [...state.serviceCategories, newCategory]
+    }));
+    pushRecordToFirebase('serviceCategories', newCategory.id, newCategory);
+  },
+
+  removeServiceCategory: (categoryId) => {
+    set((state) => ({
+      serviceCategories: state.serviceCategories.filter(c => c.id !== categoryId)
+    }));
+    deleteRecordFromFirebase('serviceCategories', categoryId);
+  },
+
+  addServiceToCategory: (categoryId, service) => {
+    set((state) => {
+      const updatedCategories = state.serviceCategories.map(c => 
+        c.id === categoryId 
+          ? { ...c, services: [...c.services, { ...service, id: `s-${Date.now()}` }] }
+          : c
+      );
+      const updatedCat = updatedCategories.find(c => c.id === categoryId);
+      if (updatedCat) pushRecordToFirebase('serviceCategories', categoryId, updatedCat);
+      return { serviceCategories: updatedCategories };
+    });
+  },
+
+  removeServiceFromCategory: (categoryId, serviceId) => {
+    set((state) => {
+      const updatedCategories = state.serviceCategories.map(c => 
+        c.id === categoryId 
+          ? { ...c, services: c.services.filter(s => s.id !== serviceId) }
+          : c
+      );
+      const updatedCat = updatedCategories.find(c => c.id === categoryId);
+      if (updatedCat) pushRecordToFirebase('serviceCategories', categoryId, updatedCat);
+      return { serviceCategories: updatedCategories };
+    });
+  },
+
+  toggleServiceAutomation: (categoryId, serviceId, isAutomated) => {
+    set((state) => {
+      const updatedCategories = state.serviceCategories.map(c => 
+        c.id === categoryId 
+          ? { ...c, services: c.services.map(s => s.id === serviceId ? { ...s, isAutomated } : s) }
+          : c
+      );
+      const updatedCat = updatedCategories.find(c => c.id === categoryId);
+      if (updatedCat) pushRecordToFirebase('serviceCategories', categoryId, updatedCat);
+      return { serviceCategories: updatedCategories };
+    });
+  },
 }),
 {
   name: 'cfo-dashboard-storage',
@@ -1610,7 +2785,15 @@ export const useDashboardStore = create<DashboardState>()(
     adminSettings: state.adminSettings,
     leaves: state.leaves,
     payrolls: state.payrolls,
-    onboardingTasks: state.onboardingTasks
+    onboardingTasks: state.onboardingTasks,
+    billingEntities: state.billingEntities,
+    communicationLogs: state.communicationLogs,
+    timesheets: state.timesheets,
+    leadInteractions: state.leadInteractions,
+    clientTemplatePacks: state.clientTemplatePacks,
+    assets: state.assets,
+    performanceReviews: state.performanceReviews,
+    serviceCategories: state.serviceCategories,
   }),
   migrate: (persistedState: any, version: number) => {
     return persistedState;
@@ -1622,9 +2805,15 @@ useDashboardStore.subscribe((state, prevState) => {
   if (state.currentUser !== prevState.currentUser) {
     if (typeof document !== 'undefined') {
       if (state.currentUser) {
+        try {
+          localStorage.setItem('cfo_current_user', JSON.stringify(state.currentUser));
+        } catch (e) {}
         document.cookie = `userRole=${state.currentUser.role}; path=/; max-age=${60 * 60 * 24 * 7}`;
         document.cookie = `userId=${state.currentUser.id}; path=/; max-age=${60 * 60 * 24 * 7}`;
       } else {
+        try {
+          localStorage.removeItem('cfo_current_user');
+        } catch (e) {}
         document.cookie = 'userRole=; path=/; max-age=0';
         document.cookie = 'userId=; path=/; max-age=0';
       }

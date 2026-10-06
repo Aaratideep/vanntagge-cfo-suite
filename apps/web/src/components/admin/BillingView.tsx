@@ -22,6 +22,7 @@ import {
 import { useDashboardStore } from '../../store/dashboardStore';
 import { Invoice, InvoiceStatus, Collection } from '../../types';
 import { DocumentPreviewModal } from '../DocumentPreviewModal';
+import { exportToCSV } from '../../lib/exportExcel';
 
 export const BillingView: React.FC = () => {
   const {
@@ -33,6 +34,8 @@ export const BillingView: React.FC = () => {
     addStandaloneReceipt,
     currentUser,
     adminSettings,
+    billingEntities,
+    addBillingEntity,
   } = useDashboardStore();
 
   const [activeEngId, setActiveEngId] = useState<string>(engagements[0]?.id || '');
@@ -49,6 +52,16 @@ export const BillingView: React.FC = () => {
   const [showRaiseInvModal, setShowRaiseInvModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showNewEntityModal, setShowNewEntityModal] = useState(false);
+
+  // New Entity Form Input
+  const [newEntityForm, setNewEntityForm] = useState({
+    name: '',
+    gstNumber: '',
+    isGstRegistered: false,
+    pan: '',
+    address: 'Level 8, Corporate Tower B, BKC Financial Hub, Bandra East, Mumbai, MH - 400051',
+  });
 
   // Forms Input
   const [invForm, setInvForm] = useState({
@@ -63,6 +76,17 @@ export const BillingView: React.FC = () => {
     status: 'SENT' as InvoiceStatus,
     billingEntity: 'Vanntagge CFO Services LLP',
   });
+
+  // Auto-pickup client's default billing entity from onboarding info (Sr# 10)
+  useEffect(() => {
+    const selEng = engagements.find((e) => e.id === activeEngId);
+    if (selEng) {
+      const client = clients?.find(c => c.id === selEng.clientId || c.companyName?.toLowerCase() === selEng.clientCompanyName?.toLowerCase());
+      if (client?.billingEntity) {
+        setInvForm(prev => ({ ...prev, billingEntity: client.billingEntity! }));
+      }
+    }
+  }, [activeEngId, engagements, clients]);
 
   const [payForm, setPayForm] = useState({
     paymentMethod: 'NetBanking',
@@ -232,7 +256,15 @@ export const BillingView: React.FC = () => {
     if (!selectedEngagement) return;
 
     const invoiceNumber = `INV-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    const finalAmount = Number(invForm.amount) * 1.18; // Auto 18% GST
+    const matchedEntity = billingEntities.find(b => b.name === invForm.billingEntity);
+    const isRegistered = matchedEntity 
+      ? matchedEntity.isGstRegistered 
+      : (invForm.billingEntity.toUpperCase().includes('TEJJASHRI') || invForm.billingEntity.includes('Tejashri') || invForm.billingEntity.includes('GST'));
+    
+    // Sr# 9 & 12: IGST 18%, CGST 9% with SGST 9% split to be captured; No GST only in case of billing entity Unregistered
+    const gstRate = isRegistered ? 0.18 : 0;
+    const gst = Number(invForm.amount) * gstRate;
+    const finalAmount = Number(invForm.amount) + gst;
 
     addInvoice(selectedEngagement.id, {
       invoiceNumber,
@@ -240,7 +272,7 @@ export const BillingView: React.FC = () => {
       engagementName: selectedEngagement.clientCompanyName + ' CFO Services',
       milestone: invForm.milestone,
       amount: invForm.amount,
-      gst: invForm.amount * 0.18,
+      gst,
       finalAmount,
       dueDate: new Date(invForm.dueDate).toISOString(),
       status: invForm.status,
@@ -264,6 +296,67 @@ export const BillingView: React.FC = () => {
       status: 'SENT',
       billingEntity: 'Vanntagge CFO Services LLP',
     });
+  };
+
+  const handleCreateBillingEntity = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEntityForm.name) return;
+    addBillingEntity({
+      name: newEntityForm.name,
+      gstNumber: newEntityForm.isGstRegistered ? newEntityForm.gstNumber : undefined,
+      isGstRegistered: newEntityForm.isGstRegistered,
+      pan: newEntityForm.pan || undefined,
+      address: newEntityForm.address,
+      bankDetails: {
+        bankName: 'HDFC Bank Ltd',
+        accountNumber: '50200098765432',
+        ifscCode: 'HDFC0000123',
+        branch: 'BKC Financial Hub, Mumbai',
+        upiId: 'vanntagge.cfo@hdfcbank',
+      },
+    });
+    setInvForm(prev => ({ ...prev, billingEntity: newEntityForm.name }));
+    setShowNewEntityModal(false);
+    setNewEntityForm({
+      name: '',
+      gstNumber: '',
+      isGstRegistered: false,
+      pan: '',
+      address: 'Level 8, Corporate Tower B, BKC Financial Hub, Bandra East, Mumbai, MH - 400051',
+    });
+  };
+
+  const handleExportInvoicesExcel = () => {
+    const rows = (selectedEngagement?.invoices || []).map((inv) => ({
+      'Invoice Number': inv.invoiceNumber,
+      'Client': selectedEngagement?.clientCompanyName || '',
+      'Engagement': inv.engagementName,
+      'Milestone': inv.milestone,
+      'Billing Entity': inv.billingEntity || 'Vanntagge CFO Services LLP',
+      'Invoice Type': inv.invoiceType || 'Milestone',
+      'SAC Code': inv.sacCode || '998311',
+      'GST Scope': inv.gstType || 'Intrastate',
+      'Taxable Amount (INR)': inv.amount,
+      'GST Amount (INR)': inv.gst || 0,
+      'Total Amount (INR)': inv.finalAmount,
+      'Due Date': new Date(inv.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      'Status': inv.status,
+      'Payment Terms': inv.paymentTerms || 'Net 15 days',
+    }));
+    exportToCSV(rows, `Invoices_${selectedEngagement?.clientCompanyName || 'All'}_${new Date().toISOString().split('T')[0]}`);
+  };
+
+  const handleExportCollectionsExcel = () => {
+    const rows = paymentLogs.map((log) => ({
+      'Receipt / Txn ID': log.transactionId,
+      'Invoice Ref': log.invoiceNumber,
+      'Engagement': log.engagementName,
+      'Amount Collected (INR)': log.collected,
+      'Payment Method': log.paymentMethod,
+      'Payment Date': new Date(log.paymentDate || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      'Status': log.status,
+    }));
+    exportToCSV(rows, `Collections_Register_${new Date().toISOString().split('T')[0]}`);
   };
 
   const handlePayInvoice = (e: React.FormEvent) => {
@@ -318,7 +411,7 @@ export const BillingView: React.FC = () => {
       {/* View Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-2 gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Milestone Invoicing & Collections</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Revenue Hub</h1>
           <p className="text-xs text-slate-500">Generate milestone-based tax invoices, track collection payment histories, and consult ageing audits.</p>
         </div>
         
@@ -380,26 +473,48 @@ export const BillingView: React.FC = () => {
           {/* Sub view 1: Invoices Directory */}
           {billingSubTab === 'invoices' && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="font-bold text-slate-800 text-sm">Milestone Invoice Receipts</h3>
-                <button
-                  onClick={() => setShowRaiseInvModal(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
-                >
-                  <Plus size={14} />
-                  Raise Invoice
-                </button>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-slate-800 text-sm">Milestone Invoice Receipts</h3>
+                  <span className="text-[11px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full font-medium">
+                    {selectedEngagement.invoices.length} Invoices
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExportInvoicesExcel}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                    title="Export Invoices to Excel CSV"
+                  >
+                    <FileDown size={14} />
+                    Export to Excel
+                  </button>
+                  <button
+                    onClick={() => setShowNewEntityModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    Add Billing Entity
+                  </button>
+                  <button
+                    onClick={() => setShowRaiseInvModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md transition-all cursor-pointer"
+                  >
+                    <Plus size={14} />
+                    Raise Invoice
+                  </button>
+                </div>
               </div>
 
               <div className="premium-card overflow-hidden bg-white">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
+                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold whitespace-nowrap">
                         <th className="p-3">Invoice ID</th>
                         <th className="p-3">Client Engagement</th>
                         <th className="p-3">Billing Milestone</th>
-                        <th className="p-3">GST (18%)</th>
+                        <th className="p-3">GST Scope / Tax</th>
                         <th className="p-3">Final Amount</th>
                         <th className="p-3">Due Date</th>
                         <th className="p-3">Status</th>
@@ -415,17 +530,26 @@ export const BillingView: React.FC = () => {
                         </tr>
                       ) : (
                         selectedEngagement.invoices.map((inv) => (
-                          <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors">
+                          <tr key={inv.id} className="hover:bg-slate-50/50 transition-colors whitespace-nowrap">
                             <td className="p-3 font-bold text-slate-700">{inv.invoiceNumber}</td>
-                            <td className="p-3 font-semibold text-slate-800">{inv.engagementName}</td>
+                            <td className="p-3 font-semibold text-slate-800">
+                              <div>{inv.engagementName}</div>
+                              <span className="text-[10px] text-slate-400 font-normal">{inv.billingEntity || 'Vanntagge CFO Services LLP'}</span>
+                            </td>
                             <td className="p-3 text-slate-600">{inv.milestone}</td>
-                            <td className="p-3 text-slate-500">{formatINR(inv.gst)}</td>
-                            <td className="p-3 font-bold text-slate-800">{formatINR(inv.finalAmount)}</td>
                             <td className="p-3 text-slate-500">
-                              {new Date(inv.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                              {inv.gst ? (
+                                <span>{formatINR(inv.gst)} <span className="text-[9px] text-slate-400">({inv.gstType || '18%'})</span></span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">No GST (Exempt)</span>
+                              )}
+                            </td>
+                            <td className="p-3 font-bold text-slate-800">{formatINR(inv.finalAmount)}</td>
+                            <td className="p-3 text-slate-600 font-medium">
+                              {new Date(inv.dueDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </td>
                             <td className="p-3">{getInvoiceStatusBadge(inv.status)}</td>
-                            <td className="p-3 text-right">
+                            <td className="p-3 text-right whitespace-nowrap">
                               <div className="flex justify-end gap-1.5">
                                 <button
                                   onClick={() => setSelectedInvoice(inv)}
@@ -537,7 +661,17 @@ export const BillingView: React.FC = () => {
               </div>
 
               <div className="premium-card p-5 bg-white">
-                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wide mb-3">Collected payment history</h4>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wide">Collected payment history</h4>
+                  <button
+                    onClick={handleExportCollectionsExcel}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-all cursor-pointer"
+                    title="Export Collections Register to Excel CSV"
+                  >
+                    <FileDown size={13} />
+                    Export to Excel
+                  </button>
+                </div>
                 <div className="space-y-2">
                   {paymentLogs.map((log) => (
                     <div key={log.id} className="p-3 border border-slate-100 rounded-xl flex items-center justify-between text-xs hover:bg-slate-50 transition-colors">
@@ -694,16 +828,26 @@ export const BillingView: React.FC = () => {
             <h3 className="font-bold text-slate-800 text-sm mb-4">Raise Milestone Invoice</h3>
             <form onSubmit={handleRaiseInvoice} className="space-y-4 text-xs">
               <div>
-                <label className="block text-slate-500 mb-1">Billing Entity</label>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="text-slate-500 font-medium">Billing Entity *</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowNewEntityModal(true)}
+                    className="text-blue-600 hover:text-blue-700 font-bold text-[10px] flex items-center gap-0.5 cursor-pointer"
+                  >
+                    <Plus size={11} /> New Entity
+                  </button>
+                </div>
                 <select
                   value={invForm.billingEntity}
                   onChange={(e) => setInvForm({ ...invForm, billingEntity: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none focus:bg-white mb-4"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none focus:bg-white mb-3"
                 >
-                  <option value="CA Tejashri Sachin Pawar">CA Tejashri Sachin Pawar</option>
-                  <option value="Sachin Pawar (HUF)">Sachin Pawar (HUF)</option>
-                  <option value="Vanntagge CFO Services LLP">Vanntagge CFO Services LLP</option>
-                  <option value="Ajit Shinde & CO">Ajit Shinde & CO</option>
+                  {billingEntities.map((ent) => (
+                    <option key={ent.id} value={ent.name}>
+                      {ent.name} {ent.isGstRegistered ? `(GSTIN: ${ent.gstNumber || ent.gstin})` : '(No GST / Unregistered)'}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -813,6 +957,54 @@ export const BillingView: React.FC = () => {
                 />
               </div>
 
+              {/* Dynamic GST calculation breakdown (Sr# 9 & 12) */}
+              {(() => {
+                const currentEntity = billingEntities.find(b => b.name === invForm.billingEntity);
+                const isRegistered = currentEntity 
+                  ? currentEntity.isGstRegistered 
+                  : (invForm.billingEntity.toUpperCase().includes('TEJJASHRI') || invForm.billingEntity.includes('Tejashri') || invForm.billingEntity.includes('GST'));
+                const gstRate = isRegistered ? 0.18 : 0;
+                const calcGst = invForm.amount * gstRate;
+                const calcTotal = invForm.amount + calcGst;
+
+                return (
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5 text-xs">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Base Professional Fee:</span>
+                      <span className="font-semibold text-slate-800">{formatINR(invForm.amount)}</span>
+                    </div>
+                    {isRegistered ? (
+                      invForm.gstType === 'Intrastate' ? (
+                        <>
+                          <div className="flex justify-between text-slate-500 text-[11px]">
+                            <span>CGST @ 9.00%:</span>
+                            <span>{formatINR(calcGst / 2)}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-500 text-[11px]">
+                            <span>SGST @ 9.00%:</span>
+                            <span>{formatINR(calcGst / 2)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between text-slate-500 text-[11px]">
+                          <span>IGST @ 18.00%:</span>
+                          <span>{formatINR(calcGst)}</span>
+                        </div>
+                      )
+                    ) : (
+                      <div className="flex justify-between text-amber-800 text-[11px] font-medium bg-amber-50 p-1.5 rounded-lg border border-amber-200">
+                        <span>GST Taxability:</span>
+                        <span>0% (Unregistered Entity - No GST Charged)</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t border-slate-200 pt-1.5 font-bold text-slate-900 text-sm">
+                      <span>Grand Total:</span>
+                      <span className="text-blue-600">{formatINR(calcTotal)}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
@@ -890,6 +1082,97 @@ export const BillingView: React.FC = () => {
                   className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold"
                 >
                   Log Payment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Billing Entity Modal (Sr# 9: Feature to create new billing entity) */}
+      {showNewEntityModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setShowNewEntityModal(false)} />
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md p-6 relative z-10 shadow-2xl">
+            <h3 className="font-bold text-slate-800 text-sm mb-1">Create New Billing Entity</h3>
+            <p className="text-xs text-slate-500 mb-4">Add a new legal firm or proprietary entity for raising tax or non-tax invoices.</p>
+            
+            <form onSubmit={handleCreateBillingEntity} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-600 font-medium mb-1">Entity / Firm Legal Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. CA Ramesh & Associates"
+                  value={newEntityForm.name}
+                  onChange={(e) => setNewEntityForm({ ...newEntityForm, name: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none focus:bg-white font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <input
+                    type="checkbox"
+                    checked={newEntityForm.isGstRegistered}
+                    onChange={(e) => setNewEntityForm({ ...newEntityForm, isGstRegistered: e.target.checked })}
+                    className="rounded text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="font-bold text-slate-700">Entity is Registered under GST (18%)</span>
+                </label>
+                <span className="text-[10px] text-slate-400 block pl-6">
+                  {newEntityForm.isGstRegistered ? 'Invoices raised under this entity will calculate 18% GST.' : 'Unregistered entities (e.g. HUF, unregistered LLPs) will have 0% GST automatically.'}
+                </span>
+              </div>
+
+              {newEntityForm.isGstRegistered && (
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">GSTIN Certificate Number *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 27AAPFP7890C1Z4"
+                    value={newEntityForm.gstNumber}
+                    onChange={(e) => setNewEntityForm({ ...newEntityForm, gstNumber: e.target.value.toUpperCase() })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none focus:bg-white uppercase font-mono font-bold"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-slate-600 font-medium mb-1">Entity PAN (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. AAPFP7890C"
+                  value={newEntityForm.pan}
+                  onChange={(e) => setNewEntityForm({ ...newEntityForm, pan: e.target.value.toUpperCase() })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none focus:bg-white uppercase font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-medium mb-1">Billing Address</label>
+                <textarea
+                  rows={2}
+                  value={newEntityForm.address}
+                  onChange={(e) => setNewEntityForm({ ...newEntityForm, address: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none focus:bg-white resize-none"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowNewEntityModal(false)}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md cursor-pointer"
+                >
+                  Save Billing Entity
                 </button>
               </div>
             </form>

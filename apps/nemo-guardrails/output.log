@@ -1,0 +1,15 @@
+INFO:nemoguardrails.actions.action_dispatcher:Initializing action dispatcher
+INFO:nemoguardrails.actions.action_dispatcher:Added create_event to actions
+INFO:nemoguardrails.actions.action_dispatcher:Added wolfram alpha request to actions
+INFO:nemoguardrails.actions.action_dispatcher:Added retrieve_relevant_chunks to actions
+INFO:nemoguardrails.actions.action_dispatcher:Added GetAttentionPercentageAction to actions
+INFO:nemoguardrails.actions.action_dispatcher:Added UpdateAttentionMaterializedViewAction to actions
+INFO:nemoguardrails.actions.action_dispatcher:Added GetCurrentDateTimeAction to actions
+INFO:nemoguardrails.actions.action_dispatcher:Registered Actions :: ['ClavataCheckAction', 'GetAttentionPercentageAction', 'GetCurrentDateTimeAction', 'UpdateAttentionMaterializedViewAction', 'ai_defense_inspect', 'alignscore request', 'alignscore_check_facts', 'autoalign_factcheck_output_api', 'autoalign_groundedness_output_api', 'autoalign_input_api', 'autoalign_output_api', 'call_activefence_api', 'call_cleanlab_api', 'call_fiddler_faithfulness', 'call_fiddler_safety_bot', 'call_fiddler_safety_user', 'call_gcpnlp_api', 'call_policyai_api', 'content_safety_check_input', 'content_safety_check_output', 'context_bloat_detection', 'create_event', 'crowdstrike_aidr_guard', 'detect_language', 'detect_pii', 'detect_regex_pattern', 'detect_sensitive_data', 'f5_guardrails_scan', 'gliner_detect_pii', 'gliner_mask_pii', 'hf_classifier_check_input', 'hf_classifier_check_output', 'hf_classifier_check_retrieval', 'injection_detection', 'jailbreak_detection_heuristics', 'jailbreak_detection_model', 'llama_guard_check_input', 'llama_guard_check_output', 'mask_pii', 'mask_sensitive_data', 'pangea_ai_guard', 'patronus_api_check_output', 'patronus_lynx_check_output_hallucination', 'polygraf_detect_pii', 'polygraf_mask_pii', 'protect_text', 'retrieve_relevant_chunks', 'self_check_facts', 'self_check_hallucination', 'self_check_input', 'self_check_output', 'topic_safety_check_input', 'trend_ai_guard', 'validate_guardrails_ai_input', 'validate_guardrails_ai_output', 'wolfram alpha request']
+INFO:nemoguardrails.actions.action_dispatcher:Action dispatcher initialized
+INFO:     Started server process [4916]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8000): [winerror 10048] only one usage of each socket address (protocol/network address/port) is normally permitted
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.

@@ -72,6 +72,15 @@ export const TaxInvoiceModal: React.FC = () => {
           })
         });
         if (!res.ok) throw new Error('WhatsApp Dispatch Failed');
+        useDashboardStore.getState().addCommunicationLog({
+          type: 'WHATSAPP',
+          recipient: sanitizedPhone || '0000000000',
+          body: whatsappMsg,
+          status: 'SENT',
+          sentBy: adminSettings.adminName || 'System',
+          relatedEntityId: inv.id,
+          relatedEntityType: 'INVOICE'
+        });
         useDashboardStore.getState().setGlobalSuccessMsg('WhatsApp invoice dispatched successfully');
       } else {
         const subject = `Tax Invoice ${inv.invoiceNumber} - ${adminSettings.companyName}`;
@@ -88,6 +97,16 @@ export const TaxInvoiceModal: React.FC = () => {
           })
         });
         if (!res.ok) throw new Error('Email Dispatch Failed');
+        useDashboardStore.getState().addCommunicationLog({
+          type: 'EMAIL',
+          recipient: clientEmail || 'client@example.com',
+          subject: subject,
+          body: body,
+          status: 'SENT',
+          sentBy: adminSettings.adminName || 'System',
+          relatedEntityId: inv.id,
+          relatedEntityType: 'INVOICE'
+        });
         useDashboardStore.getState().setGlobalSuccessMsg('Email invoice dispatched successfully');
       }
     } catch (error) {

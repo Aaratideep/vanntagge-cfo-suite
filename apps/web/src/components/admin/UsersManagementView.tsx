@@ -77,7 +77,7 @@ export const UsersManagementView: React.FC = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-end border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 font-outfit">Access Control & Users</h1>
+          <h1 className="text-2xl font-bold text-slate-800 font-outfit">Secure Hub</h1>
           <p className="text-xs text-slate-500 mt-1">Manage team members, roles, and platform access permissions.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -96,7 +96,7 @@ export const UsersManagementView: React.FC = () => {
 
       <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden">
         <table className="w-full text-left text-sm">
-          <thead className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200">
+          <thead className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider border-b border-slate-200 whitespace-nowrap">
             <tr>
               <th className="px-6 py-4">User Details</th>
               <th className="px-6 py-4">Assigned Role</th>
@@ -106,7 +106,7 @@ export const UsersManagementView: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm">
             {users.filter(u => u.id !== currentUser?.id).map((user) => (
-              <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+              <tr key={user.id} className="hover:bg-slate-50/50 transition-colors whitespace-nowrap">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-600 text-sm">

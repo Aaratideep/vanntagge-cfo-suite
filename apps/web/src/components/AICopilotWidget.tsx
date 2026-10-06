@@ -24,8 +24,8 @@ export const AICopilotWidget: React.FC = () => {
 
   const getContextName = (path: string) => {
     if (!path) return pageTitle;
-    if (path.includes('hr') || path.includes('payroll')) return 'HR & Payroll';
-    if (path.includes('invoice') || path.includes('billing')) return 'Invoicing & Revenue';
+    if (path.includes('hr') || path.includes('payroll')) return 'Employee Hub';
+    if (path.includes('invoice') || path.includes('billing')) return 'Revenue Hub';
     if (path.includes('client')) return 'Clients';
     if (path.includes('workload')) return 'Workloads';
     return pageTitle;

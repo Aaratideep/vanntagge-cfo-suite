@@ -563,7 +563,7 @@ export const AuthView: React.FC = () => {
       <div className="max-w-[1100px] w-full grid grid-cols-1 lg:grid-cols-2 bg-white rounded-xl overflow-hidden shadow-premium border border-outline-variant/30 min-h-[640px]">
 
         {/* Left Column: Visual Branding */}
-        <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden" style={{ backgroundColor: '#f4f2ff' }}>
+        <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden bg-surface-variant">
           {/* Grid pattern overlay */}
           <div
             className="absolute inset-0 opacity-[0.03] pointer-events-none"
@@ -797,55 +797,56 @@ export const AuthView: React.FC = () => {
                   <span>Continue with Google</span>
                 </button>
 
-                {/* Demo accounts helper cards */}
-                {!isFirebaseConfigured && (
-                  <div className="mt-6 p-3 rounded-lg bg-surface border border-outline-variant/30 space-y-2">
-                    <h4 className="text-[10px] font-bold uppercase text-outline tracking-wider">Default Test Personas</h4>
-                    <div className="space-y-1.5 text-[10px] text-on-surface-variant">
-                      <div
-                        onClick={() => {
-                          setEmail('aaratimule006@gmail.com');
-                          setPassword('demo');
-                        }}
-                        className="cursor-pointer hover:text-primary transition-all flex justify-between font-semibold text-primary"
-                      >
-                        <span>Aarati Mule (Super Admin)</span>
-                        <span className="font-bold underline">Auto-fill</span>
-                      </div>
-                      <div
-                        onClick={() => {
-                          setEmail('aarati123@gmail.com');
-                          setPassword('demo');
-                        }}
-                        className="cursor-pointer hover:text-primary transition-all flex justify-between font-semibold text-blue-700"
-                      >
-                        <span>Aarati (Employee)</span>
-                        <span className="font-bold underline">Auto-fill</span>
-                      </div>
-                      <div
-                        onClick={() => {
-                          setEmail('kiranm@gmail.com');
-                          setPassword('demo');
-                        }}
-                        className="cursor-pointer hover:text-primary transition-all flex justify-between font-semibold text-blue-700"
-                      >
-                        <span>Kiran (Employee)</span>
-                        <span className="font-bold underline">Auto-fill</span>
-                      </div>
-                      <div
-                        onClick={() => {
-                          setEmail('aaratideepak29@gmail.com');
-                          setPassword('demo');
-                        }}
-                        className="cursor-pointer hover:text-primary transition-all flex justify-between font-semibold text-emerald-600"
-                      >
-                        <span>Aarati (Client)</span>
-                        <span className="font-bold underline">Auto-fill</span>
-                      </div>
-
-                    </div>
+                {/* Clean 3 Personas Instant Test Logins */}
+                <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
+                  <h4 className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">
+                    Quick 1-Click Test Logins (3 Personas)
+                  </h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        loginUser('admin@vantage.com');
+                        window.location.href = '/admin';
+                      }}
+                      className="w-full py-2 px-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>👑</span>
+                        <span>Admin (Aarati Mule)</span>
+                      </span>
+                      <span className="text-[10px] text-purple-600 underline">Open Dashboard &rarr;</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        loginUser('employee@vantage.com');
+                        window.location.href = '/employee';
+                      }}
+                      className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>💼</span>
+                        <span>Employee (Priya Sharma)</span>
+                      </span>
+                      <span className="text-[10px] text-blue-600 underline">Open Workspace &rarr;</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        loginUser('client@vantage.com');
+                        window.location.href = '/client';
+                      }}
+                      className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span>🏢</span>
+                        <span>Client (Acme Corp - Rajesh)</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-600 underline">Open Portal &rarr;</span>
+                    </button>
                   </div>
-                )}
+                </div>
 
                 <footer className="mt-8 pt-6 border-t border-outline-variant/30 flex flex-col items-center gap-2">
                   <button

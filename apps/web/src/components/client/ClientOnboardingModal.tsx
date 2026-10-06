@@ -297,11 +297,12 @@ export const ClientOnboardingModal: React.FC = () => {
                 <div>
                   <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Entity Type *</label>
                   <select required name="entityType" value={formData.entityType} onChange={handleChange} className="w-full border-b border-slate-300 py-2 focus:outline-none focus:border-blue-600 transition-colors text-sm font-medium text-slate-800 bg-transparent">
-                    <option value="Pvt. Ltd.">Private Limited (Pvt. Ltd.)</option>
+                    <option value="Individual">Individual / Sole Proprietor</option>
+                    <option value="Partnership Firm">Partnership Firm</option>
                     <option value="LLP">Limited Liability Partnership (LLP)</option>
-                    <option value="Partnership">Partnership</option>
-                    <option value="Proprietorship">Sole Proprietorship</option>
-                    <option value="Public Ltd.">Public Limited</option>
+                    <option value="Pvt Ltd">Private Limited Company (Pvt Ltd)</option>
+                    <option value="Public Ltd">Public Limited Company (Public Ltd)</option>
+                    <option value="Listed">Listed Company (NSE / BSE Listed)</option>
                   </select>
                 </div>
                 <div>
@@ -309,12 +310,12 @@ export const ClientOnboardingModal: React.FC = () => {
                   <input required type="text" name="industry" value={formData.industry} onChange={handleChange} className="w-full border-b border-slate-300 py-2 focus:outline-none focus:border-blue-600 transition-colors text-sm font-medium text-slate-800 bg-transparent" placeholder="e.g. Technology, Retail, Manufacturing" />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Billing Entity *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Billing Entity (Auto-picked for Invoicing) *</label>
                   <select required name="billingEntity" value={formData.billingEntity} onChange={handleChange} className="w-full border-b border-slate-300 py-2 focus:outline-none focus:border-blue-600 transition-colors text-sm font-medium text-slate-800 bg-transparent">
-                    <option value="CA Tejashri Sachin Pawar">CA Tejashri Sachin Pawar</option>
-                    <option value="Sachin Pawar (HUF)">Sachin Pawar (HUF)</option>
-                    <option value="Vanntagge CFO Services LLP">Vanntagge CFO Services LLP</option>
-                    <option value="Ajit Shinde & CO">Ajit Shinde & CO</option>
+                    <option value="CA TEJJASHRI S PAAWAR">CA TEJJASHRI S PAAWAR (GST Registered)</option>
+                    <option value="Sachin Pawar (HUF)">Sachin Pawar (HUF) (No GST)</option>
+                    <option value="Vanntagge CFO Services LLP">Vanntagge CFO Services LLP (No GST)</option>
+                    <option value="Ajit Shinde & CO">Ajit Shinde & CO (No GST)</option>
                   </select>
                 </div>
                 <div className="md:col-span-2">
@@ -346,58 +347,239 @@ export const ClientOnboardingModal: React.FC = () => {
               </div>
             </section>
 
-            {/* 3. Statutory Details & Documents */}
+            {/* 3. Statutory Details & Documents - Sr# 11: Dynamic Star-Marking per Entity Type */}
             <section className="pt-8 border-t border-slate-200 pb-12">
-              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-6 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-purple-600 rounded-full"></span> Statutory KYC & Documents
-              </h3>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-purple-600 rounded-full"></span> Statutory KYC & Compliance Checklist
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Mandatory items are star-marked (<span className="text-red-500 font-bold">*</span>) tailored for: <strong className="text-purple-700">{formData.entityType}</strong>
+                  </p>
+                </div>
+                <div className="text-[11px] px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg font-medium self-start sm:self-auto">
+                  Immediate Pendency Alert Enabled
+                </div>
+              </div>
               
-              <div className="border border-slate-200 rounded-sm">
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
                 <div className="grid grid-cols-12 bg-slate-50 border-b border-slate-200 p-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                  <div className="col-span-4">Document Type</div>
-                  <div className="col-span-4">Registration Number</div>
-                  <div className="col-span-4">File Upload</div>
+                  <div className="col-span-5">Document / Compliance Record</div>
+                  <div className="col-span-3">Identification / Reg No</div>
+                  <div className="col-span-4 text-right">Verification & Upload</div>
                 </div>
                 
-                {/* GST Row */}
-                <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center">
-                  <div className="col-span-4 text-sm font-bold text-slate-800">GST Registration *</div>
-                  <div className="col-span-4 pr-4">
-                    <input required type="text" name="gstin" placeholder="GSTIN" value={formData.gstin} onChange={handleChange} className="w-full border-b border-slate-300 py-1 focus:outline-none focus:border-purple-600 uppercase text-xs font-medium" />
+                {/* 1. PAN Card (Mandatory for ALL) */}
+                <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center hover:bg-slate-50/50 transition-colors">
+                  <div className="col-span-5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-800">
+                        {formData.entityType === 'Individual' ? 'Personal PAN Card' : 'Entity PAN Card'} <span className="text-red-500 font-bold text-sm">*</span>
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">MANDATORY</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Primary income tax identifier</p>
                   </div>
-                  <div className="col-span-4">
-                    <input required type="file" accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, 'gstCertificateBase64')} className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-xs file:font-bold hover:file:bg-slate-50 cursor-pointer transition-colors" />
+                  <div className="col-span-3 pr-3">
+                    <input 
+                      required 
+                      type="text" 
+                      name="panCardNo" 
+                      placeholder="e.g. ABCDE1234F" 
+                      value={formData.panCardNo} 
+                      onChange={handleChange} 
+                      className="w-full border-b border-slate-300 py-1 focus:outline-none focus:border-purple-600 uppercase text-xs font-mono font-medium" 
+                    />
+                  </div>
+                  <div className="col-span-4 flex justify-end">
+                    <input 
+                      required 
+                      type="file" 
+                      accept="image/*,.pdf" 
+                      onChange={(e) => handleFileUpload(e, 'panCardBase64')} 
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-[11px] file:font-semibold hover:file:bg-slate-50 cursor-pointer transition-colors" 
+                    />
                   </div>
                 </div>
 
-                {/* PAN Row */}
-                <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center">
-                  <div className="col-span-4 text-sm font-bold text-slate-800">Company PAN *</div>
-                  <div className="col-span-4 pr-4">
-                    <input required type="text" name="panCardNo" placeholder="PAN Number" value={formData.panCardNo} onChange={handleChange} className="w-full border-b border-slate-300 py-1 focus:outline-none focus:border-purple-600 uppercase text-xs font-medium" />
+                {/* 2. Aadhaar / Partner / Director KYC */}
+                <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center hover:bg-slate-50/50 transition-colors">
+                  <div className="col-span-5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-800">
+                        {formData.entityType === 'Individual' 
+                          ? 'Aadhaar Card' 
+                          : formData.entityType?.includes('Partnership') 
+                          ? "Partners' KYC & Identity" 
+                          : "Directors' DIN / KYC & Board Resolution"} <span className="text-red-500 font-bold text-sm">*</span>
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">MANDATORY</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Identity verification & statutory authority</p>
                   </div>
-                  <div className="col-span-4">
-                    <input required type="file" accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, 'panCardBase64')} className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-xs file:font-bold hover:file:bg-slate-50 cursor-pointer transition-colors" />
+                  <div className="col-span-3 pr-3">
+                    <input 
+                      type="text" 
+                      placeholder={formData.entityType === 'Individual' ? 'Aadhaar 12-Digit No' : 'DIN / Identification No'} 
+                      className="w-full border-b border-slate-300 py-1 focus:outline-none focus:border-purple-600 text-xs font-medium" 
+                    />
+                  </div>
+                  <div className="col-span-4 flex justify-end">
+                    <input 
+                      required 
+                      type="file" 
+                      accept="image/*,.pdf" 
+                      onChange={(e) => handleFileUpload(e, 'panCardBase64')} 
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-[11px] file:font-semibold hover:file:bg-slate-50 cursor-pointer transition-colors" 
+                    />
                   </div>
                 </div>
 
-                {/* Incorporation Row */}
-                <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center">
-                  <div className="col-span-4 text-sm font-bold text-slate-800">Incorporation Cert *</div>
-                  <div className="col-span-4 pr-4 text-xs text-slate-500">Not Applicable for Proprietorship</div>
-                  <div className="col-span-4">
-                    <input required={formData.entityType !== 'Proprietorship'} type="file" accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, 'incorporationCertBase64')} className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-xs file:font-bold hover:file:bg-slate-50 cursor-pointer transition-colors" />
+                {/* 3. GST Registration - Mandatory for corporate/partnership, optional for individuals */}
+                {(() => {
+                  const isGstMandatory = formData.entityType !== 'Individual';
+                  return (
+                    <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center hover:bg-slate-50/50 transition-colors">
+                      <div className="col-span-5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-800">
+                            GST Registration Certificate {isGstMandatory && <span className="text-red-500 font-bold text-sm">*</span>}
+                          </span>
+                          {isGstMandatory ? (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">MANDATORY</span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-500 border border-slate-200">OPTIONAL</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Form GST REG-06 Certificate</p>
+                      </div>
+                      <div className="col-span-3 pr-3">
+                        <input 
+                          required={isGstMandatory} 
+                          type="text" 
+                          name="gstin" 
+                          placeholder="GSTIN (15 Digits)" 
+                          value={formData.gstin} 
+                          onChange={handleChange} 
+                          className="w-full border-b border-slate-300 py-1 focus:outline-none focus:border-purple-600 uppercase text-xs font-mono font-medium" 
+                        />
+                      </div>
+                      <div className="col-span-4 flex justify-end">
+                        <input 
+                          required={isGstMandatory} 
+                          type="file" 
+                          accept="image/*,.pdf" 
+                          onChange={(e) => handleFileUpload(e, 'gstCertificateBase64')} 
+                          className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-[11px] file:font-semibold hover:file:bg-slate-50 cursor-pointer transition-colors" 
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 4. Incorporation / Deed / MOA-AOA - Mandatory for non-individuals */}
+                {(() => {
+                  const isIndividual = formData.entityType === 'Individual';
+                  const isPartnership = formData.entityType === 'Partnership Firm';
+                  const docTitle = isIndividual 
+                    ? 'Business Address Proof / Shop Act (Optional)' 
+                    : isPartnership 
+                    ? 'Registered Partnership Deed' 
+                    : 'Certificate of Incorporation (COI / CIN) & MOA/AOA';
+
+                  return (
+                    <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center hover:bg-slate-50/50 transition-colors">
+                      <div className="col-span-5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-800">
+                            {docTitle} {!isIndividual && <span className="text-red-500 font-bold text-sm">*</span>}
+                          </span>
+                          {!isIndividual ? (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">MANDATORY</span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-100 text-slate-500 border border-slate-200">OPTIONAL</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">MCA / Registrar of Firms Registration</p>
+                      </div>
+                      <div className="col-span-3 pr-3">
+                        <input 
+                          type="text" 
+                          placeholder={isIndividual ? 'Shop Act / Municipal Reg' : 'CIN / Reg Number'} 
+                          className="w-full border-b border-slate-300 py-1 focus:outline-none focus:border-purple-600 uppercase text-xs font-mono font-medium" 
+                        />
+                      </div>
+                      <div className="col-span-4 flex justify-end">
+                        <input 
+                          required={!isIndividual} 
+                          type="file" 
+                          accept="image/*,.pdf" 
+                          onChange={(e) => handleFileUpload(e, 'incorporationCertBase64')} 
+                          className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-[11px] file:font-semibold hover:file:bg-slate-50 cursor-pointer transition-colors" 
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 5. Listing Agreement (Mandatory for Listed Companies only) */}
+                {formData.entityType === 'Listed' && (
+                  <div className="grid grid-cols-12 border-b border-slate-200 p-3 items-center bg-purple-50/30">
+                    <div className="col-span-5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-800">
+                          Stock Exchange Listing Agreement & ROC Filing <span className="text-red-500 font-bold text-sm">*</span>
+                        </span>
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">MANDATORY</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5">SEBI LODR / NSE / BSE compliance proof</p>
+                    </div>
+                    <div className="col-span-3 pr-3">
+                      <input 
+                        required 
+                        type="text" 
+                        placeholder="Scrip Code / ISIN" 
+                        className="w-full border-b border-slate-300 py-1 focus:outline-none focus:border-purple-600 uppercase text-xs font-mono font-medium" 
+                      />
+                    </div>
+                    <div className="col-span-4 flex justify-end">
+                      <input 
+                        required 
+                        type="file" 
+                        accept="image/*,.pdf" 
+                        onChange={(e) => handleFileUpload(e, 'incorporationCertBase64')} 
+                        className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-[11px] file:font-semibold hover:file:bg-slate-50 cursor-pointer transition-colors" 
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. Cancelled Cheque (Mandatory for ALL) */}
+                <div className="grid grid-cols-12 p-3 items-center hover:bg-slate-50/50 transition-colors">
+                  <div className="col-span-5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-800">
+                        Bank Cancelled Cheque / Bank Statement <span className="text-red-500 font-bold text-sm">*</span>
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200">MANDATORY</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Bank account verification & payout mandate</p>
+                  </div>
+                  <div className="col-span-3 pr-3 text-xs text-slate-500 font-medium">
+                    Bank Account Verification
+                  </div>
+                  <div className="col-span-4 flex justify-end">
+                    <input 
+                      required 
+                      type="file" 
+                      accept="image/*,.pdf" 
+                      onChange={(e) => handleFileUpload(e, 'cancelledChequeBase64')} 
+                      className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-[11px] file:font-semibold hover:file:bg-slate-50 cursor-pointer transition-colors" 
+                    />
                   </div>
                 </div>
 
-                {/* Cancelled Cheque */}
-                <div className="grid grid-cols-12 p-3 items-center">
-                  <div className="col-span-4 text-sm font-bold text-slate-800">Cancelled Cheque *</div>
-                  <div className="col-span-4 pr-4 text-xs text-slate-500">For Bank Account Verification</div>
-                  <div className="col-span-4">
-                    <input required type="file" accept="image/*,.pdf" onChange={(e) => handleFileUpload(e, 'cancelledChequeBase64')} className="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:border file:border-slate-300 file:bg-white file:text-slate-700 file:text-xs file:font-bold hover:file:bg-slate-50 cursor-pointer transition-colors" />
-                  </div>
-                </div>
               </div>
             </section>
 

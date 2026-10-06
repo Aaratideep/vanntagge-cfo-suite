@@ -25,10 +25,13 @@ import {
   CheckCheck,
   AlertTriangle,
   Eye,
+  Download,
+  Handshake,
 } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { Lead, LeadStatus, Priority, FollowUpMode } from '../../types';
 import { DocumentPreviewModal } from '../DocumentPreviewModal';
+import { exportToExcel } from '../../lib/exportExcel';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -54,6 +57,19 @@ const ALLOWED_STATUS_KEYS: LeadStatus[] = [
   'LOST',
   'REJECTED'
 ];
+
+const STATUS_ORDER: Record<LeadStatus, number> = {
+  NEW: 1,
+  CONTACTED: 2,
+  FOLLOW_UP: 2,
+  MEETING_SCHEDULED: 2,
+  PROPOSAL_SENT: 3,
+  NEGOTIATION: 4,
+  ON_HOLD: 4,
+  CONVERTED: 5,
+  LOST: 99,
+  REJECTED: 99,
+};
 
 const PRIORITY_META: Record<Priority, { color: string; bg: string; border: string }> = {
   LOW:    { color: 'text-slate-600',  bg: 'bg-slate-50',  border: 'border-slate-200' },
@@ -102,11 +118,80 @@ export const CRMView: React.FC = () => {
   const {
     leads, addLead, updateLead, deleteLead, assignLead,
     followUps, addFollowUp,
+    leadInteractions, addLeadInteraction,
     quotations, createQuotation, updateQuotationStatus, deleteQuotation, convertQuotationToInvoice,
     engagementLetters, createEngagementLetter, deleteEngagementLetter,
     convertLeadToClient,
     users, currentUser,
   } = useDashboardStore();
+
+  const handleExportLeads = () => {
+    const headers = [
+      'Company Name',
+      'Contact Person',
+      'Email',
+      'Phone',
+      'Industry',
+      'Business Type',
+      'Lead Source',
+      'Expected Revenue (INR)',
+      'Priority',
+      'Status',
+      'Owner Name',
+      'Owner Contact',
+      'Remarks',
+      'Created Date'
+    ];
+    const rows = filteredLeads.map(l => [
+      l.companyName,
+      l.contactPerson,
+      l.email,
+      l.phone,
+      l.industry,
+      l.businessType,
+      l.leadSource,
+      l.expectedRevenue,
+      l.priority,
+      STATUS_META[l.status]?.label || l.status,
+      l.ownerName || '',
+      l.ownerContact || '',
+      l.remarks || '',
+      l.createdAt ? new Date(l.createdAt).toLocaleDateString() : ''
+    ]);
+    exportToExcel(`Vantage_CRM_Leads_${new Date().toISOString().split('T')[0]}`, headers, rows);
+    showSuccess('Leads exported to Excel successfully!');
+  };
+
+  const handleCreateFollowUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedLead) return;
+    addFollowUp({
+      leadId: selectedLead.id,
+      date: followUpForm.date, time: followUpForm.time,
+      mode: followUpForm.mode, notes: followUpForm.notes,
+      nextFollowUpDate: followUpForm.nextFollowUpDate || undefined,
+      reminderSent: false, status: 'PENDING',
+    });
+    // Log to rich interactions timeline as well
+    addLeadInteraction({
+      leadId: selectedLead.id,
+      type: followUpForm.mode,
+      date: followUpForm.date,
+      time: followUpForm.time,
+      contactPerson: selectedLead.contactPerson,
+      summary: followUpForm.notes,
+      outcome: followUpForm.nextFollowUpDate ? `Next follow-up on ${followUpForm.nextFollowUpDate}` : 'Interaction recorded',
+      nextFollowUpDate: followUpForm.nextFollowUpDate || undefined,
+      createdBy: currentUser?.name || 'Admin',
+    });
+    // Auto-advance status to FOLLOW_UP
+    if (selectedLead.status === 'NEW' || selectedLead.status === 'CONTACTED') {
+      updateLead(selectedLead.id, { status: 'FOLLOW_UP' });
+    }
+    setShowFollowUpModal(false);
+    setFollowUpForm({ date: new Date().toISOString().split('T')[0], time: '12:00', mode: 'CALL', notes: '', nextFollowUpDate: '' });
+    showSuccess('Interaction & follow-up logged!');
+  };
 
   const [crmSubTab, setCrmSubTab] = useState<'leads' | 'pipeline' | 'quotations' | 'letters' | 'converted'>('leads');
   const [searchQuery, setSearchQuery] = useState('');
@@ -200,25 +285,6 @@ export const CRMView: React.FC = () => {
     showSuccess('Lead deleted.');
   };
 
-  const handleCreateFollowUp = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedLead) return;
-    addFollowUp({
-      leadId: selectedLead.id,
-      date: followUpForm.date, time: followUpForm.time,
-      mode: followUpForm.mode, notes: followUpForm.notes,
-      nextFollowUpDate: followUpForm.nextFollowUpDate || undefined,
-      reminderSent: false, status: 'PENDING',
-    });
-    // Auto-advance status to FOLLOW_UP
-    if (selectedLead.status === 'NEW' || selectedLead.status === 'CONTACTED') {
-      updateLead(selectedLead.id, { status: 'FOLLOW_UP' });
-    }
-    setShowFollowUpModal(false);
-    setFollowUpForm({ date: new Date().toISOString().split('T')[0], time: '12:00', mode: 'CALL', notes: '', nextFollowUpDate: '' });
-    showSuccess('Follow-up logged!');
-  };
-
   const handleGenerateQuotation = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLead) return;
@@ -306,7 +372,10 @@ export const CRMView: React.FC = () => {
       {/* Header & Stats */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Consultancy CRM</h1>
+          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit flex items-center gap-2">
+            <Handshake size={20} className="text-blue-600" />
+            Growth Hub
+          </h1>
           <p className="text-xs text-slate-500 mt-0.5">Manage leads, proposals, agreements, and onboard clients end-to-end.</p>
         </div>
         <div className="flex gap-3">
@@ -376,12 +445,22 @@ export const CRMView: React.FC = () => {
                 ))}
               </select>
             </div>
-            <button
-              onClick={() => setShowCreateLeadModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all"
-            >
-              <Plus size={14} /> Create Lead
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportLeads}
+                className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                title="Download leads as Excel-compatible CSV"
+              >
+                <Download size={14} className="text-emerald-600" />
+                Export to Excel
+              </button>
+              <button
+                onClick={() => setShowCreateLeadModal(true)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+              >
+                <Plus size={14} /> Create Lead
+              </button>
+            </div>
           </div>
 
           {filteredLeads.length === 0 ? (
@@ -401,9 +480,9 @@ export const CRMView: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wide">
-                      <th className="p-3">Company / Contact</th>
-                      <th className="p-3">Industry</th>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wide whitespace-nowrap">
+                      <th className="p-3 min-w-[180px]">Company / Contact</th>
+                      <th className="p-3 min-w-[140px]">Industry</th>
                       <th className="p-3">Expected Rev</th>
                       <th className="p-3">Priority</th>
                       <th className="p-3">Status</th>
@@ -439,9 +518,14 @@ export const CRMView: React.FC = () => {
                               onChange={(e) => updateLead(lead.id, { status: e.target.value as LeadStatus })}
                               className={`px-2 py-1 rounded-lg text-[11px] font-semibold border outline-none cursor-pointer ${sm.bg} ${sm.color} ${sm.border}`}
                             >
-                              {ALLOWED_STATUS_KEYS.map((k) => (
-                                <option key={k} value={k}>{STATUS_META[k].label}</option>
-                              ))}
+                              {ALLOWED_STATUS_KEYS.map((k) => {
+                                const isDisabled = STATUS_ORDER[k] < STATUS_ORDER[lead.status];
+                                return (
+                                  <option key={k} value={k} disabled={isDisabled}>
+                                    {STATUS_META[k].label}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </td>
                           <td className="p-3">
@@ -456,7 +540,7 @@ export const CRMView: React.FC = () => {
                               ))}
                             </select>
                           </td>
-                          <td className="p-3">
+                          <td className="p-3 whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1">
                               <button
                                 onClick={() => { openLeadDrawer(lead); }}
@@ -588,7 +672,7 @@ export const CRMView: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wide">
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[11px] uppercase tracking-wide whitespace-nowrap">
                       <th className="p-3">Quote No.</th>
                       <th className="p-3">Client</th>
                       <th className="p-3">Services</th>
@@ -597,7 +681,7 @@ export const CRMView: React.FC = () => {
                       <th className="p-3">Total</th>
                       <th className="p-3">Valid Until</th>
                       <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Actions</th>
+                      <th className="p-3 text-right min-w-[150px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -629,7 +713,7 @@ export const CRMView: React.FC = () => {
                             {q.status}
                           </span>
                         </td>
-                        <td className="p-3">
+                        <td className="p-3 whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               onClick={() => setSelectedQuotationPreview(q)}
@@ -1019,26 +1103,75 @@ export const CRMView: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Follow-up Timeline */}
+                  {/* Comprehensive Interaction Log */}
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">Interaction Log ({leadFollowUps.length})</h4>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                          Client Conversations & Interaction Log ({leadInteractions.filter(i => i.leadId === selectedLead.id).length + leadFollowUps.length})
+                        </h4>
+                        <p className="text-[10px] text-slate-400">Manual log of emails, calls, Google Meets, and WhatsApp</p>
+                      </div>
                       <button
                         onClick={() => setShowFollowUpModal(true)}
-                        className="text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                      ><Plus size={10} /> Log</button>
+                        className="text-[11px] font-bold text-white bg-blue-600 hover:bg-blue-700 px-2.5 py-1 rounded-lg flex items-center gap-1 shadow-xs"
+                      >
+                        <Plus size={12} /> Log Interaction
+                      </button>
                     </div>
 
-                    {leadFollowUps.length === 0 ? (
+                    {leadInteractions.filter(i => i.leadId === selectedLead.id).length === 0 && leadFollowUps.length === 0 ? (
                       <div className="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-200">
                         <Clock className="mx-auto text-slate-300 mb-2" size={20} />
-                        <p className="text-[10px] text-slate-400">No follow-ups logged yet.</p>
+                        <p className="text-[10px] text-slate-400">No interaction conversations recorded yet.</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5">Click &ldquo;Log Interaction&rdquo; above to record call/mail/meet notes.</p>
                       </div>
                     ) : (
-                      <div className="relative pl-6 border-l border-slate-100 space-y-3">
-                        {leadFollowUps.map((follow) => (
+                      <div className="relative pl-6 border-l-2 border-slate-200 space-y-3">
+                        {/* 1. Rich Interactions */}
+                        {leadInteractions.filter(i => i.leadId === selectedLead.id).map((item) => (
+                          <div key={item.id} className="relative">
+                            <span className={`absolute -left-[31px] top-1.5 w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] shadow-xs ${
+                              item.type === 'CALL' ? 'bg-blue-600' :
+                              item.type === 'MEETING' ? 'bg-purple-600' :
+                              item.type === 'WHATSAPP' ? 'bg-emerald-600' : 'bg-indigo-600'
+                            }`}>
+                              {item.type === 'CALL' ? <Phone size={10} /> :
+                               item.type === 'MEETING' ? <Calendar size={10} /> :
+                               item.type === 'WHATSAPP' ? <MessageSquare size={10} /> : <Mail size={10} />}
+                            </span>
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs space-y-1 hover:bg-white hover:shadow-xs transition-all">
+                              <div className="flex justify-between items-center">
+                                <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                    item.type === 'CALL' ? 'bg-blue-100 text-blue-800' :
+                                    item.type === 'MEETING' ? 'bg-purple-100 text-purple-800' :
+                                    item.type === 'WHATSAPP' ? 'bg-emerald-100 text-emerald-800' : 'bg-indigo-100 text-indigo-800'
+                                  }`}>
+                                    {item.type}
+                                  </span>
+                                  {item.contactPerson || selectedLead.contactPerson}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">{item.date} {item.time}</span>
+                              </div>
+                              <p className="text-slate-700 text-[11px] font-medium leading-relaxed">{item.summary}</p>
+                              {item.outcome && (
+                                <p className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-1 rounded font-semibold">
+                                  Outcome: {item.outcome}
+                                </p>
+                              )}
+                              <div className="flex justify-between items-center text-[9px] text-slate-400 pt-1 border-t border-slate-100">
+                                <span>Logged by: {item.createdBy}</span>
+                                {item.nextFollowUpDate && <span className="font-semibold text-blue-600">Next Action: {item.nextFollowUpDate}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* 2. Legacy Followups if not in rich interactions */}
+                        {leadFollowUps.filter(f => !leadInteractions.some(i => i.date === f.date && i.summary === f.notes)).map((follow) => (
                           <div key={follow.id} className="relative">
-                            <span className="absolute -left-[30px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-slate-200 flex items-center justify-center text-slate-500">
+                            <span className="absolute -left-[30px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center text-slate-500">
                               {follow.mode === 'CALL' ? <Phone size={8} /> :
                                follow.mode === 'MEETING' ? <Calendar size={8} /> :
                                follow.mode === 'WHATSAPP' ? <MessageSquare size={8} /> : <Mail size={8} />}

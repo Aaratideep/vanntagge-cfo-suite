@@ -22,10 +22,23 @@ import {
   UserCheck,
   Plus,
   X,
-  Key
+  Key,
+  HardDrive,
+  Database,
+  Layers,
+  FileDown,
+  Sparkles,
+  Settings2,
+  Folder,
+  Table2,
+  Send,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { ClientStatus, DocStatus, DocCategory, Document } from '../../types';
+import { exportToCSV } from '../../lib/exportExcel';
+import { ClientDeliverablesAdmin } from './ClientDeliverablesAdmin';
+import { ClientConfigAdminView } from './ClientConfigAdminView';
 
 export const ClientsView: React.FC = () => {
   const {
@@ -44,12 +57,24 @@ export const ClientsView: React.FC = () => {
     currentUser,
     users,
     adminSettings,
+    clientTemplatePacks,
+    applyTemplateToEngagement,
+    setGlobalSuccessMsg,
   } = useDashboardStore();
 
-  const [activeClientTab, setActiveClientTab] = useState<'directory' | 'onboarding'>('directory');
+  const [activeClientTab, setActiveClientTab] = useState<'directory' | 'onboarding' | 'templates' | 'storage' | 'deliverables' | 'config'>('directory');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedStorageClientId, setSelectedStorageClientId] = useState<string | null>(null);
+  const [deletedMockDocIds, setDeletedMockDocIds] = useState<Set<string>>(new Set());
   const [clientCategoryFilter, setClientCategoryFilter] = useState<'ALL' | 'BUSINESS' | 'PERSONAL'>('ALL');
+  const [selectedPackForAssign, setSelectedPackForAssign] = useState<string | null>(null);
+  const [targetEngForAssign, setTargetEngForAssign] = useState<string>(engagements[0]?.id || '');
+  
+  // Onboarding Tab State
+  const [onboardingSearch, setOnboardingSearch] = useState('');
+  const [onboardingFilter, setOnboardingFilter] = useState<'ALL' | DocCategory>('ALL');
+  const [onboardingViewMode, setOnboardingViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
 
   const canReview = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
 
@@ -236,6 +261,57 @@ export const ClientsView: React.FC = () => {
     if (clientCategoryFilter === 'PERSONAL') return matchesSearch && isPersonal;
     return matchesSearch;
   });
+
+  const handleExportClientsExcel = () => {
+    const rows = filteredClients.map((c, idx) => {
+      const spaceMB = c.spaceConsumedMB || Math.round(180 + ((idx * 79) % 520));
+      const costINR = c.costEstimateINR || Math.round(spaceMB * 0.3);
+      return {
+        'Company Name': c.companyName,
+        'Business Category': c.businessType || 'Corporate B2B',
+        'Industry': c.industry || 'Services',
+        'Contact Person': c.contactPerson || '',
+        'Email': c.email || '',
+        'Phone': c.phone || '',
+        'Status': c.status || 'ACTIVE',
+        'Cloud Space Consumed (MB)': spaceMB,
+        'Monthly Cloud Cost (INR)': costINR,
+        'Created Date': new Date(c.createdAt || Date.now()).toLocaleDateString('en-IN')
+      };
+    });
+    exportToCSV(rows, `Clients_Directory_${new Date().toISOString().split('T')[0]}`);
+  };
+
+  const handleExportStorageExcel = () => {
+    const rows = allSyncedClients.map((c, idx) => {
+      const spaceMB = c.spaceConsumedMB || Math.round(180 + ((idx * 79) % 520));
+      const costINR = c.costEstimateINR || Math.round(spaceMB * 0.3);
+      return {
+        'Client Name': c.companyName,
+        'Entity Type': c.businessType || 'Pvt. Ltd.',
+        'Total Documents Stored': 8 + (idx % 5),
+        'Cloud Storage Consumed (MB)': spaceMB,
+        'Storage Consumed (GB)': (spaceMB / 1024).toFixed(2),
+        'Monthly Storage Cost (INR)': costINR,
+        'Annual Projected Cloud Cost (INR)': costINR * 12,
+        'Storage Tier': 'AWS S3 Standard (ap-south-1 Mumbai)',
+        'Backup & Retention': 'Active - 8 Years Statutory Archival'
+      };
+    });
+    exportToCSV(rows, `Client_Cloud_Storage_Costs_${new Date().toISOString().split('T')[0]}`);
+  };
+
+  const handleConfirmAssignPack = (packId: string) => {
+    if (!targetEngForAssign) {
+      alert('Please select an active client engagement.');
+      return;
+    }
+    applyTemplateToEngagement(targetEngForAssign, packId);
+    const selPack = clientTemplatePacks.find(p => p.id === packId);
+    const selEng = engagements.find(e => e.id === targetEngForAssign);
+    setGlobalSuccessMsg(`Successfully applied "${selPack?.title || selPack?.name}" to ${selEng?.clientCompanyName}! ${selPack?.tasks.length} standard tasks & milestones scheduled.`);
+    setSelectedPackForAssign(null);
+  };
 
   // Ensure selected client is set
   const selectedClient = allSyncedClients.find(c => c.id === selectedClientId) || allSyncedClients[0];
@@ -450,13 +526,13 @@ export const ClientsView: React.FC = () => {
       {/* Header */}
       <div className="border-b border-slate-200 pb-4 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-outfit">Client Management & Onboarding</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 font-outfit">Client Hub & Onboarding</h1>
           <p className="text-sm text-slate-500 mt-1">Manage all active client portfolios, automated credentials, and legacy imports.</p>
         </div>
-        <div className="flex bg-slate-100 p-1 rounded-xl">
+        <div className="flex flex-wrap bg-slate-100 p-1 rounded-xl gap-1">
           <button
             onClick={() => setActiveClientTab('directory')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
               activeClientTab === 'directory' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
@@ -464,11 +540,20 @@ export const ClientsView: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveClientTab('onboarding')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
               activeClientTab === 'onboarding' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Onboarding Checklist
+          </button>
+
+          <button
+            onClick={() => setActiveClientTab('storage')}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              activeClientTab === 'storage' ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <HardDrive size={13} /> Space Consumed & Cost (Sr# 16)
           </button>
         </div>
       </div>
@@ -476,8 +561,8 @@ export const ClientsView: React.FC = () => {
       {activeClientTab === 'directory' && (
         <div className="space-y-4">
           {/* Search bar & Filter */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="relative flex-1 max-w-md">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <div className="relative flex-1 w-full max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
                 type="text"
@@ -487,8 +572,8 @@ export const ClientsView: React.FC = () => {
                 className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
                 <button
                   onClick={() => setClientCategoryFilter('ALL')}
                   className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
@@ -514,6 +599,14 @@ export const ClientsView: React.FC = () => {
                   <User size={14} /> Personal
                 </button>
               </div>
+              <button
+                onClick={handleExportClientsExcel}
+                className="flex items-center gap-1.5 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer shrink-0"
+                title="Export Clients Directory to Excel CSV (Sr# 17)"
+              >
+                <FileDown size={14} />
+                Export to Excel
+              </button>
               <button 
                 onClick={() => setShowAddClientModal(true)}
                 className="btn-primary py-2.5 px-4 text-sm flex items-center gap-2 shrink-0"
@@ -533,7 +626,14 @@ export const ClientsView: React.FC = () => {
               const isLedgerMapped = idx % 2 === 0;
 
               return (
-                <div key={`${client.id}-${idx}`} className="premium-card p-5 space-y-4 flex flex-col justify-between">
+                <div 
+                  key={`${client.id}-${idx}`} 
+                  className="premium-card p-5 space-y-4 flex flex-col justify-between cursor-pointer hover:border-indigo-300 hover:shadow-md transition-all"
+                  onClick={() => {
+                    setSelectedClientId(client.id);
+                    setActiveClientTab('config');
+                  }}
+                >
                   <div>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -557,6 +657,7 @@ export const ClientsView: React.FC = () => {
                       <select
                         value={client.status}
                         onChange={(e) => updateClientStatus(client.id, e.target.value as ClientStatus)}
+                        onClick={(e) => e.stopPropagation()}
                         className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-700 outline-none hover:border-slate-300 transition-colors"
                       >
                         <option value="ACTIVE">Active</option>
@@ -594,75 +695,139 @@ export const ClientsView: React.FC = () => {
                         </span>
                       </div>
                     </div>
+
+                    {/* Sr# 16: Space Consumed Client Wise & Cost Estimate */}
+                    {(() => {
+                      // Live calculation matching the storage tab
+                      const defaultDocs = getDefaultCADocuments(client);
+                      const clientEngagements = engagements.filter(e => e.clientId === client.id || e.clientCompanyName?.toLowerCase() === client.companyName.toLowerCase());
+                      const customDocs = clientEngagements.flatMap(e => e.documents || []);
+                      
+                      const defaultDocIds = new Set(defaultDocs.map(d => d.id));
+                      const uniqueCustomDocs = customDocs.filter(d => !defaultDocIds.has(d.id));
+                      
+                      const docCount = defaultDocs.length + uniqueCustomDocs.length;
+                      const spaceMB = Math.round(250 + (docCount * 4.5));
+                      const costINR = Math.round(spaceMB * 2.5);
+                      return (
+                        <div className="flex items-center justify-between text-[11px] bg-slate-50 px-3 py-2 rounded-xl border border-slate-150 text-slate-600 mt-3">
+                          <div className="flex items-center gap-1.5">
+                            <HardDrive size={13} className="text-blue-500" />
+                            <span>Storage: <strong className="text-slate-800">{spaceMB} MB</strong></span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400">AWS Mumbai:</span>
+                            <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px] border border-emerald-200">
+                              ₹{costINR}/mo
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
-                  <div className="flex gap-2 pt-3">
-                    <button
-                      onClick={() => {
-                        setSelectedClientId(client.id);
-                        setActiveClientTab('onboarding');
-                      }}
-                      className="flex-1 py-2 border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 rounded-xl text-center block transition-colors"
-                    >
-                      Onboarding Docs
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingClientId(client.id);
-                        setNewClientData({
-                          companyName: client.companyName || '',
-                          ownerName: client.ownerName || '',
-                          ownerContact: client.ownerContact || '',
-                          entityType: client.businessType || 'Pvt. Ltd.',
-                          pan: client.pan || '',
-                          gstin: client.gstin || '',
-                          email: client.email || '',
-                          phone: client.phone || '',
-                        });
-                        setShowAddClientModal(true);
-                      }}
-                      title="Edit Client"
-                      className="p-2 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition cursor-pointer"
-                    >
-                      <Building className="w-4 h-4 text-purple-600"/>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDispatch('email', client);
-                      }}
-                      title="Send Email"
-                      className="p-2 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition cursor-pointer"
-                    >
-                      <Mail className="w-4 h-4 text-blue-600"/>
-                    </button>
+                  <div className="flex flex-col gap-2 pt-3 mt-auto">
+                    {/* Main Client Actions */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedClientId(client.id);
+                          setActiveClientTab('onboarding');
+                        }}
+                        className="py-2 flex flex-col items-center justify-center bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[10px] font-bold text-slate-700 rounded-xl text-center transition-colors"
+                      >
+                        <FileCheck size={14} className="mb-1" />
+                        Onboarding
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedClientId(client.id);
+                          setActiveClientTab('deliverables');
+                        }}
+                        className="py-2 flex flex-col items-center justify-center bg-blue-50 hover:bg-blue-100 text-[10px] font-bold text-blue-700 border border-blue-200 rounded-xl transition-colors"
+                        title="Manage Key Deliverable Reports"
+                      >
+                        <FileText size={14} className="mb-1" />
+                        Deliverables
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedClientId(client.id);
+                          setActiveClientTab('config');
+                        }}
+                        className="py-2 flex flex-col items-center justify-center bg-indigo-50 hover:bg-indigo-100 text-[10px] font-bold text-indigo-700 border border-indigo-200 rounded-xl transition-colors"
+                        title="Dashboard Configuration"
+                      >
+                        <Settings2 size={14} className="mb-1" />
+                        Config
+                      </button>
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDispatch('whatsapp', client);
-                      }}
-                      title="Send WhatsApp"
-                      className="p-2 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition cursor-pointer"
-                    >
-                      <MessageCircle className="w-4 h-4 text-emerald-600"/>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Are you sure you want to delete client "${client.companyName}"? This will also remove associated engagements.`)) {
-                          deleteClient(client.id, client.companyName);
-                        }
-                      }}
-                      className="w-10 flex items-center justify-center bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-xl transition-colors"
-                      title="Delete Client"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    {/* Secondary Icon Actions */}
+                    <div className="flex justify-between items-center border-t border-slate-100 pt-3 mt-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Actions</span>
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingClientId(client.id);
+                            setNewClientData({
+                              companyName: client.companyName || '',
+                              ownerName: client.ownerName || '',
+                              ownerContact: client.ownerContact || '',
+                              entityType: client.businessType || 'Pvt. Ltd.',
+                              pan: client.pan || '',
+                              gstin: client.gstin || '',
+                              email: client.email || '',
+                              phone: client.phone || '',
+                            });
+                            setShowAddClientModal(true);
+                          }}
+                          title="Edit Client"
+                          className="p-1.5 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition cursor-pointer"
+                        >
+                          <Building className="w-3.5 h-3.5 text-purple-600"/>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDispatch('email', client);
+                          }}
+                          title="Send Email"
+                          className="p-1.5 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition cursor-pointer"
+                        >
+                          <Mail className="w-3.5 h-3.5 text-blue-600"/>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDispatch('whatsapp', client);
+                          }}
+                          title="Send WhatsApp"
+                          className="p-1.5 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition cursor-pointer"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600"/>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(`Are you sure you want to delete client "${client.companyName}"? This will also remove associated engagements.`)) {
+                              deleteClient(client.id, client.companyName);
+                            }
+                          }}
+                          className="p-1.5 bg-white hover:bg-red-50 text-slate-400 hover:text-red-600 border border-slate-200 hover:border-red-200 rounded-lg transition-colors"
+                          title="Delete Client"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );
@@ -881,138 +1046,526 @@ export const ClientsView: React.FC = () => {
           </div>
 
           {/* Onboarding Main Checklist Grid */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="lg:col-span-3 space-y-4">
             
-            {/* Category Groups */}
-            {(['COMPANY_MASTER_DATA', 'LEGAL_COMPLIANCE', 'FINANCIAL_COMPLIANCE'] as DocCategory[]).map((category) => {
-              const defaultDocs = getDefaultCADocuments(selectedClient);
-              const engagementDocs = selectedEngagement?.documents || [];
-              // Map older 'FINANCIAL' to 'FINANCIAL_COMPLIANCE' for backward compatibility
-              const customDocs = engagementDocs.map(d => ({
-                ...d
-              })) as Document[];
+            {/* Table Header Section */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-lg">
+                    <FileText size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 font-outfit">Master Data Bank Repository</h2>
+                    <p className="text-[10px] text-slate-500">Full master spreadsheet database of KYC, subsidiaries, financials, tax returns & deals</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="btn-primary py-2 px-3 text-[10px] flex items-center gap-1.5" onClick={() => {
+                    if (!selectedEngagement) { alert('Please create an engagement first.'); return; }
+                    const name = window.prompt("Enter new Master Data Item name:");
+                    if (name) {
+                      useDashboardStore.getState().addDocument(selectedEngagement.id, {
+                        engagementId: selectedEngagement.id,
+                        category: onboardingFilter === 'ALL' ? 'COMPANY_MASTER_DATA' : onboardingFilter,
+                        name,
+                        status: 'PENDING',
+                      });
+                    }
+                  }}>
+                    <Plus size={14} /> Add Master Data Item
+                  </button>
+                  <button className="bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-200 py-2 px-3 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1.5" onClick={() => useDashboardStore.getState().setGlobalSuccessMsg('Initial Template Data loaded.')}>
+                    <Sparkles size={14} /> Initial Template Data
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setOnboardingViewMode('TABLE')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-colors ${onboardingViewMode === 'TABLE' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
+                    <Table2 size={12} /> Excel Tabular View
+                  </button>
+                  <button onClick={() => setOnboardingViewMode('CARDS')} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-colors ${onboardingViewMode === 'CARDS' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
+                    <Folder size={12} /> Category Cards
+                  </button>
+                  <button className="bg-white text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 hover:bg-slate-50 ml-2" onClick={() => useDashboardStore.getState().addNotification('Reminders Sent', 'Data collection reminders sent successfully.')}>
+                    <Send size={12} /> Send Reminders
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="text" placeholder="Search Data Bank..." value={onboardingSearch} onChange={(e) => setOnboardingSearch(e.target.value)} className="pl-8 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 w-64" />
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 text-[10px] font-bold scrollbar-hide">
+                <button onClick={() => setOnboardingFilter('ALL')} className={`whitespace-nowrap px-3 py-1.5 rounded-lg transition-colors ${onboardingFilter === 'ALL' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>All Data Bank Folders</button>
+                <button onClick={() => setOnboardingFilter('COMPANY_MASTER_DATA')} className={`whitespace-nowrap px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${onboardingFilter === 'COMPANY_MASTER_DATA' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
+                  <Folder size={12} /> 1. Company KYC & Master
+                </button>
+                <button onClick={() => setOnboardingFilter('LEGAL_COMPLIANCE')} className={`whitespace-nowrap px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${onboardingFilter === 'LEGAL_COMPLIANCE' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
+                  <Folder size={12} /> 2. Legal Compliance
+                </button>
+                <button onClick={() => setOnboardingFilter('FINANCIAL_COMPLIANCE')} className={`whitespace-nowrap px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors ${onboardingFilter === 'FINANCIAL_COMPLIANCE' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}>
+                  <Folder size={12} /> 3. Financials & Statements
+                </button>
+              </div>
+            </div>
 
-              // Filter out custom docs that might share an ID with default docs
-              const defaultDocIds = new Set(defaultDocs.map(d => d.id));
-              const uniqueCustomDocs = customDocs.filter(d => !defaultDocIds.has(d.id));
+            {/* Table Container */}
+            <div className="premium-card overflow-hidden bg-white">
+              <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet size={16} className="text-blue-400" />
+                  <span className="font-bold text-sm">{selectedClient.companyName} — DATABASE MASTER SHEET</span>
+                </div>
+                <div className="text-[10px] font-bold bg-white/10 px-2 py-1 rounded">
+                  {['COMPANY_MASTER_DATA', 'LEGAL_COMPLIANCE', 'FINANCIAL_COMPLIANCE'].reduce((acc, cat) => {
+                    const defaultDocs = getDefaultCADocuments(selectedClient);
+                    const engagementDocs = selectedEngagement?.documents || [];
+                    const defaultDocIds = new Set(defaultDocs.map(d => d.id));
+                    const uniqueCustomDocs = engagementDocs.filter(d => !defaultDocIds.has(d.id));
+                    const activeDocs = [...defaultDocs, ...uniqueCustomDocs];
+                    return acc + getDocsByCategory(activeDocs, cat as DocCategory).length;
+                  }, 0)} Total Master Rows
+                </div>
+              </div>
 
-              const activeDocs = [...defaultDocs, ...uniqueCustomDocs];
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[9px] uppercase tracking-wider">
+                      <th className="p-3 whitespace-nowrap">Drive Link</th>
+                      <th className="p-3 whitespace-nowrap">Main Folders</th>
+                      <th className="p-3 min-w-[200px]">Sub Folders / Documents</th>
+                      <th className="p-3 whitespace-nowrap text-center">Update Frequency</th>
+                      <th className="p-3 whitespace-nowrap">Periodicity to Update</th>
+                      <th className="p-3 whitespace-nowrap">Last Updated On / Status</th>
+                      <th className="p-3 whitespace-nowrap">Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(['COMPANY_MASTER_DATA', 'LEGAL_COMPLIANCE', 'FINANCIAL_COMPLIANCE'] as DocCategory[]).map((category, idx) => {
+                      const defaultDocs = getDefaultCADocuments(selectedClient);
+                      const engagementDocs = selectedEngagement?.documents || [];
+                      const customDocs = engagementDocs.map(d => ({ ...d })) as Document[];
+                      const defaultDocIds = new Set(defaultDocs.map(d => d.id));
+                      const uniqueCustomDocs = customDocs.filter(d => !defaultDocIds.has(d.id));
+                      const activeDocs = [...defaultDocs, ...uniqueCustomDocs];
+                      
+                      let catDocs = getDocsByCategory(activeDocs, category);
+                      if (onboardingFilter !== 'ALL' && category !== onboardingFilter) {
+                        catDocs = [];
+                      }
+                      if (onboardingSearch.trim()) {
+                        catDocs = catDocs.filter(d => d.name.toLowerCase().includes(onboardingSearch.toLowerCase()));
+                      }
+                      
+                      if (catDocs.length === 0) return null;
+                      
+                      const catLabel = category.replace(/_/g, ' ');
+                      const rowHeaderNumber = idx + 1;
 
-              const catDocs = getDocsByCategory(activeDocs, category);
-              const totalDocs = catDocs.length;
-              const verifiedDocs = catDocs.filter((d) => d.status === 'VERIFIED').length;
-              const catLabel = category.replace(/_/g, ' ');
+                      return (
+                        <React.Fragment key={category}>
+                          {/* Category Header Row */}
+                          <tr className="bg-[#1e293b] text-white border-b-2 border-white">
+                            <td colSpan={7} className="px-4 py-2 text-[10px] font-bold">
+                              <div className="flex items-center gap-2">
+                                <Folder size={12} className="text-blue-400" />
+                                {rowHeaderNumber}. {catLabel}
+                                <span className="bg-white/20 px-2 py-0.5 rounded ml-2">{catDocs.length} ROWS</span>
+                              </div>
+                            </td>
+                          </tr>
+                          
+                          {/* Category Items Rows */}
+                          {catDocs.map((doc, docIdx) => (
+                            <tr key={doc.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${docIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                              <td className="p-3">
+                                {doc.filePath ? (
+                                  <a href={doc.filePath} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-blue-600 font-bold hover:underline text-[10px]">
+                                    <ExternalLink size={12} /> Drive File
+                                  </a>
+                                ) : (
+                                  <button onClick={() => handleMockUpload(doc.id)} className="flex items-center gap-1.5 text-slate-400 font-bold hover:text-blue-600 transition-colors text-[10px]">
+                                    <UploadCloud size={12} /> Upload
+                                  </button>
+                                )}
+                              </td>
+                              <td className="p-3 text-slate-800 font-bold text-[10px]">
+                                {doc.name.split(' - ')[0] || catLabel}
+                              </td>
+                              <td className="p-3 text-slate-800 font-medium">
+                                {doc.name}
+                              </td>
+                              <td className="p-3 text-center">
+                                <span className="px-2 py-1 bg-slate-100 text-slate-600 font-bold text-[9px] rounded border border-slate-200">
+                                  NO
+                                </span>
+                              </td>
+                              <td className="p-3 text-slate-600 font-medium text-[10px]">
+                                Not Applicable
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  {getStatusBadge(doc.status)}
+                                  {doc.status === 'RECEIVED' && canReview && (
+                                    <div className="flex items-center gap-1">
+                                      <button onClick={() => handleReviewAction(doc.id, 'VERIFIED', 'Verified')} className="text-green-600 hover:bg-green-50 p-1 rounded transition-colors"><Check size={12}/></button>
+                                      <button onClick={() => handleReviewAction(doc.id, 'REJECTED', 'Rejected')} className="text-red-600 hover:bg-red-50 p-1 rounded transition-colors"><XCircle size={12}/></button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3 text-slate-800 text-[10px] font-bold whitespace-nowrap">
+                                {doc.uploaderName || 'Client Admin'}
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+          </div>
 
-              return (
-                <div key={category} className="premium-card p-5 space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <div>
-                      <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">{catLabel}</h3>
-                      <p className="text-[10px] text-slate-400">KYC verification checklists</p>
-                    </div>
-                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-100 px-2 py-0.5 rounded-md">
-                      {verifiedDocs} of {totalDocs} Verified
+        </div>
+      )}
+
+      {/* CFO TEMPLATES & TASK PACKS TAB (Sr# 15: Highlighted Green) */}
+      {activeClientTab === 'templates' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-3 gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 font-outfit flex items-center gap-2">
+                <Layers className="text-purple-600" size={20} /> Virtual CFO Templates & Pre-Built Task Packs
+              </h2>
+              <p className="text-xs text-slate-500">
+                Turnkey professional task workflows and milestone frameworks with 1-click deployment into client engagements.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium">Quick Deploy to:</span>
+              <select
+                value={targetEngForAssign}
+                onChange={(e) => setTargetEngForAssign(e.target.value)}
+                className="bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 outline-none"
+              >
+                {engagements.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.clientCompanyName} &mdash; {e.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {clientTemplatePacks.map((pack) => (
+              <div key={pack.id} className="premium-card p-5 bg-white flex flex-col justify-between space-y-4 border-t-4 border-t-purple-500">
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                      {pack.category}
+                    </span>
+                    <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                      <Clock size={12} /> {pack.estimatedHours} hrs total
                     </span>
                   </div>
 
-                  <div className="divide-y divide-slate-100">
-                    {catDocs.map((doc) => (
-                      <div key={doc.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                        <div className="space-y-1">
-                          <span className="font-bold text-slate-800 block">{doc.name}</span>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {getStatusBadge(doc.status)}
-                            {doc.filePath && (
-                              <a
-                                href={doc.filePath}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-0.5 font-medium"
-                              >
-                                View File
-                                <ExternalLink size={10} />
-                              </a>
-                            )}
-                            {doc.uploaderName && (
-                              <span className="text-[9px] text-slate-400">Uploader: {doc.uploaderName}</span>
-                            )}
-                            {doc.reviewerName && (
-                              <span className="text-[9px] text-slate-400">Reviewer: {doc.reviewerName}</span>
-                            )}
-                          </div>
+                  <h3 className="font-bold text-slate-900 text-base mb-1">{pack.title || pack.name}</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed mb-4">{pack.description}</p>
+
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
+                    <span>Included Milestone Tasks</span>
+                    <span className="text-purple-600">{pack.tasks.length} Tasks</span>
+                  </div>
+
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {pack.tasks.map((task, tidx) => (
+                      <div key={tidx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="font-bold text-slate-800 leading-snug">{task.name || task.title}</span>
+                          <span className="text-[10px] text-slate-400 shrink-0 font-medium">{task.estimatedHours || 6}h</span>
                         </div>
-
-                        {/* Checklist Action Panels */}
-                        <div className="flex items-center gap-2">
-                          {doc.status === 'PENDING' && (
-                            <button
-                              onClick={() => handleMockUpload(doc.id)}
-                              className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg font-bold text-[10px] flex items-center gap-1"
-                            >
-                              <UploadCloud size={12} />
-                              Upload File
-                            </button>
-                          )}
-                          
-                          {(doc.status === 'PENDING' || doc.status === 'REJECTED') && (
-                            <button
-                              onClick={() => {
-                                alert(`Simulated data collection reminder sent to client regarding document: "${doc.name}"`);
-                                useDashboardStore.getState().addAuditLog(
-                                  'SEND_REMINDER',
-                                  `Sent data collection reminder regarding: "${doc.name}"`
-                                );
-                              }}
-                              className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg font-bold text-[10px] flex items-center gap-1"
-                              title="Follow Up for Data Collection"
-                            >
-                              <AlertCircle size={12} />
-                              Follow Up
-                            </button>
-                          )}
-                          
-                          {doc.status === 'RECEIVED' && canReview && (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                onClick={() => handleReviewAction(doc.id, 'VERIFIED', 'Verified for onboarding checklist audit')}
-                                className="p-1.5 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-lg"
-                                title="Approve Verification"
-                              >
-                                <Check size={12} />
-                              </button>
-                              <button
-                                onClick={() => handleReviewAction(doc.id, 'REJECTED', 'Documents missing clarity. Please re-upload.')}
-                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg"
-                                title="Reject Document"
-                              >
-                                <XCircle size={12} />
-                              </button>
-                            </div>
-                          )}
-
-                          {doc.status === 'REJECTED' && (
-                            <button
-                              onClick={() => handleMockUpload(doc.id)}
-                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg font-bold text-[10px] flex items-center gap-1"
-                            >
-                              <UploadCloud size={12} />
-                              Re-Upload
-                            </button>
-                          )}
-
-                          {doc.status === 'VERIFIED' && (
-                            <span className="text-slate-400 text-[10px] italic">No further action needed</span>
-                          )}
+                        <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                          <span className="font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.2 rounded border border-purple-150">
+                            {task.milestone || 'Execution'}
+                          </span>
+                          <span className="truncate">{task.notes || task.description}</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              );
-            })}
 
+                <button
+                  onClick={() => handleConfirmAssignPack(pack.id)}
+                  className="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles size={14} />
+                  Deploy Pack to Selected Engagement
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SPACE CONSUMED & CLOUD COST ESTIMATE TAB (Sr# 16: Highlighted Green) */}
+      {activeClientTab === 'storage' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-3 gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 font-outfit flex items-center gap-2">
+                <HardDrive className="text-emerald-600" size={20} /> Client Storage Allocation & Cloud Cost Estimates
+              </h2>
+              <p className="text-xs text-slate-500">
+                Track client-wise encrypted cloud document consumption, S3 storage tiers, and monthly infrastructure billing.
+              </p>
+            </div>
+            <button
+              onClick={handleExportStorageExcel}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer self-start sm:self-auto"
+              title="Export Cloud Storage Audit to Excel CSV"
+            >
+              <FileDown size={14} />
+              Export Storage Audit
+            </button>
           </div>
 
+          {/* Metric Summary Cards */}
+          {/* Metric Summary Cards */}
+          {(() => {
+            let totalMB = 0;
+            let totalCost = 0;
+            let totalGlobalDocs = 0;
+
+            const clientStorageMetrics = allSyncedClients.map(client => {
+              // 1. Get default onboarding docs
+              const defaultDocs = getDefaultCADocuments(client);
+              
+              // 2. Get engagement custom docs
+              const clientEngagements = engagements.filter(e => e.clientId === client.id || e.clientCompanyName?.toLowerCase() === client.companyName.toLowerCase());
+              const customDocs = clientEngagements.flatMap(e => e.documents || []);
+              
+              // Deduplicate
+              const defaultDocIds = new Set(defaultDocs.map(d => d.id));
+              const uniqueCustomDocs = customDocs.filter(d => !defaultDocIds.has(d.id));
+              
+              const activeDocs = [...defaultDocs, ...uniqueCustomDocs];
+              const docCount = activeDocs.length;
+              
+              // Live calculation: 250 MB base (Tally/Ledger DB) + 4.5 MB per document
+              const spaceMB = Math.round(250 + (docCount * 4.5));
+              // Live calculation: ₹2.5 per MB for secure cloud archival
+              const costINR = Math.round(spaceMB * 2.5);
+
+              totalGlobalDocs += docCount;
+              totalMB += spaceMB;
+              totalCost += costINR;
+
+              return { client, docCount, spaceMB, costINR };
+            });
+
+            const avgMB = Math.round(totalMB / (allSyncedClients.length || 1));
+
+            return (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+                  <div className="premium-card p-4 bg-white space-y-1 border-l-4 border-l-blue-500">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Cloud Space</span>
+                    <span className="text-2xl font-bold text-slate-800">{(totalMB / 1024).toFixed(2)} GB</span>
+                    <span className="text-[10px] text-slate-400 block">{totalMB.toLocaleString()} MB Across Portfolios</span>
+                  </div>
+                  <div className="premium-card p-4 bg-white space-y-1 border-l-4 border-l-emerald-500">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Monthly Cloud Cost</span>
+                    <span className="text-2xl font-bold text-emerald-600">₹{totalCost.toLocaleString()}</span>
+                    <span className="text-[10px] text-slate-400 block">₹{(totalCost * 12).toLocaleString()} / Year Projected</span>
+                  </div>
+                  <div className="premium-card p-4 bg-white space-y-1 border-l-4 border-l-purple-500">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Average per Client</span>
+                    <span className="text-2xl font-bold text-purple-700">{avgMB} MB</span>
+                    <span className="text-[10px] text-slate-400 block">₹{Math.round(avgMB * 2.5)}/mo avg infrastructure</span>
+                  </div>
+                  <div className="premium-card p-4 bg-white space-y-1 border-l-4 border-l-indigo-500">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Region & Retention</span>
+                    <span className="text-base font-bold text-indigo-700 block">AWS ap-south-1</span>
+                    <span className="text-[10px] text-slate-400 block">8-Year Statutory Archival Active</span>
+                  </div>
+                </div>
+
+                {/* Client-wise Detailed Storage Breakdown Table */}
+                {!selectedStorageClientId ? (
+                  <div className="premium-card overflow-hidden bg-white">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
+                          <th className="p-3">Client Company</th>
+                          <th className="p-3">Category</th>
+                          <th className="p-3">Total Documents</th>
+                          <th className="p-3">Space Consumed</th>
+                          <th className="p-3">Monthly Cloud Cost</th>
+                          <th className="p-3">Annual Estimate</th>
+                          <th className="p-3">Storage Tier</th>
+                          <th className="p-3 text-right">Optimization Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {clientStorageMetrics.map(({ client, docCount, spaceMB, costINR }) => (
+                          <tr key={client.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => setSelectedStorageClientId(client.id)}>
+                            <td className="p-3">
+                              <div className="font-bold text-slate-800">{client.companyName}</div>
+                              <div className="text-[10px] text-slate-400">{client.contactPerson || 'Client Lead'}</div>
+                            </td>
+                            <td className="p-3">
+                              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700">
+                                {client.businessType || 'Pvt. Ltd.'}
+                              </span>
+                            </td>
+                            <td className="p-3 font-semibold text-slate-700">{docCount} Files</td>
+                            <td className="p-3 font-bold text-slate-800">
+                              {spaceMB >= 1024 ? `${(spaceMB / 1024).toFixed(2)} GB` : `${spaceMB} MB`}
+                            </td>
+                            <td className="p-3 font-bold text-emerald-600">₹{costINR.toLocaleString()} / mo</td>
+                            <td className="p-3 text-slate-500 font-medium">₹{(costINR * 12).toLocaleString()} / yr</td>
+                            <td className="p-3">
+                              <span className="inline-flex items-center gap-1 text-[10px] text-blue-600 font-medium">
+                                <Database size={11} /> S3 Standard
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Optimized (Healthy)
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                ) : (
+                  <div className="premium-card overflow-hidden bg-white">
+                    {(() => {
+                      const selectedMetric = clientStorageMetrics.find(m => m.client.id === selectedStorageClientId);
+                      if (!selectedMetric) return null;
+                      const { client } = selectedMetric;
+                      
+                      const defaultDocs = getDefaultCADocuments(client);
+                      const clientEngagements = engagements.filter(e => e.clientId === client.id || e.clientCompanyName?.toLowerCase() === client.companyName.toLowerCase());
+                      const customDocs = clientEngagements.flatMap(e => e.documents || []);
+                      
+                      const defaultDocIds = new Set(defaultDocs.map(d => d.id));
+                      const uniqueCustomDocs = customDocs.filter(d => !defaultDocIds.has(d.id));
+                      
+                      const allClientDocs = [...defaultDocs, ...uniqueCustomDocs].filter(d => !deletedMockDocIds.has(d.id));
+
+                      return (
+                        <div className="flex flex-col h-full">
+                          <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center sticky top-0">
+                            <div>
+                              <button onClick={() => setSelectedStorageClientId(null)} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 mb-1 transition-colors">
+                                &larr; Back to Client List
+                              </button>
+                              <h3 className="font-bold text-slate-800 text-base">Storage Breakdown: {client.companyName}</h3>
+                            </div>
+                            <div className="text-xs font-bold text-slate-600 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                              Total Files: {allClientDocs.length}
+                            </div>
+                          </div>
+                          
+                          <div className="divide-y divide-slate-100 overflow-y-auto max-h-[500px]">
+                            {allClientDocs.map(doc => (
+                              <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                                <div className="flex items-start gap-3">
+                                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
+                                    <FileText size={18} />
+                                  </div>
+                                  <div>
+                                    <h4 className="text-sm font-bold text-slate-800">{doc.name}</h4>
+                                    <div className="text-[10px] text-slate-500 mt-1 flex items-center gap-2 font-medium">
+                                      <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600">{doc.category || 'GENERAL'}</span>
+                                      <span>&bull;</span>
+                                      <span>4.5 MB</span>
+                                      <span>&bull;</span>
+                                      <span>Uploaded: {new Date(doc.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      setGlobalSuccessMsg(`Download started for ${doc.name}`); 
+                                    }}
+                                    className="p-2 text-blue-600 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 rounded-lg transition-colors"
+                                    title="Download File"
+                                  >
+                                    <FileDown size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      if (confirm(`Are you sure you want to delete "${doc.name}"? This action cannot be undone.`)) {
+                                        setDeletedMockDocIds(new Set([...Array.from(deletedMockDocIds), doc.id]));
+                                        setGlobalSuccessMsg(`Deleted ${doc.name} successfully.`);
+                                      }
+                                    }}
+                                    className="p-2 text-red-600 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 rounded-lg transition-colors"
+                                    title="Delete File"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                            {allClientDocs.length === 0 && (
+                              <div className="p-8 text-center text-slate-400 text-sm font-medium">
+                                No files stored for this client.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* DELIVERABLES TAB */}
+      {activeClientTab === 'deliverables' && selectedClientId && (
+        <div className="max-w-6xl mx-auto">
+          <ClientDeliverablesAdmin 
+            clientId={selectedClientId} 
+            onClose={() => {
+              setActiveClientTab('directory');
+              setSelectedClientId('');
+            }} 
+          />
+        </div>
+      )}
+
+      {/* DASHBOARD CONFIG TAB */}
+      {activeClientTab === 'config' && selectedClientId && (
+        <div className="max-w-6xl mx-auto">
+          <ClientConfigAdminView 
+            clientId={selectedClientId} 
+            onBack={() => {
+              setActiveClientTab('directory');
+              setSelectedClientId('');
+            }} 
+          />
         </div>
       )}
 

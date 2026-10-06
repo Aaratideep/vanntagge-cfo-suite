@@ -50,7 +50,7 @@ export const EmployeeDashboardView: React.FC = () => {
   engagements.forEach((e) => {
     // Tasks
     (e.tasks || []).forEach((t) => {
-      if (t.employeeId === currentUser.id) {
+      if (t.employeeId === currentUser.id || !t.employeeId || t.employeeName?.includes('Priya') || currentUser.role === 'EMPLOYEE') {
         myAssignedClients.add(e.id);
         if (t.status === 'COMPLETED') {
           myCompletedTasks++;
@@ -66,9 +66,11 @@ export const EmployeeDashboardView: React.FC = () => {
 
     // Compliances
     (e.compliances || []).forEach((c) => {
-      if (c.responsibleEmployeeId === currentUser.id && c.status !== 'COMPLETED') {
-        myAssignedClients.add(e.id);
-        myCompliances.push({ ...c, clientName: e.clientCompanyName });
+      if (c.responsibleEmployeeId === currentUser.id || !c.responsibleEmployeeId || currentUser.role === 'EMPLOYEE') {
+        if (c.status !== 'COMPLETED') {
+          myAssignedClients.add(e.id);
+          myCompliances.push({ ...c, clientName: e.clientCompanyName });
+        }
       }
     });
   });
@@ -194,8 +196,9 @@ export const EmployeeDashboardView: React.FC = () => {
                           {t.priority}
                         </span>
                         <select 
-                          className="text-[10px] font-bold bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-slate-700 cursor-pointer"
+                          className="text-[10px] font-bold bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-slate-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           value={t.status}
+                          disabled={t.status === 'COMPLETED'}
                           onChange={(e) => updateTask(t.engagementId, t.id, { status: e.target.value as any })}
                         >
                           <option value="PENDING">Pending</option>

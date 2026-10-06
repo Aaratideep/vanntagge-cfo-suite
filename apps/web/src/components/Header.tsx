@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDashboardStore } from '../store/dashboardStore';
-import { History, X, Shield, Clock } from 'lucide-react';
+import { History, X, Shield, Clock, Menu } from 'lucide-react';
 
 interface HeaderProps {
   searchQuery: string;
@@ -8,6 +9,7 @@ interface HeaderProps {
   setCurrentTab: (tab: string) => void;
   setSearchTarget: (target: string) => void;
   currentTabTitle: string;
+  onMenuToggle?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,19 +18,24 @@ export const Header: React.FC<HeaderProps> = ({
   setCurrentTab,
   setSearchTarget,
   currentTabTitle,
+  onMenuToggle,
 }) => {
+  const router = useRouter();
   const {
     notifications,
     markNotificationRead,
     clearNotifications,
     auditLogs,
     currentUser,
+    switchPersona,
+    logoutUser,
+    updateProfile,
   } = useDashboardStore();
 
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [auditDrawerOpen, setAuditDrawerOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  
+
   // Profile edit states
   const [editName, setEditName] = useState(currentUser?.name || '');
   const [editAvatar, setEditAvatar] = useState(currentUser?.avatar || '');
@@ -55,33 +62,43 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className="h-16 bg-surface/80 glass-header border-b border-outline-variant/50 px-8 flex justify-between items-center z-40 sticky top-0">
-        
-        {/* Left Section: Active View Title & Search */}
-        <div className="flex items-center gap-6 flex-1">
-          <h2 className="font-title-lg text-title-lg font-bold text-on-surface tracking-tight whitespace-nowrap">
-            {currentTabTitle}
-          </h2>
-          <div className="relative w-full max-w-md hidden sm:block">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">
+      <header className="h-16 bg-surface/80 glass-header border-b border-outline-variant/50 px-4 md:px-6 lg:px-8 flex justify-between items-center z-40 sticky top-0">
+        {/* Left Section: Breadcrumb & Title */}
+        <div className="flex items-center gap-3 md:gap-4 shrink min-w-0">
+          {onMenuToggle && (
+            <button
+              onClick={onMenuToggle}
+              className="md:hidden p-1.5 -ml-1 text-on-surface-variant hover:text-primary rounded-lg hover:bg-surface-variant transition-colors"
+              title="Toggle Menu"
+            >
+              <Menu size={20} />
+            </button>
+          )}
+          <div className="flex flex-col min-w-0 pr-2 md:pr-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-outline truncate">Vantage CFO Suite</span>
+            <h2 className="text-base md:text-lg font-extrabold text-on-surface font-outfit tracking-tight leading-tight truncate">
+              {currentTabTitle}
+            </h2>
+          </div>
+        </div>
+
+        {/* Center: Global Search */}
+        <div className="hidden lg:flex flex-1 max-w-xs mx-6">
+          <div className="relative w-full">
+            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-[18px]">
               search
             </span>
             <input
               type="text"
-              placeholder="Search tasks, clients, or employees..."
+              placeholder="Search data (Press /)..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                if (e.target.value) {
-                  setSearchTarget('all');
-                }
-              }}
-              className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg pl-10 pr-4 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-1.5 bg-surface-container-low/60 rounded-full border border-slate-300 text-xs text-on-surface placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-outline hover:text-primary text-[10px]"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-500 hover:text-primary text-[10px]"
               >
                 Clear
               </button>
@@ -89,26 +106,74 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right Section: Actions & Profile */}
-        <div className="flex items-center gap-4">
-          
+        {/* Right Section: Persona Switcher, Audit Trail & Profile */}
+        <div className="flex items-center gap-2 md:gap-3 shrink-0">
+          {/* 3 Personas Quick Switcher: Admin, Employee, Client */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-xs">
+            <button
+              onClick={() => {
+                switchPersona('ADMIN');
+                router.push('/admin');
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN'
+                  ? 'bg-purple-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-purple-700 hover:bg-white/80'
+              }`}
+              title="Switch to Admin Dashboard (Aarati Mule)"
+            >
+              <span className="material-symbols-outlined text-[16px] -mt-0.5">admin_panel_settings</span>
+              <span className="hidden sm:inline">Admin</span>
+            </button>
+            <button
+              onClick={() => {
+                switchPersona('EMPLOYEE');
+                router.push('/employee');
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                currentUser.role === 'EMPLOYEE'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-blue-700 hover:bg-white/80'
+              }`}
+              title="Switch to Employee Workspace (Priya Sharma)"
+            >
+              <span className="material-symbols-outlined text-[16px] -mt-0.5">badge</span>
+              <span className="hidden sm:inline">Employee</span>
+            </button>
+            <button
+              onClick={() => {
+                switchPersona('CLIENT');
+                router.push('/client');
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                currentUser.role === 'CLIENT'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-emerald-700 hover:bg-white/80'
+              }`}
+              title="Switch to Client Portal (Acme Corp)"
+            >
+              <span className="material-symbols-outlined text-[16px] -mt-0.5">business_center</span>
+              <span className="hidden sm:inline">Client</span>
+            </button>
+          </div>
+
+          <div className="h-6 w-px bg-outline-variant/55" />
+
           {/* Audit Logs Widget */}
           <button
             onClick={() => setAuditDrawerOpen(true)}
-            className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 text-xs font-semibold"
-            title="View Audit Trail"
+            className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
+            title="View Security Audit Trail"
           >
             <History size={16} />
-            <span className="hidden md:inline">Audit Trail</span>
+            <span className="hidden xl:inline">Audit Trail</span>
           </button>
-
-          <div className="h-6 w-px bg-outline-variant/55" />
 
           {/* Notifications Widget */}
           <div className="relative">
             <button
               onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-              className="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors relative"
+              className="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors relative cursor-pointer"
             >
               <span className="material-symbols-outlined text-2xl">notifications</span>
               {unreadCount > 0 && (
@@ -120,7 +185,7 @@ export const Header: React.FC<HeaderProps> = ({
             {notifDropdownOpen && (
               <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden">
                 <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                  <span className="text-xs font-bold text-slate-800">Notifications ({unreadCount} new)</span>
+                  <span className="text-xs font-bold text-slate-800">Alert Hub ({unreadCount} new)</span>
                   <button
                     onClick={clearNotifications}
                     className="text-[10px] text-blue-600 hover:underline font-semibold"
@@ -164,30 +229,18 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          <div className="h-6 w-px bg-outline-variant/55 mx-2" />
+          <div className="h-6 w-px bg-outline-variant/55" />
 
           {/* Active Profile Info */}
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden md:block leading-tight">
-
-              <div className="flex items-center gap-2 mt-0.5 justify-end">
-                <button
-                  onClick={() => {
-                    useDashboardStore.getState().loginUser('aarati123@gmail.com');
-                    window.location.href = '/';
-                  }}
-                  className="text-[9px] text-blue-600 hover:underline font-semibold"
-                >
-                  Employee Login
-                </button>
-                <span className="text-[9px] text-slate-300">•</span>
-                <button
-                  onClick={() => useDashboardStore.getState().logoutUser()}
-                  className="text-[9px] text-red-600 hover:underline font-semibold"
-                >
-                  Log Out
-                </button>
-              </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="text-right hidden sm:block leading-tight whitespace-nowrap">
+              <div className="text-xs font-bold text-slate-800">{currentUser.name}</div>
+              <button
+                onClick={() => logoutUser()}
+                className="text-[10px] text-red-600 hover:underline font-semibold cursor-pointer"
+              >
+                Log Out
+              </button>
             </div>
             
             <div 
@@ -196,7 +249,8 @@ export const Header: React.FC<HeaderProps> = ({
                 setEditAvatar(currentUser.avatar || '');
                 setIsProfileModalOpen(true);
               }}
-              className="w-10 h-10 rounded-full border-2 border-primary/20 overflow-hidden relative cursor-pointer hover:border-primary/50 transition-colors"
+              className="w-9 h-9 rounded-full border-2 border-primary/20 overflow-hidden relative cursor-pointer hover:border-primary/50 transition-colors shrink-0"
+              title="Click to edit profile"
             >
               <img
                 className="w-full h-full object-cover"
@@ -228,7 +282,7 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
               <button
                 onClick={() => setAuditDrawerOpen(false)}
-                className="p-1 rounded-lg border border-outline-variant/70 bg-surface hover:bg-surface-variant text-on-surface"
+                className="p-1 rounded-lg border border-outline-variant/70 bg-surface hover:bg-surface-variant text-on-surface cursor-pointer"
               >
                 <X size={16} />
               </button>
@@ -276,66 +330,60 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="bg-surface border border-outline-variant/50 rounded-2xl w-full max-w-sm p-6 relative z-10 shadow-2xl">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-on-surface text-base">Edit Profile</h3>
-              <button onClick={() => setIsProfileModalOpen(false)} className="p-1.5 hover:bg-surface-variant rounded-lg text-outline">
+              <button onClick={() => setIsProfileModalOpen(false)} className="p-1.5 hover:bg-surface-variant rounded-lg text-outline cursor-pointer">
                 <X size={18} />
               </button>
             </div>
             
             <div className="space-y-4 text-xs">
               <div className="flex flex-col items-center gap-3">
-                <div className="w-20 h-20 rounded-full border-2 border-primary/20 overflow-hidden bg-surface-container">
+                <div className="w-16 h-16 rounded-full border-2 border-primary/20 overflow-hidden relative">
                   <img
                     className="w-full h-full object-cover"
-                    alt="Preview Avatar"
-                    referrerPolicy="no-referrer"
-                    src={editAvatar || "https://ui-avatars.com/api/?name=" + encodeURIComponent(editName || 'User') + "&background=0D8ABC&color=fff"}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(editName || 'User') + "&background=0D8ABC&color=fff";
-                    }}
+                    src={editAvatar || "https://ui-avatars.com/api/?name=" + encodeURIComponent(editName) + "&background=0D8ABC&color=fff"}
+                    alt="Preview"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-on-surface-variant font-semibold mb-1">Full Name</label>
-                <input type="text" value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  className="w-full bg-surface-container border border-outline-variant/50 rounded-xl p-2.5 focus:bg-surface focus:border-primary outline-none transition-colors text-on-surface" />
-              </div>
-              
-              <div>
-                <label className="block text-on-surface-variant font-semibold mb-1">Avatar Image URL (Optional)</label>
-                <input type="url" value={editAvatar}
-                  onChange={e => setEditAvatar(e.target.value)}
-                  placeholder="https://example.com/avatar.jpg"
-                  className="w-full bg-surface-container border border-outline-variant/50 rounded-xl p-2.5 focus:bg-surface focus:border-primary outline-none transition-colors text-on-surface" />
+                <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container rounded-lg border border-outline-variant text-on-surface outline-none focus:border-primary"
+                />
               </div>
 
               <div>
-                <label className="block text-on-surface-variant font-semibold mb-1">Email Address (Read-only)</label>
-                <input type="email" value={currentUser.email} readOnly disabled
-                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-2.5 text-outline cursor-not-allowed" />
-              </div>
-              
-              <div>
-                <label className="block text-on-surface-variant font-semibold mb-1">Role (Read-only)</label>
-                <input type="text" value={currentUser.role.replace('_', ' ')} readOnly disabled
-                  className="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl p-2.5 text-outline cursor-not-allowed" />
+                <label className="text-[11px] font-bold text-outline uppercase tracking-wider block mb-1">Avatar URL</label>
+                <input
+                  type="text"
+                  value={editAvatar}
+                  onChange={(e) => setEditAvatar(e.target.value)}
+                  placeholder="https://example.com/photo.jpg"
+                  className="w-full px-3 py-2 bg-surface-container rounded-lg border border-outline-variant text-on-surface outline-none focus:border-primary"
+                />
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-outline-variant/30 mt-4">
-                <button type="button" onClick={() => setIsProfileModalOpen(false)}
-                  className="px-4 py-2 bg-surface-container hover:bg-surface-variant text-on-surface rounded-xl font-bold transition-colors">Cancel</button>
-                <button type="button"
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border border-outline-variant text-outline hover:bg-surface-variant"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
-                    useDashboardStore.getState().updateProfile({
-                      name: editName,
-                      avatar: editAvatar
-                    });
+                    updateProfile({ name: editName, avatar: editAvatar });
                     setIsProfileModalOpen(false);
                   }}
-                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-on-primary rounded-xl font-bold shadow-md shadow-primary/20 transition-all">
-                  Save Changes
+                  className="px-4 py-2 rounded-lg bg-primary text-on-primary font-bold shadow-md hover:bg-primary/90"
+                >
+                  Save Profile
                 </button>
               </div>
             </div>

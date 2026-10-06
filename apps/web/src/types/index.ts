@@ -1,4 +1,4 @@
-export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'CLIENT' | 'EMPLOYEE' | 'PENDING';
+export type Role = 'SUPER_ADMIN' | 'ADMIN' | 'EMPLOYEE' | 'CLIENT' | 'PENDING';
 
 export type LeadStatus =
   | 'NEW'
@@ -132,7 +132,10 @@ export interface User {
   status?: 'ACTIVE' | 'ON_LEAVE' | 'RESIGNED' | 'SUSPENDED';
   isOnboarded?: boolean;
   onboardingData?: EmployeeOnboardingData;
+  employeeOnboardingData?: EmployeeOnboardingData;
   clientOnboardingData?: ClientOnboardingData;
+  googleCalendarApiKey?: string;
+  customCalendars?: { id: string; name: string; color: string; isGoogleSynced: boolean }[];
 }
 
 export interface Lead {
@@ -220,6 +223,22 @@ export interface EngagementLetter {
   createdAt: string;
 }
 
+export interface DeliverableReportDef {
+  id: string;
+  title: string;
+  order: number;
+  isPinned: boolean;
+}
+
+export interface ClientDashboardConfig {
+  showKeyDeliverables: boolean;
+  showWorkProgress: boolean;
+  showBillingSummary: boolean;
+  showActiveEngagements: boolean;
+  showDeliverablesTimeline: boolean;
+  showInvoicesVault: boolean;
+}
+
 export interface Client {
   id: string;
   leadId?: string;
@@ -234,10 +253,16 @@ export interface Client {
   gstin?: string;
   pan?: string;
   address?: string;
+  billingEntity?: string;
+  spaceConsumedMB?: number;
+  costEstimateINR?: number;
   onboardingDate?: string;
   status: ClientStatus;
   createdAt: string;
   updatedAt?: string;
+  deliverableReports?: DeliverableReportDef[];
+  featuredGraph?: 'REVENUE_EXPENSE' | 'CASHFLOW' | 'PROFIT_MARGIN' | 'OPEX';
+  dashboardConfig?: ClientDashboardConfig;
 }
 
 export interface EngagementService {
@@ -271,6 +296,8 @@ export interface Task {
   status: TaskStatus;
   dependencies?: string;
   notes?: string;
+  verificationSteps?: string;
+  analysisSteps?: string;
   dueDate?: string;
   employeeId?: string;
   employeeName?: string;
@@ -283,6 +310,7 @@ export interface Task {
     timestamp: string;
     authorName: string;
   }[];
+  calendarId?: string;
   createdAt: string;
 }
 
@@ -312,6 +340,7 @@ export interface Compliance {
   documentsUrl?: string;
   responsibleEmployeeId?: string;
   responsibleEmployeeName?: string;
+  calendarId?: string;
   createdAt: string;
 }
 
@@ -325,6 +354,7 @@ export interface Invoice {
   gst: number;
   finalAmount: number;
   dueDate: string;
+  issueDate?: string;
   status: InvoiceStatus;
   paymentTerms?: string;
   billingEntity?: string;
@@ -478,6 +508,7 @@ export interface Meeting {
   time: string;
   attendees: string;
   meetLink: string;
+  calendarId?: string;
   createdAt: string;
 }
 
@@ -486,4 +517,145 @@ export interface AvailabilityBlock {
   date: string;
   type: 'AVAILABLE' | 'BUSY';
   notes?: string;
+}
+
+export interface BillingEntity {
+  id: string;
+  name: string;
+  isGstRegistered: boolean;
+  gstin?: string;
+  gstNumber?: string;
+  pan?: string;
+  state?: string;
+  stateCode?: string;
+  address?: string;
+  bankDetails?: {
+    bankName: string;
+    accountNumber: string;
+    ifscCode: string;
+    branch: string;
+    upiId?: string;
+  };
+  certificateUrl?: string;
+}
+
+export interface TimesheetEntry {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  clientId: string;
+  clientName: string;
+  taskId?: string;
+  taskTitle?: string;
+  date: string;
+  hours: number;
+  description: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approvedAt?: string;
+  approvedBy?: string;
+  createdAt: string;
+}
+
+export interface LeadInteraction {
+  id: string;
+  leadId: string;
+  type: 'CALL' | 'MEETING' | 'EMAIL' | 'WHATSAPP';
+  date: string;
+  time: string;
+  contactPerson: string;
+  summary: string;
+  outcome?: string;
+  nextFollowUpDate?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ClientTemplatePack {
+  id: string;
+  name: string;
+  title?: string;
+  category: 'CFO_REVIEW' | 'AUDIT_PREP' | 'STATUTORY_COMPLIANCE' | 'CASHFLOW_ENGINE' | 'TAX_PLANNING' | string;
+  description: string;
+  estimatedHours: number;
+  tasks: {
+    id?: string;
+    title?: string;
+    name?: string;
+    description?: string;
+    notes?: string;
+    milestone?: string;
+    estimatedHours?: number;
+    priority?: Priority;
+    daysDueFromStart?: number;
+  }[];
+}
+
+export interface CFORolePermission {
+  role: string;
+  title?: string;
+  label?: string;
+  description: string;
+  badgeColor?: string;
+  canManageLeads?: boolean;
+  canIssueInvoices?: boolean;
+  canManageClients?: boolean;
+  canApproveWork?: boolean;
+  canManagePayroll?: boolean;
+  canManageSettings?: boolean;
+}
+
+export interface CompanyAsset {
+  id: string;
+  userName: string;
+  assetTag: string;
+  category: string;
+  itemName: string;
+  assignedDate: string;
+  status: 'IN USE' | 'ACTIVE' | 'RETURNED' | 'MAINTENANCE';
+}
+
+export interface PerformanceReview {
+  id: string;
+  userName: string;
+  reviewPeriod: string;
+  rating: string;
+  comments: string;
+  reviewerName: string;
+  date: string;
+  okrs?: { title: string; progress: number; type: 'success' | 'warning' | 'info' | 'danger' }[];
+}
+
+export type ServiceMasterParameter = {
+  id: string;
+  name: string;
+  dataType: string;
+  isRequired: boolean;
+};
+
+export type ServiceMasterService = {
+  id: string;
+  name: string;
+  frequency: string;
+  priority: Priority;
+  parameters: ServiceMasterParameter[];
+  isAutomated?: boolean;
+};
+
+export type ServiceMasterCategory = {
+  id: string;
+  name: string;
+  services: ServiceMasterService[];
+};
+
+export interface CommunicationLog {
+  id: string;
+  type: 'EMAIL' | 'WHATSAPP';
+  recipient: string;
+  subject?: string;
+  body: string;
+  status: 'SENT' | 'FAILED' | 'PENDING';
+  sentBy: string;
+  timestamp: string;
+  relatedEntityId?: string;
+  relatedEntityType?: 'INVOICE' | 'DOCUMENT' | 'LEAD' | 'OTHER';
 }

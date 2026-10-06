@@ -15,26 +15,36 @@ export default function ClientPage() {
   const router = useRouter();
   const { currentUser } = useDashboardStore();
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTarget, setSearchTarget] = useState('all');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!currentUser) {
       router.push('/');
+    } else if (currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN') {
+      router.push('/admin');
+    } else if (currentUser.role === 'EMPLOYEE') {
+      router.push('/employee');
     } else if (currentUser.role !== 'CLIENT') {
       router.push('/');
     }
   }, [currentUser, router]);
 
+  if (!isMounted) return null;
   if (!currentUser || currentUser.role !== 'CLIENT') return null;
 
   const tabTitles: { [key: string]: string } = {
     dashboard: 'Client Dashboard',
     financial_docs: 'Financial Documents',
     reports: 'MIS Reporting',
-    calendar: 'Operations Calendar',
-    notifications: 'Notifications',
+    calendar: 'Schedule Hub',
+    notifications: 'Alert Hub',
   };
 
   const renderActiveSubView = () => {
@@ -52,7 +62,7 @@ export default function ClientPage() {
     }
   };
 
-  const spacingClass = 'ml-16 peer-hover:ml-60';
+  const spacingClass = 'ml-0 md:ml-16 md:peer-hover:ml-60';
 
   return (
     <div className="min-h-screen bg-background text-on-surface">
@@ -64,7 +74,7 @@ export default function ClientPage() {
         setCollapsed={setSidebarCollapsed}
       />
       <div className={`flex-1 flex flex-col min-w-0 ${spacingClass} transition-all duration-300`}>
-        <Header
+        <Header onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           setCurrentTab={setCurrentTab}
