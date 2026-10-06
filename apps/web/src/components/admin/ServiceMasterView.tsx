@@ -462,8 +462,6 @@ export const ServiceMasterView: React.FC = () => {
                   </div>
                 )}
               </div>
-            </>
-          )}
         </div>
       </div>
 
