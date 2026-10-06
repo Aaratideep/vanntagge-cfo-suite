@@ -16,11 +16,13 @@ import {
   Clock,
   FileCheck,
   ChevronRight,
+  ChevronLeft,
+  ArrowLeft,
+  ArrowRight,
   TrendingUp,
   User,
   Building2,
   Star,
-  ArrowRight,
   Edit3,
   CheckCheck,
   AlertTriangle,
@@ -86,6 +88,14 @@ const PIPELINE_STAGES: { label: string; status: LeadStatus }[] = [
   { label: 'Converted',        status: 'CONVERTED' },
 ];
 
+const STAGE_ORDER: LeadStatus[] = ['NEW', 'CONTACTED', 'PROPOSAL_SENT', 'NEGOTIATION', 'CONVERTED'];
+
+const getStageIndex = (status: LeadStatus): number => {
+  if (status === 'FOLLOW_UP' || status === 'MEETING_SCHEDULED') return 1;
+  const idx = STAGE_ORDER.indexOf(status);
+  return idx >= 0 ? idx : 0;
+};
+
 const INDUSTRIES = [
   'Personal Accounting & Taxes',
   'Individual Professional (Doctor/Lawyer/CA)',
@@ -114,7 +124,7 @@ const BUSINESS_TYPES = [
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export const CRMView: React.FC = () => {
+export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, onActionHandled?: () => void }> = ({ initialAction, onActionHandled }) => {
   const {
     leads, addLead, updateLead, deleteLead, assignLead,
     followUps, addFollowUp,
@@ -122,7 +132,7 @@ export const CRMView: React.FC = () => {
     quotations, createQuotation, updateQuotationStatus, deleteQuotation, convertQuotationToInvoice,
     engagementLetters, createEngagementLetter, deleteEngagementLetter,
     convertLeadToClient,
-    users, currentUser,
+    users, currentUser, addUser, onboardNewClient,
   } = useDashboardStore();
 
   const handleExportLeads = () => {
@@ -242,6 +252,17 @@ export const CRMView: React.FC = () => {
     terms: 'Standard professional advisory liability clause applies. Either party may exit with 30-day notice.',
   });
 
+  React.useEffect(() => {
+    if (initialAction === 'lead') {
+      setShowCreateLeadModal(true);
+      if (onActionHandled) onActionHandled();
+    } else if (initialAction === 'quotation') {
+      setSelectedLead(null);
+      setShowQuotationModal(true);
+      if (onActionHandled) onActionHandled();
+    }
+  }, [initialAction, onActionHandled]);
+
   // ─── Derived ────────────────────────────────────────────────────────────
   const filteredLeads = leads.filter((l) => {
     const q = searchQuery.toLowerCase();
@@ -255,6 +276,36 @@ export const CRMView: React.FC = () => {
   const convertedCount = leads.filter(l => l.status === 'CONVERTED').length;
   const conversionRate = leads.length > 0 ? Math.round((convertedCount / leads.length) * 100) : 0;
 
+  // Portal account provisioning state for Create Lead
+  const [provisionPortal, setProvisionPortal] = useState(true);
+  const [portalRole, setPortalRole] = useState<'CLIENT' | 'EMPLOYEE'>('CLIENT');
+  const [portalEmail, setPortalEmail] = useState('');
+  const [portalPassword, setPortalPassword] = useState('');
+  const [showPortalPassword, setShowPortalPassword] = useState(false);
+  const [autoDispatchCreds, setAutoDispatchCreds] = useState(true);
+  const [createdCredsSummary, setCreatedCredsSummary] = useState<{
+    companyName: string;
+    contactPerson: string;
+    email: string;
+    password: string;
+    role: string;
+  } | null>(null);
+
+  const generateRandomPassword = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
+    let pass = 'Vant@';
+    for (let i = 0; i < 6; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setPortalPassword(pass);
+  };
+
+  React.useEffect(() => {
+    if (newLeadForm.email && (!portalEmail || portalEmail === newLeadForm.email)) {
+      setPortalEmail(newLeadForm.email);
+    }
+  }, [newLeadForm.email]);
+
   // ─── Handlers ────────────────────────────────────────────────────────────
 
   const showSuccess = (msg: string) => {
@@ -262,12 +313,131 @@ export const CRMView: React.FC = () => {
     setTimeout(() => setSuccessMsg(''), 3000);
   };
 
-  const handleCreateLead = (e: React.FormEvent) => {
+  const getNextStepLabel = (status: LeadStatus) => {
+    const idx = getStageIndex(status);
+    if (idx === 0) return 'Next: Log Follow-up';
+    if (idx === 1) return 'Next: Generate Quotation';
+    if (idx === 2) return 'Next: Draft Agreement';
+    if (idx === 3) return 'Next: Convert to Client';
+    return 'Lead Converted to Client';
+  };
+
+  const handleStepForward = (lead: Lead) => {
+    setSelectedLead(lead);
+    const currentIdx = getStageIndex(lead.status);
+
+    if (currentIdx === 0) {
+      // Step 1 (New) -> Launch Log Follow-up workflow modal
+      setShowFollowUpModal(true);
+    } else if (currentIdx === 1) {
+      // Step 2 (Contacted) -> Launch Generate Quotation workflow modal
+      setShowQuotationModal(true);
+    } else if (currentIdx === 2) {
+      // Step 3 (Quotation) -> Launch Draft Agreement workflow modal
+      const validQuote = quotations.find(
+        (q) => q.leadId === lead.id && ['APPROVED', 'CONVERTED', 'SENT'].includes(q.status)
+      );
+      if (validQuote) {
+        setShowLetterModal(true);
+      } else {
+        setShowQuotationModal(true);
+        showSuccess('Please generate a quotation for this lead first.');
+      }
+    } else if (currentIdx === 3) {
+      // Step 4 (Agreement) -> Launch Convert to Active Client confirmation modal
+      const validQuote = quotations.find(
+        (q) => q.leadId === lead.id && ['APPROVED', 'CONVERTED', 'SENT'].includes(q.status)
+      );
+      setShowConvertConfirm({
+        leadId: lead.id,
+        quotationId: validQuote?.id || '',
+      });
+    } else if (currentIdx < STAGE_ORDER.length - 1) {
+      const nextStatus = STAGE_ORDER[currentIdx + 1];
+      updateLead(lead.id, { status: nextStatus });
+      setSelectedLead((prev) => (prev ? { ...prev, status: nextStatus } : null));
+      showSuccess(`Advanced stage to: ${STATUS_META[nextStatus].label}`);
+    }
+  };
+
+  const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
     addLead({ ...newLeadForm, status: 'NEW', expectedRevenue: Number(newLeadForm.expectedRevenue) });
+
+    let finalPass = portalPassword;
+    if (provisionPortal) {
+      if (!finalPass || finalPass.trim().length < 6) {
+        finalPass = 'Vant@' + Math.random().toString(36).slice(-6) + '#1';
+      }
+
+      const targetEmail = portalEmail || newLeadForm.email;
+      const targetName = newLeadForm.contactPerson || newLeadForm.companyName;
+
+      // 1. Provision User in dashboardStore
+      const uid = `user-lead-${Date.now()}`;
+      addUser({
+        id: uid,
+        name: targetName,
+        email: targetEmail,
+        role: portalRole,
+        permissions: portalRole === 'CLIENT' ? ['read', 'upload'] : ['work', 'read'],
+        status: 'ACTIVE',
+        linkedEntity: newLeadForm.companyName,
+      });
+
+      // 2. Call API to provision in auth/db
+      try {
+        await fetch('/api/admin/users/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: targetEmail,
+            password: finalPass,
+            fullName: targetName,
+            role: portalRole,
+            linkedEntity: newLeadForm.companyName,
+          }),
+        });
+      } catch (err) {
+        console.warn('API User Provisioning call:', err);
+      }
+
+      // 3. If role === 'CLIENT', onboard as Client so onboarding checklist & data bank works immediately
+      if (portalRole === 'CLIENT') {
+        onboardNewClient({
+          companyName: newLeadForm.companyName,
+          contactPerson: targetName,
+          email: targetEmail,
+          phone: newLeadForm.phone,
+          entityType: newLeadForm.businessType,
+          gstin: '',
+          pan: '',
+        }, true);
+      }
+
+      // 4. Auto-dispatch notification if checked
+      if (autoDispatchCreds) {
+        useDashboardStore.getState().addAuditLog(
+          'DISPATCH_PORTAL_CREDENTIALS',
+          `Dispatched ${portalRole} Portal credentials to ${targetEmail} for ${newLeadForm.companyName}`
+        );
+      }
+
+      setCreatedCredsSummary({
+        companyName: newLeadForm.companyName,
+        contactPerson: targetName,
+        email: targetEmail,
+        password: finalPass,
+        role: portalRole,
+      });
+    } else {
+      showSuccess('Lead created successfully!');
+    }
+
     setShowCreateLeadModal(false);
     setNewLeadForm({ ...EMPTY_LEAD });
-    showSuccess('Lead created successfully!');
+    setPortalEmail('');
+    setPortalPassword('');
   };
 
   const handleUpdateLead = (e: React.FormEvent) => {
@@ -299,6 +469,9 @@ export const CRMView: React.FC = () => {
       status: 'SENT', terms: quotationTerms,
     });
     updateLead(selectedLead.id, { status: 'PROPOSAL_SENT' });
+    if (selectedLead) {
+      setSelectedLead((prev) => (prev ? { ...prev, status: 'PROPOSAL_SENT' } : null));
+    }
     setShowQuotationModal(false);
     setQuotationServices([{ name: 'Virtual CFO Advisory Services', price: 15000 }]);
     setQuotationDiscount(0);
@@ -328,6 +501,9 @@ export const CRMView: React.FC = () => {
       digitalSignature: `Digitally signed by ${selectedLead.contactPerson} & ${currentUser?.name || 'Partner'}. IP Verified.`,
     });
     updateLead(selectedLead.id, { status: 'NEGOTIATION' });
+    if (selectedLead) {
+      setSelectedLead((prev) => (prev ? { ...prev, status: 'NEGOTIATION' } : null));
+    }
     setShowLetterModal(false);
     setCrmSubTab('letters');
     showSuccess('Engagement letter drafted!');
@@ -336,6 +512,9 @@ export const CRMView: React.FC = () => {
   const handleConvertToClient = () => {
     if (!showConvertConfirm) return;
     convertLeadToClient(showConvertConfirm.leadId, showConvertConfirm.quotationId);
+    if (selectedLead?.id === showConvertConfirm.leadId) {
+      setSelectedLead((prev) => (prev ? { ...prev, status: 'CONVERTED' } : null));
+    }
     setShowConvertConfirm(null);
     setCrmSubTab('converted');
     showSuccess('Lead successfully converted to Client!');
@@ -1055,6 +1234,76 @@ export const CRMView: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* ── STAGE LIFECYCLE STEPPER & GO BACK / ADVANCE CONTROLS ── */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 shadow-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pipeline Stage Lifecycle</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${STATUS_META[selectedLead.status].bg} ${STATUS_META[selectedLead.status].color} ${STATUS_META[selectedLead.status].border}`}>
+                        {STATUS_META[selectedLead.status].label}
+                      </span>
+                    </div>
+
+                    {/* Stepper Progress Bar */}
+                    <div className="relative py-1">
+                      <div className="absolute top-1/2 left-3 right-3 h-1 bg-slate-200 -translate-y-1/2 z-0" />
+                      <div
+                        className="absolute top-1/2 left-3 h-1 bg-blue-600 -translate-y-1/2 z-0 transition-all duration-300"
+                        style={{ width: `calc(${(getStageIndex(selectedLead.status) / (STAGE_ORDER.length - 1)) * 100}% - 24px)` }}
+                      />
+
+                      <div className="flex items-center justify-between relative z-10">
+                        {STAGE_ORDER.map((stg, i) => {
+                          const isCompleted = getStageIndex(selectedLead.status) > i;
+                          const isCurrent = getStageIndex(selectedLead.status) === i;
+                          return (
+                            <div
+                              key={stg}
+                              className={`w-7 h-7 rounded-full text-[10px] font-bold flex items-center justify-center border-2 transition-all ${
+                                isCurrent
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-4 ring-blue-100 scale-110'
+                                  : isCompleted
+                                  ? 'bg-blue-500 text-white border-blue-500'
+                                  : 'bg-white text-slate-400 border-slate-300'
+                              }`}
+                              title={`Stage: ${STATUS_META[stg].label}`}
+                            >
+                              {isCompleted ? '✓' : i + 1}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Stage Labels Below Stepper */}
+                    <div className="grid grid-cols-5 text-center text-[9px] font-semibold text-slate-400">
+                      {STAGE_ORDER.map((stg) => (
+                        <span key={stg} className={selectedLead.status === stg ? 'text-blue-600 font-bold' : ''}>
+                          {STATUS_META[stg].label}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Next Workflow Action Button (Read-only workflow, no manual back/override) */}
+                    <div className="pt-2 border-t border-slate-200/80">
+                      <button
+                        type="button"
+                        onClick={() => handleStepForward(selectedLead)}
+                        disabled={getStageIndex(selectedLead.status) === STAGE_ORDER.length - 1}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-emerald-600 disabled:opacity-90 text-white shadow-md shadow-blue-500/20 transition-all"
+                      >
+                        {getStageIndex(selectedLead.status) === STAGE_ORDER.length - 1 ? (
+                          <>
+                            <CheckCircle2 size={15} /> Lead Converted to Active Client
+                          </>
+                        ) : (
+                          <>
+                            {getNextStepLabel(selectedLead.status)} <ArrowRight size={14} />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Quick Actions */}
                   <div className="grid grid-cols-3 gap-2">
                     <button
@@ -1312,19 +1561,102 @@ export const CRMView: React.FC = () => {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-slate-600 font-semibold mb-1">Initial Remarks / Requirements</label>
-                <textarea rows={3} value={newLeadForm.remarks}
-                  onChange={e => setNewLeadForm({ ...newLeadForm, remarks: e.target.value })}
-                  placeholder="Describe what the prospect is looking for..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none resize-none" />
+              {/* ── PORTAL CREDENTIALS PROVISIONING SECTION (CLIENT ONLY) ── */}
+              <div className="bg-slate-900 text-white rounded-2xl p-4 space-y-3 border border-slate-800 shadow-md">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-400/30 flex items-center justify-center font-bold">
+                      <Key size={15} />
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-xs tracking-tight text-white">Client Portal Access Credentials</h4>
+                      <p className="text-[10px] text-slate-300">Grant client portal login access (/client) to view work completion, task status & onboarding checklist</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={provisionPortal}
+                      onChange={(e) => setProvisionPortal(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+
+                {provisionPortal && (
+                  <div className="space-y-3 pt-3 border-t border-slate-800 text-xs">
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-300 mb-1.5 whitespace-nowrap">Login Email Address *</label>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                          <input
+                            type="email"
+                            required={provisionPortal}
+                            value={portalEmail}
+                            onChange={(e) => setPortalEmail(e.target.value)}
+                            placeholder="client@company.com"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <div className="flex justify-between items-center mb-1.5 gap-1">
+                          <label className="block text-[11px] font-bold text-slate-300 whitespace-nowrap">Login Password *</label>
+                          <button
+                            type="button"
+                            onClick={generateRandomPassword}
+                            className="text-[10px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 underline whitespace-nowrap shrink-0"
+                          >
+                            <Sparkles size={11} /> Auto Generate
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                          <input
+                            type={showPortalPassword ? 'text' : 'password'}
+                            required={provisionPortal}
+                            value={portalPassword}
+                            onChange={(e) => setPortalPassword(e.target.value)}
+                            placeholder="Min. 6 characters"
+                            className="w-full bg-slate-800 border border-slate-700 rounded-xl pl-9 pr-9 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPortalPassword(!showPortalPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1"
+                          >
+                            {showPortalPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="checkbox"
+                        id="autoDispatchCredsToggle"
+                        checked={autoDispatchCreds}
+                        onChange={(e) => setAutoDispatchCreds(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded border-slate-700 bg-slate-800 focus:ring-blue-500 shrink-0"
+                      />
+                      <label htmlFor="autoDispatchCredsToggle" className="text-[11px] text-slate-300 cursor-pointer font-medium leading-tight">
+                        Auto-dispatch portal credentials & access URL via WhatsApp & Email
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
+
               <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                 <button type="button" onClick={() => setShowCreateLeadModal(false)}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold">Cancel</button>
                 <button type="submit"
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-500/20">
-                  Save Lead
+                  Save Lead & Provision Credentials
                 </button>
               </div>
             </form>
@@ -1395,18 +1727,25 @@ export const CRMView: React.FC = () => {
       )}
 
       {/* ── QUOTATION MODAL ── */}
-      {showQuotationModal && selectedLead && (
+      {showQuotationModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs" onClick={() => setShowQuotationModal(false)} />
           <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-xl p-6 relative z-10 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-slate-800 text-sm">Generate Service Quotation</h3>
-                <p className="text-[10px] text-slate-400">{selectedLead.companyName}</p>
+                <p className="text-[10px] text-slate-400">{selectedLead ? selectedLead.companyName : 'Select a lead'}</p>
               </div>
               <button onClick={() => setShowQuotationModal(false)} className="text-slate-400 hover:text-slate-600"><XCircle size={18} /></button>
             </div>
             <form onSubmit={handleGenerateQuotation} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-500 font-semibold mb-1">Select Lead *</label>
+                <select required value={selectedLead?.id || ''} onChange={e => setSelectedLead(leads.find(l => l.id === e.target.value) || null)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none">
+                  <option value="" disabled>Select a lead...</option>
+                  {leads.map(l => <option key={l.id} value={l.id}>{l.companyName}</option>)}
+                </select>
+              </div>
               {/* Services */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -1604,6 +1943,72 @@ export const CRMView: React.FC = () => {
           data={selectedAgreementPreview}
           onClose={() => setSelectedAgreementPreview(null)}
         />
+      )}
+
+      {/* ── CREATED CREDENTIALS SUMMARY MODAL ── */}
+      {createdCredsSummary && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs" onClick={() => setCreatedCredsSummary(null)} />
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md p-6 relative z-10 shadow-2xl space-y-4 font-outfit">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto font-bold">
+              <CheckCircle2 size={26} />
+            </div>
+
+            <div className="text-center space-y-1">
+              <h3 className="font-extrabold text-slate-900 text-base">Portal Credentials Created!</h3>
+              <p className="text-xs text-slate-500">
+                Portal account generated for <span className="font-bold text-slate-800">{createdCredsSummary.companyName}</span>
+              </p>
+            </div>
+
+            <div className="bg-slate-900 text-white rounded-2xl p-4 space-y-2.5 text-xs">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <span className="text-slate-400">Portal Target:</span>
+                <span className="font-mono text-blue-400 font-bold bg-blue-500/20 px-2 py-0.5 rounded border border-blue-400/30">
+                  {createdCredsSummary.role === 'CLIENT' ? 'Client Portal (/client)' : 'Employee Portal (/employee)'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                <span className="text-slate-400">Login Email:</span>
+                <span className="font-bold text-white">{createdCredsSummary.email}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400">Password:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-amber-300 font-bold bg-slate-800 px-2.5 py-1 rounded border border-slate-700">
+                    {createdCredsSummary.password}
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(createdCredsSummary.password);
+                      alert('Password copied to clipboard!');
+                    }}
+                    className="text-slate-400 hover:text-white p-1"
+                    title="Copy Password"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-[11px] text-blue-800 leading-relaxed font-medium">
+              <span className="font-bold">Portal Features Available to User:</span>
+              <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-700">
+                <li>Track live work completion status (% completed)</li>
+                <li>View active task deliverables & milestones</li>
+                <li>Upload and manage onboarding checklist documents</li>
+              </ul>
+            </div>
+
+            <button
+              onClick={() => setCreatedCredsSummary(null)}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all shadow-md shadow-blue-500/20"
+            >
+              Done & Return to CRM
+            </button>
+          </div>
+        </div>
       )}
 
     </div>

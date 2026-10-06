@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -21,11 +22,13 @@ export const isFirebaseConfigured = !!(
 let app;
 let auth: any = null;
 let db: any = null;
+let storage: any = null;
 
 if (isFirebaseConfigured) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
+    storage = getStorage(app);
     
     // Only initialize Firestore if explicitly enabled in env, avoiding unprovisioned database retry loops
     if (process.env.NEXT_PUBLIC_ENABLE_FIRESTORE === 'true') {
@@ -47,4 +50,4 @@ if (isFirebaseConfigured) {
   );
 }
 
-export { auth, db };
+export { auth, db, storage };

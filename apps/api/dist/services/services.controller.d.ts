@@ -10,20 +10,20 @@ export declare class ServicesController {
     }): Promise<{
         id: string;
         organizationId: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         description: string | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
     }>;
     getCategories(orgId: string): Promise<({
         services: {
             id: string;
+            createdAt: Date;
+            updatedAt: Date;
             name: string;
             description: string | null;
             isActive: boolean;
-            createdAt: Date;
-            updatedAt: Date;
             categoryId: string;
             frequency: string | null;
             priority: import(".prisma/client").$Enums.Priority;
@@ -31,11 +31,11 @@ export declare class ServicesController {
     } & {
         id: string;
         organizationId: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         description: string | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
     })[]>;
     createService(categoryId: string, data: {
         name: string;
@@ -44,11 +44,11 @@ export declare class ServicesController {
         priority?: Priority;
     }): Promise<{
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         description: string | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         categoryId: string;
         frequency: string | null;
         priority: import(".prisma/client").$Enums.Priority;
@@ -56,10 +56,10 @@ export declare class ServicesController {
     getServices(categoryId: string): Promise<({
         parameters: {
             id: string;
-            name: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
+            name: string;
+            description: string | null;
             serviceId: string;
             dataType: string;
             defaultValue: string | null;
@@ -67,9 +67,9 @@ export declare class ServicesController {
         }[];
         taskTemplates: {
             id: string;
-            description: string | null;
             createdAt: Date;
             updatedAt: Date;
+            description: string | null;
             priority: import(".prisma/client").$Enums.Priority;
             serviceId: string;
             title: string;
@@ -79,11 +79,11 @@ export declare class ServicesController {
         }[];
     } & {
         id: string;
+        createdAt: Date;
+        updatedAt: Date;
         name: string;
         description: string | null;
         isActive: boolean;
-        createdAt: Date;
-        updatedAt: Date;
         categoryId: string;
         frequency: string | null;
         priority: import(".prisma/client").$Enums.Priority;
@@ -96,10 +96,10 @@ export declare class ServicesController {
         isRequired?: boolean;
     }): Promise<{
         id: string;
-        name: string;
-        description: string | null;
         createdAt: Date;
         updatedAt: Date;
+        name: string;
+        description: string | null;
         serviceId: string;
         dataType: string;
         defaultValue: string | null;

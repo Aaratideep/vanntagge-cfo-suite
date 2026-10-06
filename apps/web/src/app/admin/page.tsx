@@ -209,12 +209,12 @@ export default function AdminPage() {
         return (
           <DashboardView
             setCurrentTab={setCurrentTab}
-            openCreateLeadModal={() => setCurrentTab('crm')}
-            openCreateQuotationModal={() => setCurrentTab('crm')}
+            openCreateLeadModal={() => { setCrmInitialAction('lead'); setCurrentTab('crm'); }}
+            openCreateQuotationModal={() => { setCrmInitialAction('quotation'); setCurrentTab('crm'); }}
           />
         );
       case 'crm':
-        return <CRMView />;
+        return <CRMView initialAction={crmInitialAction} onActionHandled={() => setCrmInitialAction(null)} />;
       case 'service_master':
         return <ServiceMasterView />;
       case 'work':
@@ -226,9 +226,15 @@ export default function AdminPage() {
       case 'hr_payroll':
         return <EmployeesView />;
       case 'client_management':
-        return <ClientsView />;
+        return <ClientsView initialTab="directory" />;
+      case 'legacy_onboarding':
+        return <ClientsView initialTab="legacy" />;
       case 'invoicing':
         return <BillingView />;
+      case 'automation':
+        return <UsersView initialSubTab="automation" />;
+      case 'ai_usage':
+        return <UsersView initialSubTab="ai_usage" />;
       case 'settings':
         return <SettingsView />;
       case 'user_management':
@@ -243,8 +249,8 @@ export default function AdminPage() {
         return (
           <DashboardView
             setCurrentTab={setCurrentTab}
-            openCreateLeadModal={() => setCurrentTab('crm')}
-            openCreateQuotationModal={() => setCurrentTab('crm')}
+            openCreateLeadModal={() => { setCrmInitialAction('lead'); setCurrentTab('crm'); }}
+            openCreateQuotationModal={() => { setCrmInitialAction('quotation'); setCurrentTab('crm'); }}
           />
         );
     }
@@ -316,6 +322,8 @@ export default function AdminPage() {
         setCurrentTab={setCurrentTab}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
       />
 
       <div className={`flex-1 flex flex-col min-w-0 ${spacingClass} transition-all duration-300`}>
@@ -325,9 +333,10 @@ export default function AdminPage() {
           setCurrentTab={setCurrentTab}
           setSearchTarget={setSearchTarget}
           currentTabTitle={currentTabTitle}
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
 
-        <main className="flex-1 p-8 max-w-[1440px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-[1440px] w-full mx-auto font-outfit">
           {renderActiveSubView()}
         </main>
       </div>

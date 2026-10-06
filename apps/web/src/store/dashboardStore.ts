@@ -44,7 +44,6 @@ import {
   TaskStatus,
   ReviewSeverity,
   ReviewStatus,
-
   DocCategory,
   DocStatus,
   ComplianceType,
@@ -74,6 +73,9 @@ import {
   TimeLog,
   CommunicationLog
 } from '../types';
+import { computePeriodKey, computeNextPeriods, computeDueDate } from '../lib/taskRecurrence';
+import { AutomationEngine } from '../lib/automationEngine';
+import { AIService } from '../lib/aiService';
 
 export interface AdminSettings {
   adminName: string;
@@ -104,6 +106,8 @@ interface DashboardState {
   engagements: Engagement[];
   notifications: Notification[];
   auditLogs: AuditLog[];
+  clientDocuments: ClientDocument[];
+  customDataBankDocs: Record<string, Document[]>;
   standaloneInvoices: Invoice[];
   standaloneReceipts: Receipt[];
   leaves: LeaveRequest[];
@@ -794,6 +798,8 @@ export const useDashboardStore = create<DashboardState>()(
   performanceReviews: [],
   notifications: [],
   auditLogs: [],
+  clientDocuments: [],
+  customDataBankDocs: {},
   standaloneInvoices: [],
   standaloneReceipts: [],
   billingEntities: [
@@ -1053,6 +1059,2063 @@ export const useDashboardStore = create<DashboardState>()(
 
   updateRegistrationCode: (code) => set({ registrationCode: code }),
   setAdminSettings: (settings) => set((state) => ({ adminSettings: { ...state.adminSettings, ...settings } })),
+  setServiceCategories: (categories) => set({ serviceCategories: categories }),
+  updateEngagementClientServices: (engagementId, clientServices) => set((state) => ({
+    engagements: state.engagements.map(eng => 
+      eng.id === engagementId ? { ...eng, clientServices } : eng
+    )
+  })),
+
+  addClientDocument: (doc) => {
+    set((state) => ({ clientDocuments: [...state.clientDocuments, doc] }));
+    get().addAuditLog('DOCUMENT_UPLOADED', `Document ${doc.fileName} uploaded successfully.`);
+    pushRecordToFirebase('clientDocuments', doc.id, doc);
+  },
+
+  addMasterDataBankDocument: (clientId, docData) => {
+    const now = new Date().toISOString();
+    const newDoc: Document = {
+      id: `databank-custom-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: now,
+      updateFrequency: 'NO',
+      periodicity: 'Not Applicable',
+      uploaderName: 'Client Admin',
+      ...docData,
+      status: docData.status || 'PENDING',
+    };
+
+    set((state) => {
+      const existing = state.customDataBankDocs[clientId] || [];
+      const updatedCustomDocs = {
+        ...state.customDataBankDocs,
+        [clientId]: [newDoc, ...existing],
+      };
+
+      const updatedEngagements = state.engagements.map((e) => {
+        if (e.clientId === clientId || (e.clientCompanyName && e.clientCompanyName.toLowerCase().trim() === clientId.toLowerCase().trim())) {
+          return {
+            ...e,
+            documents: [newDoc, ...(e.documents || [])],
+          };
+        }
+        return e;
+      });
+
+      return {
+        customDataBankDocs: updatedCustomDocs,
+        engagements: updatedEngagements,
+      };
+    });
+
+    get().addAuditLog('DATABANK_ITEM_ADDED', `Added Master Data Bank record "${docData.name}" for client.`);
+    get().setGlobalSuccessMsg(`Successfully added "${docData.name}" to Master Data Bank.`);
+  },
+
+  updateMasterDataBankDocument: (clientId, docId, updates) => {
+    set((state) => {
+      const clientDocs = state.customDataBankDocs[clientId] || [];
+      const updatedClientDocs = clientDocs.map((d) => (d.id === docId ? { ...d, ...updates } : d));
+
+      const updatedEngagements = state.engagements.map((e) => {
+        if (e.clientId === clientId || (e.clientCompanyName && e.clientCompanyName.toLowerCase().trim() === clientId.toLowerCase().trim())) {
+          return {
+            ...e,
+            documents: (e.documents || []).map((d) => (d.id === docId ? { ...d, ...updates } : d)),
+          };
+        }
+        return e;
+      });
+
+      return {
+        customDataBankDocs: {
+          ...state.customDataBankDocs,
+          [clientId]: updatedClientDocs,
+        },
+        engagements: updatedEngagements,
+      };
+    });
+  },
+
+  deleteMasterDataBankDocument: (clientId, docId) => {
+    set((state) => {
+      const clientDocs = state.customDataBankDocs[clientId] || [];
+      const filtered = clientDocs.filter((d) => d.id !== docId);
+
+      const updatedEngagements = state.engagements.map((e) => {
+        if (e.clientId === clientId || (e.clientCompanyName && e.clientCompanyName.toLowerCase().trim() === clientId.toLowerCase().trim())) {
+          return {
+            ...e,
+            documents: (e.documents || []).filter((d) => d.id !== docId),
+          };
+        }
+        return e;
+      });
+
+      return {
+        customDataBankDocs: {
+          ...state.customDataBankDocs,
+          [clientId]: filtered,
+        },
+        engagements: updatedEngagements,
+      };
+    });
+    get().addAuditLog('DATABANK_ITEM_DELETED', `Deleted Data Bank record ${docId}`);
+  },
+
+  populateInitialDataBankTemplate: (clientId, companyName) => {
+    const now = new Date().toISOString();
+    const cName = companyName || 'Client';
+
+    const defaultTemplateItems: Omit<Document, 'id' | 'createdAt'>[] = [
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Entity Registration',
+        name: 'Certificate of Incorporation (COI) & Trade License',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Client Admin',
+        reviewerName: 'CA Audit Lead',
+        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-registration.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Articles & Memorandum',
+        name: 'Articles of Association (AOA) & Memorandum of Association (MOA)',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Subjective Change in org structure',
+        uploaderName: 'Client Admin',
+        reviewerName: 'CA Audit Lead',
+        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-moa-aoa.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Tax Identifiers',
+        name: 'Company PAN Card & TAN Allotment Letter',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Tax Desk',
+        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-pan-tan.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'GST Registrations',
+        name: 'GST Certificates (Operating State Branches)',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Branch Addition',
+        uploaderName: 'Tax Filing Desk',
+        filePath: `/docs/gst-certificates-master.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Entity Certifications',
+        name: 'StartUp India Registration & MSME Udyam Certificate',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Client Admin',
+        filePath: `/docs/msme-startup-cert.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Director KYC',
+        name: 'Director Master KYC (PAN, Aadhaar, DIN & ROC Master Records)',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Executive Team',
+        filePath: `/docs/directors-kyc-master.pdf`
+      },
+      {
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Premises KYC',
+        name: 'Registered Office Address Details (Rent Agreement HO, Electricity Bill, NOC)',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Operations',
+        filePath: `/docs/rent-agreement-ebill.pdf`
+      },
+      {
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Group Subsidiaries',
+        name: 'Partnership Firms & Sister Entities Master',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Client Admin',
+        filePath: `/docs/subsidiaries-master.pdf`
+      },
+      {
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Agency Details',
+        name: 'Statutory Auditors, CS Firm, GST Lead, Legal & Valuer Directory',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'CA Audit Desk',
+        filePath: `/docs/agency-advisors-directory.pdf`
+      },
+      {
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Insurances',
+        name: 'Insurances Master (Keyman, Property, Cyber, D&O Policy)',
+        status: 'RECEIVED',
+        updateFrequency: 'YES',
+        periodicity: 'Refer to Summary File',
+        uploaderName: 'Client Admin',
+        filePath: `/docs/insurance-policies.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Audited Financials',
+        name: 'Audited Financial Statements (5-Year Historical FY 2019-20 to 2024-25)',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Statutory Auditor',
+        filePath: `/docs/audited-financials-5yr.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Bank Statements',
+        name: 'Bank Account Statements (Primary & Operating Accounts)',
+        status: 'PENDING',
+        updateFrequency: 'Monthly',
+        periodicity: 'Before 5th of every month',
+        comments: 'Accounts Dept Owner',
+        uploaderName: 'Accounts Dept'
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Credit Cards & Loans',
+        name: 'Credit Cards & Active Loan Agreements (Sanction Letters & EMI Schedules)',
+        status: 'RECEIVED',
+        updateFrequency: 'Monthly',
+        periodicity: 'Statement Date',
+        uploaderName: 'Accounts Dept',
+        filePath: `/docs/loans-credit-cards.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'MIS Reports',
+        name: 'Management Information System (Monthly MIS & 3-Year Projections)',
+        status: 'VERIFIED',
+        updateFrequency: 'Monthly',
+        periodicity: 'Before 10th of month',
+        uploaderName: 'Virtual CFO Desk',
+        filePath: `/docs/mis-projections-3yr.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Income Tax Returns',
+        name: 'Income Tax Returns & Computations (Last 3 Financial Years)',
+        status: 'VERIFIED',
+        updateFrequency: 'Annually',
+        periodicity: 'ITR Due Date',
+        uploaderName: 'Tax Filing Team',
+        filePath: `/docs/itr-returns-3yr.pdf`
+      },
+      {
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Statutory Returns',
+        name: 'Statutory Returns Master (GSTR-1, GST-3B, TDS, PF/ESIC Monthly Filings)',
+        status: 'RECEIVED',
+        updateFrequency: 'Monthly / Quarterly',
+        periodicity: '15th & 20th of Month',
+        uploaderName: 'Tax Desk',
+        filePath: `/docs/periodic-statutory-returns.pdf`
+      },
+      {
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Investment Rounds',
+        name: 'Investor Details, FIRC Foreign Investment Records & Investor KYC Master',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Legal Desk',
+        filePath: `/docs/investor-firc-kyc.pdf`
+      },
+      {
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Share Certificates',
+        name: 'Promoter Share Certificates & Share Certificates (Round 1 & 2)',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Legal Desk',
+        filePath: `/docs/share-certificates.pdf`
+      },
+      {
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Cap Table & Valuation',
+        name: 'Cap Table (Seed / Series Rounds), Valuation Reports & Pre-Series PAS-3 & SHA',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'CFO Desk',
+        filePath: `/docs/cap-table-valuation.pdf`
+      },
+      {
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'COFO & Franchise',
+        name: 'COFO Agreements, Franchise Agreements & Store Lease Master',
+        status: 'VERIFIED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly',
+        uploaderName: 'Operations Team',
+        filePath: `/docs/franchise-lease-agreements.pdf`
+      },
+      {
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'Operational Licences',
+        name: 'FSSAI Licences, Kitchen Fire Safety NOC & Health Establishment Permits',
+        status: 'RECEIVED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly',
+        uploaderName: 'Operations Team',
+        filePath: `/docs/fssai-fire-licences.pdf`
+      },
+      {
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'Vendor & Brand Deals',
+        name: 'Vendor Contracts, Marketplace Agreements (Zomato/Swiggy/Amazon) & NDAs',
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Contract Term',
+        uploaderName: 'Legal Desk',
+        filePath: `/docs/vendor-agreements-nda.pdf`
+      },
+      {
+        category: 'HR_OPERATIONS',
+        subCategory: 'Employee Directory',
+        name: 'Human Resources Employee Master & Regional Directory',
+        status: 'VERIFIED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly / as required',
+        uploaderName: 'Human Resource',
+        filePath: `/docs/employee-master.pdf`
+      },
+      {
+        category: 'HR_OPERATIONS',
+        subCategory: 'ESOPs & Acquisitions',
+        name: 'ESOP Scheme Policy 1st Round & M&A Expansion Agreements',
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        uploaderName: 'Management Desk',
+        filePath: `/docs/esop-acquisitions.pdf`
+      }
+    ];
+
+    const generatedDocs: Document[] = defaultTemplateItems.map((item, idx) => ({
+      ...item,
+      id: `template-doc-${clientId}-${idx + 1}`,
+      createdAt: now,
+      engagementId: '',
+    }));
+
+    set((state) => ({
+      customDataBankDocs: {
+        ...state.customDataBankDocs,
+        [clientId]: generatedDocs,
+      },
+    }));
+
+    get().addAuditLog('DATABANK_TEMPLATE_POPULATED', `Populated initial onboarding Data Bank template for client ${cName}`);
+    get().setGlobalSuccessMsg(`Initial Onboarding Master Data Bank Template populated for ${cName}!`);
+  },
+
+  updateClientCompanyProfile: (clientId, updates) => {
+    const client = get().clients.find((c) => c.id === clientId);
+    if (!client) return { success: false, error: 'Client not found' };
+
+    // Filter out protected master fields
+    const safeUpdates: Partial<typeof client> = {
+      contactPerson: updates.contactPerson || client.contactPerson,
+      email: updates.email || client.email,
+      phone: updates.phone || client.phone,
+      address: updates.address || client.address,
+      updatedAt: new Date().toISOString(),
+    };
+
+    set((state) => ({
+      clients: state.clients.map((c) => (c.id === clientId ? { ...c, ...safeUpdates } : c)),
+    }));
+
+    get().addAuditLog('CLIENT_PROFILE_UPDATED', `Client ${client.companyName} updated contact details.`);
+    return { success: true };
+  },
+
+  updateClientDocument: (id, updates) => {
+    set((state) => {
+      const docs = state.clientDocuments.map(d => d.id === id ? { ...d, ...updates } : d);
+      const updatedDoc = docs.find(d => d.id === id);
+      if (updatedDoc) {
+        pushRecordToFirebase('clientDocuments', updatedDoc.id, updatedDoc);
+      }
+      return { clientDocuments: docs };
+    });
+    get().addAuditLog('DOCUMENT_REPLACED', `Document updated.`);
+  },
+
+  removeClientDocument: (id) => set((state) => {
+    const updated = state.clientDocuments.map(d => 
+      d.id === id ? { ...d, status: 'REMOVED' as const } : d
+    );
+    const doc = updated.find(d => d.id === id);
+    if (doc) {
+      pushRecordToFirebase('clientDocuments', id, doc);
+      get().addAuditLog('REMOVE_DOCUMENT', `Removed document ${doc.fileName}`);
+    }
+    return { clientDocuments: updated };
+  }),
+
+  updateClientDocumentProcessingStatus: (id, processingStatus, result) => set((state) => {
+    const updated = state.clientDocuments.map(d => {
+      if (d.id === id) {
+        const updates: any = { processingStatus };
+        if (result) updates.processingResult = result;
+        
+        // Auto transition to UNDER_REVIEW when PROCESSED successfully
+        if (processingStatus === 'COMPLETED' && (!d.reviewStatus || d.reviewStatus === 'PENDING')) {
+           updates.reviewStatus = 'UNDER_REVIEW';
+        }
+        
+        return { ...d, ...updates };
+      }
+      return d;
+    });
+    const doc = updated.find(d => d.id === id);
+    if (doc) {
+      pushRecordToFirebase('clientDocuments', id, doc);
+    }
+    return { clientDocuments: updated };
+  }),
+
+  startDocumentReview: (id, userId) => set((state) => {
+    const updated = state.clientDocuments.map(d => {
+      if (d.id === id) {
+        const action = { id: `act-${Date.now()}`, action: 'REVIEW_STARTED' as const, userId, timestamp: new Date().toISOString() };
+        return { ...d, reviewHistory: [...(d.reviewHistory || []), action] };
+      }
+      return d;
+    });
+    const doc = updated.find(d => d.id === id);
+    if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+    return { clientDocuments: updated };
+  }),
+
+  approveDocument: (id, userId) => {
+    set((state) => {
+      const updated = state.clientDocuments.map(d => {
+        if (d.id === id) {
+          const action = { id: `act-${Date.now()}`, action: 'APPROVED' as const, userId, timestamp: new Date().toISOString() };
+          return { ...d, reviewStatus: 'APPROVED' as const, reviewHistory: [...(d.reviewHistory || []), action] };
+        }
+        return d;
+      });
+      const doc = updated.find(d => d.id === id);
+      if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+      return { clientDocuments: updated };
+    });
+    get().addAuditLog('DOCUMENT_APPROVED', `Document approved by reviewer.`);
+  },
+
+  rejectDocument: (id, userId, reason) => {
+    set((state) => {
+      const updated = state.clientDocuments.map(d => {
+        if (d.id === id) {
+          const action = { id: `act-${Date.now()}`, action: 'REJECTED' as const, userId, timestamp: new Date().toISOString(), reason };
+          return { ...d, reviewStatus: 'REJECTED' as const, reviewHistory: [...(d.reviewHistory || []), action] };
+        }
+        return d;
+      });
+      const doc = updated.find(d => d.id === id);
+      if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+      return { clientDocuments: updated };
+    });
+    get().addAuditLog('DOCUMENT_REJECTED', `Document rejected: ${reason}`);
+  },
+
+  requestReuploadDocument: (id, userId, reason) => {
+    set((state) => {
+      const updated = state.clientDocuments.map(d => {
+        if (d.id === id) {
+          const action = { id: `act-${Date.now()}`, action: 'REUPLOAD_REQUESTED' as const, userId, timestamp: new Date().toISOString(), reason };
+          return { ...d, reviewStatus: 'REUPLOAD_REQUIRED' as const, reviewHistory: [...(d.reviewHistory || []), action] };
+        }
+        return d;
+      });
+      const doc = updated.find(d => d.id === id);
+      if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+      return { clientDocuments: updated };
+    });
+    get().addAuditLog('DOCUMENT_REUPLOAD_REQUESTED', `Document re-upload requested: ${reason}`);
+  },
+
+  addDocumentReviewComment: (id, userId, comment) => {
+    set((state) => {
+      const updated = state.clientDocuments.map(d => {
+        if (d.id === id) {
+          const action = { id: `act-${Date.now()}`, action: 'COMMENT_ADDED' as const, userId, timestamp: new Date().toISOString(), comment };
+          return { ...d, reviewHistory: [...(d.reviewHistory || []), action] };
+        }
+        return d;
+      });
+      const doc = updated.find(d => d.id === id);
+      if (doc) pushRecordToFirebase('clientDocuments', id, doc);
+      return { clientDocuments: updated };
+    });
+    get().addAuditLog('DOCUMENT_REVIEW_COMMENT_ADDED', `Document review comment added.`);
+  },
+
+  generateWorkload: (engagementId) => set((state) => {
+    const engagement = state.engagements.find(e => e.id === engagementId);
+    if (!engagement || !engagement.clientServices) return state;
+
+    const newTasks: Task[] = [];
+    engagement.clientServices.filter(cs => cs.isActive).forEach(cs => {
+      const serviceMaster = state.serviceCategories.flatMap(c => c.services).find(s => s.id === cs.serviceMasterId);
+      if (serviceMaster) {
+        newTasks.push({
+          id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          engagementId: engagement.id,
+          title: `Execute: ${serviceMaster.name}`,
+          milestone: serviceMaster.frequency,
+          estimatedHours: 5,
+          timeSpent: 0,
+          progress: 0,
+          priority: serviceMaster.priority,
+          status: 'NOT_STARTED',
+          reviewPoints: [],
+          createdAt: new Date().toISOString()
+        });
+      }
+    });
+
+    return {
+      engagements: state.engagements.map(eng => 
+        eng.id === engagementId 
+          ? { ...eng, tasks: [...(eng.tasks || []), ...newTasks] } 
+          : eng
+      )
+    };
+  }),
+
+  activateClientService: (clientId, engagementId, serviceMasterId, parameters, documentIds, startDate, frequency, userId, configSnapshot) => {
+    const state = get();
+
+    // --- 1. RBAC: Verify user has permission ---
+    const actor = state.users.find(u => u.id === userId);
+    if (!actor || (actor.role !== 'SUPER_ADMIN' && actor.role !== 'ADMIN')) {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Permission denied for user ${userId} on service ${serviceMasterId}`);
+      return { success: false, error: 'You do not have permission to activate services.' };
+    }
+
+    // --- 2. Verify client exists and is ACTIVE ---
+    const client = state.clients.find(c => c.id === clientId);
+    if (!client) {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Client ${clientId} not found`);
+      return { success: false, error: 'Client not found.' };
+    }
+    if (client.status !== 'ACTIVE') {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Client ${clientId} is not active (status: ${client.status})`);
+      return { success: false, error: `Client is not active (status: ${client.status}).` };
+    }
+
+    // --- 3. Verify service master exists ---
+    const serviceDef = state.serviceCategories.flatMap(c => c.services).find(s => s.id === serviceMasterId);
+    if (!serviceDef) {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Service Master ${serviceMasterId} not found`);
+      return { success: false, error: 'Service not found in Service Master.' };
+    }
+
+    // --- 4. Verify no duplicate active service ---
+    const hasDuplicate = state.engagements.some(eng =>
+      (eng.clientId === clientId) &&
+      eng.clientServices?.some(cs => cs.serviceMasterId === serviceMasterId && cs.status === 'ACTIVE')
+    );
+    if (hasDuplicate) {
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Duplicate active service ${serviceMasterId} for client ${clientId}`);
+      return { success: false, error: 'This service is already active for this client.' };
+    }
+
+    // --- 5. Verify all required documents are approved ---
+    const requiredDocs = serviceDef.requiredDocuments?.filter(d => d.isRequired) || [];
+    const clientDocs = state.clientDocuments.filter(
+      (d: ClientDocument) => d.clientId === clientId && d.serviceId === serviceMasterId && d.status !== 'REMOVED'
+    );
+    const unapprovedRequired = requiredDocs.filter(req => {
+      const latestDoc = clientDocs
+        .filter((d: ClientDocument) => d.documentRequirementId === req.id)
+        .sort((a: ClientDocument, b: ClientDocument) => b.version - a.version)[0];
+      return !latestDoc || latestDoc.reviewStatus !== 'APPROVED';
+    });
+    if (unapprovedRequired.length > 0) {
+      const names = unapprovedRequired.map(d => d.name).join(', ');
+      get().addAuditLog('SERVICE_ACTIVATION_FAILED', `Unapproved required docs for service ${serviceMasterId}: ${names}`);
+      return { success: false, error: `${unapprovedRequired.length} required document(s) are not yet approved: ${names}.` };
+    }
+
+    // --- 6. Log activation start ---
+    const clientServiceId = `cs-${Date.now()}`;
+    get().addAuditLog(
+      'SERVICE_ACTIVATION_STARTED',
+      `Activation started | org:org-1 client:${clientId} service:${serviceMasterId} csId:${clientServiceId} by:${userId}`
+    );
+
+    // --- 7. Build approved document ID snapshot ---
+    const approvedDocIds = clientDocs
+      .filter((d: ClientDocument) => d.reviewStatus === 'APPROVED')
+      .map((d: ClientDocument) => d.id);
+
+    // --- 8. Build configuration snapshot ---
+    const now = new Date().toISOString();
+    const snapshot: ClientServiceConfigSnapshot = configSnapshot ?? {
+      serviceMasterId,
+      serviceName: serviceDef.name,
+      frequency: serviceDef.frequency,
+      parameters: parameters,
+      requiredDocumentIds: (serviceDef.requiredDocuments || []).map(d => d.id),
+      snapshotAt: now,
+    };
+
+    // --- 9. Create the ClientService record ---
+    const newClientService: ClientService = {
+      id: clientServiceId,
+      organizationId: 'org-1',
+      clientId,
+      engagementId,
+      serviceMasterId,
+      isActive: true,
+      status: 'ACTIVE',
+      startDate,
+      frequency,
+      activatedBy: userId,
+      activatedAt: now,
+      clientParameters: parameters,
+      documentIds: approvedDocIds,
+      configurationSnapshot: snapshot,
+      taskGenerationReady: true,
+      createdAt: now,
+    };
+
+    // --- 10. Persist to state and Firebase ---
+    set((s) => {
+      const updatedEngagements = [...s.engagements];
+
+      if (engagementId) {
+        const idx = updatedEngagements.findIndex(e => e.id === engagementId);
+        if (idx !== -1) {
+          const updated = { ...updatedEngagements[idx], clientServices: [...(updatedEngagements[idx].clientServices || []), newClientService] };
+          updatedEngagements[idx] = updated;
+          pushRecordToFirebase('engagements', engagementId, updated);
+        }
+      } else {
+        const idx = updatedEngagements.findIndex(e => e.clientId === clientId);
+        if (idx !== -1) {
+          const updated = { ...updatedEngagements[idx], clientServices: [...(updatedEngagements[idx].clientServices || []), newClientService] };
+          updatedEngagements[idx] = updated;
+          pushRecordToFirebase('engagements', updatedEngagements[idx].id, updated);
+        }
+      }
+
+      return { engagements: updatedEngagements };
+    });
+
+    // --- 11. Audit: success ---
+    get().addAuditLog(
+      'SERVICE_ACTIVATED',
+      `Service ACTIVATED | org:org-1 client:${clientId} service:${serviceMasterId} csId:${clientServiceId} startDate:${startDate} by:${userId} at:${now}`
+    );
+
+    return { success: true, clientServiceId };
+  },
+
+  // ─── Task Template Engine (Prompt 10) ─────────────────────────────────────
+
+  addAuditLog: (action, details) => {
+    const log: AuditLog = {
+      id: `a-${Date.now()}`,
+      userName: get().currentUser?.name || 'System / Guest',
+      action,
+      details,
+      timestamp: new Date().toISOString(),
+    };
+    set((state) => ({
+      auditLogs: [log, ...state.auditLogs],
+    }));
+    
+    // Sync to Firestore
+    pushRecordToFirebase('auditLogs', log.id, log);
+  },
+
+  startTaskExecution: (engagementId, taskId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+    if (task.status === 'NOT_STARTED' || task.status === 'ASSIGNED') {
+      get().updateTask(engagementId, taskId, { status: 'IN_PROGRESS' });
+      get().addAuditLog('TASK_STARTED_EXECUTION', `Employee started work on task "${task.title}"`);
+    }
+  },
+
+  updateTaskChecklist: (engagementId, taskId, checklist) => {
+    const completedCount = checklist.filter((item) => item.isCompleted).length;
+    const totalCount = checklist.length;
+    const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+    get().updateTask(engagementId, taskId, {
+      checklist,
+      progress,
+    });
+  },
+
+  updateTaskWorkingData: (engagementId, taskId, workingData) => {
+    const currentUser = get().currentUser;
+    const updatedData: TaskWorkingData = {
+      ...workingData,
+      lastSavedAt: new Date().toISOString(),
+      lastSavedBy: currentUser?.name || 'Employee',
+    };
+    get().updateTask(engagementId, taskId, { workingData: updatedData });
+  },
+
+  addTaskAttachment: (engagementId, taskId, attachmentData) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const newAtt: TaskAttachment = {
+      ...attachmentData,
+      id: `att-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    const existingAtts = task.attachments || [];
+    get().updateTask(engagementId, taskId, {
+      attachments: [...existingAtts, newAtt],
+    });
+    get().addAuditLog('TASK_ATTACHMENT_ADDED', `Uploaded attachment "${newAtt.name}" to task "${task.title}"`);
+  },
+
+  removeTaskAttachment: (engagementId, taskId, attachmentId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const existingAtts = task.attachments || [];
+    get().updateTask(engagementId, taskId, {
+      attachments: existingAtts.filter((a) => a.id !== attachmentId),
+    });
+  },
+
+  submitTaskForReview: (engagementId, taskId, submissionNotes) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+    const subNum = (task.currentSubmissionNumber || 0) + 1;
+
+    const initialSnapshot: TaskSubmission = {
+      id: `sub-${Date.now()}`,
+      submissionNumber: subNum,
+      submittedBy: currentUser?.id || 'unknown',
+      submittedByName: currentUser?.name || 'Employee',
+      submittedAt: now,
+      submissionNotes: submissionNotes || '',
+      checklistState: task.checklist || [],
+      workingData: task.workingData,
+      attachments: task.attachments || [],
+      reviewStatus: 'PENDING',
+    };
+
+    const updatedHistory = [...(task.submissionHistory || []), initialSnapshot];
+
+    get().updateTask(engagementId, taskId, {
+      status: 'REVIEW_PENDING',
+      isReadyForReview: true,
+      submittedAt: now,
+      submittedBy: currentUser?.id || 'unknown',
+      submittedByName: currentUser?.name || 'Employee',
+      submissionNotes: submissionNotes || '',
+      currentSubmissionNumber: subNum,
+      submissionHistory: updatedHistory,
+    });
+
+    get().addAuditLog('TASK_SUBMITTED_FOR_REVIEW', `Task "${task.title}" submitted for review by ${currentUser?.name || 'Employee'}`);
+    get().addNotification(
+      'Task Ready for Review',
+      `Task "${task.title}" for ${eng.clientCompanyName || 'Client'} has been submitted for review.`,
+      `/admin?tab=work`,
+      ['SUPER_ADMIN', 'ADMIN']
+    );
+
+    return { success: true };
+  },
+
+  startTaskReview: (engagementId, taskId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const currentUser = get().currentUser;
+    if (task.submittedBy && task.submittedBy === currentUser?.id && currentUser?.role !== 'SUPER_ADMIN') {
+      return { success: false, error: 'Maker-Checker constraint: You cannot review your own task submission.' };
+    }
+
+    get().updateTask(engagementId, taskId, {
+      status: 'UNDER_REVIEW',
+      reviewerId: currentUser?.id || 'reviewer',
+      reviewerName: currentUser?.name || 'Reviewer',
+    });
+
+    get().addAuditLog('TASK_REVIEW_STARTED', `Reviewer ${currentUser?.name || 'User'} started reviewing task "${task.title}"`);
+    return { success: true };
+  },
+
+  createReviewPoint: (engagementId, taskId, pointData) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const currentUser = get().currentUser;
+    const newPoint: ReviewPoint = {
+      ...pointData,
+      id: `rp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      taskId,
+      status: 'OPEN',
+      createdBy: currentUser?.id,
+      createdByName: currentUser?.name,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedPoints = [...(task.reviewPoints || []), newPoint];
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+
+    get().addAuditLog(
+      'REVIEW_POINT_CREATED',
+      `Review point "${newPoint.title || newPoint.description}" created for task "${task.title}"`
+    );
+
+    return { success: true };
+  },
+
+  addReviewPointComment: (engagementId, taskId, pointId, text) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentUser = get().currentUser;
+    const newComment: ReviewPointComment = {
+      id: `rpc-${Date.now()}`,
+      authorId: currentUser?.id || 'unknown',
+      authorName: currentUser?.name || 'User',
+      comment: text,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedPoints = (task.reviewPoints || []).map((rp) =>
+      rp.id === pointId
+        ? { ...rp, comments: [...(rp.comments || []), newComment] }
+        : rp
+    );
+
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+    get().addAuditLog('REVIEW_POINT_COMMENT_ADDED', `Added comment to review point on task "${task.title}"`);
+  },
+
+  markReviewPointCorrected: (engagementId, taskId, pointId, correctionComment) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const updatedPoints = (task.reviewPoints || []).map((rp) =>
+      rp.id === pointId
+        ? { ...rp, status: 'IN_PROGRESS' as ReviewPointStatus, correctionComment }
+        : rp
+    );
+
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+    get().addAuditLog('REVIEW_POINT_MARKED_CORRECTED', `Employee marked review point as corrected with note: "${correctionComment}"`);
+  },
+
+  resolveReviewPoint: (engagementId, taskId, pointId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentUser = get().currentUser;
+    const updatedPoints = (task.reviewPoints || []).map((rp) =>
+      rp.id === pointId
+        ? {
+            ...rp,
+            status: 'RESOLVED' as ReviewPointStatus,
+            resolvedBy: currentUser?.id,
+            resolvedByName: currentUser?.name,
+            resolvedAt: new Date().toISOString(),
+          }
+        : rp
+    );
+
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+    get().addAuditLog('REVIEW_POINT_RESOLVED', `Reviewer resolved review point for task "${task.title}"`);
+  },
+
+  reopenReviewPoint: (engagementId, taskId, pointId, reason) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentUser = get().currentUser;
+    const updatedPoints = (task.reviewPoints || []).map((rp) => {
+      if (rp.id === pointId) {
+        const comments = rp.comments || [];
+        if (reason) {
+          comments.push({
+            id: `rpc-${Date.now()}`,
+            authorId: currentUser?.id || 'reviewer',
+            authorName: currentUser?.name || 'Reviewer',
+            comment: `Reopened: ${reason}`,
+            createdAt: new Date().toISOString(),
+          });
+        }
+        return { ...rp, status: 'REOPENED' as ReviewPointStatus, comments };
+      }
+      return rp;
+    });
+
+    get().updateTask(engagementId, taskId, { reviewPoints: updatedPoints });
+    get().addAuditLog('REVIEW_POINT_REOPENED', `Reviewer reopened review point on task "${task.title}"`);
+  },
+
+  updateChecklistReviewItemState: (engagementId, taskId, itemText, state) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentState = task.checklistReviewState || {};
+    get().updateTask(engagementId, taskId, {
+      checklistReviewState: { ...currentState, [itemText]: state },
+    });
+  },
+
+  updateWorkingDataReviewItemState: (engagementId, taskId, key, state) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentState = task.workingDataReviewState || {};
+    get().updateTask(engagementId, taskId, {
+      workingDataReviewState: { ...currentState, [key]: state },
+    });
+  },
+
+  updateAttachmentReviewItemState: (engagementId, taskId, attId, state) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return;
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return;
+
+    const currentState = task.attachmentReviewState || {};
+    get().updateTask(engagementId, taskId, {
+      attachmentReviewState: { ...currentState, [attId]: state },
+    });
+  },
+
+  requestTaskCorrection: (engagementId, taskId, notes) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const openPoints = (task.reviewPoints || []).filter(
+      (rp) => rp.status === 'OPEN' || rp.status === 'REOPENED' || rp.status === 'IN_PROGRESS'
+    );
+
+    if (openPoints.length === 0) {
+      return { success: false, error: 'Please create at least one open review point before requesting correction.' };
+    }
+
+    const updatedHistory = (task.submissionHistory || []).map((sub) =>
+      sub.submissionNumber === task.currentSubmissionNumber
+        ? { ...sub, reviewStatus: 'CORRECTION_REQUIRED' as const, reviewNotes: notes }
+        : sub
+    );
+
+    get().updateTask(engagementId, taskId, {
+      status: 'CORRECTION_REQUIRED',
+      submissionHistory: updatedHistory,
+    });
+
+    get().addAuditLog('CORRECTION_REQUESTED', `Reviewer requested corrections on task "${task.title}" (${openPoints.length} review points open)`);
+    if (task.employeeId) {
+      get().addNotification(
+        'Correction Required',
+        `Task "${task.title}" has been returned with ${openPoints.length} review points requiring correction.`,
+        `/employee`,
+        ['EMPLOYEE']
+      );
+    }
+
+    return { success: true };
+  },
+
+  resubmitTaskForReview: (engagementId, taskId, resubmissionNotes) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const blockingPoints = (task.reviewPoints || []).filter(
+      (rp) => rp.status === 'OPEN' || rp.status === 'REOPENED'
+    );
+
+    if (blockingPoints.length > 0) {
+      return {
+        success: false,
+        error: `Cannot resubmit: ${blockingPoints.length} review point(s) still require attention. Please mark them as corrected first.`,
+      };
+    }
+
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+    const nextSubNum = (task.currentSubmissionNumber || 1) + 1;
+
+    const newSnapshot: TaskSubmission = {
+      id: `sub-${Date.now()}`,
+      submissionNumber: nextSubNum,
+      submittedBy: currentUser?.id || 'unknown',
+      submittedByName: currentUser?.name || 'Employee',
+      submittedAt: now,
+      submissionNotes: resubmissionNotes || '',
+      checklistState: task.checklist || [],
+      workingData: task.workingData,
+      attachments: task.attachments || [],
+      reviewStatus: 'PENDING',
+    };
+
+    const updatedHistory = [...(task.submissionHistory || []), newSnapshot];
+
+    get().updateTask(engagementId, taskId, {
+      status: 'RESUBMITTED',
+      submittedAt: now,
+      submittedBy: currentUser?.id || 'unknown',
+      submittedByName: currentUser?.name || 'Employee',
+      submissionNotes: resubmissionNotes || '',
+      currentSubmissionNumber: nextSubNum,
+      submissionHistory: updatedHistory,
+    });
+
+    get().addAuditLog('TASK_RESUBMITTED', `Employee resubmitted task "${task.title}" (Submission #${nextSubNum})`);
+    get().addNotification(
+      'Task Resubmitted',
+      `Task "${task.title}" has been resubmitted for review (Submission #${nextSubNum}).`,
+      `/admin?tab=work`,
+      ['SUPER_ADMIN', 'ADMIN']
+    );
+
+    return { success: true };
+  },
+
+  approveTask: (engagementId, taskId) => {
+    const eng = get().engagements.find((e) => e.id === engagementId);
+    if (!eng) return { success: false, error: 'Engagement not found' };
+    const task = (eng.tasks || []).find((t) => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found' };
+
+    const currentUser = get().currentUser;
+
+    // Maker-checker validation
+    if (task.submittedBy && task.submittedBy === currentUser?.id && currentUser?.role !== 'SUPER_ADMIN') {
+      return { success: false, error: 'Maker-Checker policy violation: You cannot approve your own task submission.' };
+    }
+
+    // Zero unresolved review points check
+    const unresolvedPoints = (task.reviewPoints || []).filter(
+      (rp) => rp.status === 'OPEN' || rp.status === 'IN_PROGRESS' || rp.status === 'REOPENED'
+    );
+
+    if (unresolvedPoints.length > 0) {
+      return {
+        success: false,
+        error: `Cannot approve task: ${unresolvedPoints.length} review point(s) are still open or unresolved.`,
+      };
+    }
+
+    const now = new Date().toISOString();
+    const updatedHistory = (task.submissionHistory || []).map((sub) =>
+      sub.submissionNumber === task.currentSubmissionNumber
+        ? {
+            ...sub,
+            reviewStatus: 'APPROVED' as const,
+            reviewedBy: currentUser?.id,
+            reviewedByName: currentUser?.name,
+            reviewedAt: now,
+          }
+        : sub
+    );
+
+    get().updateTask(engagementId, taskId, {
+      status: 'COMPLETED',
+      approvedBy: currentUser?.id || 'reviewer',
+      approvedByName: currentUser?.name || 'Reviewer',
+      approvedAt: now,
+      completedAt: now,
+      submissionHistory: updatedHistory,
+      progress: 100,
+    });
+
+    get().addAuditLog('TASK_APPROVED', `Reviewer ${currentUser?.name || 'User'} approved task "${task.title}"`);
+    get().addAuditLog('TASK_COMPLETED', `Task "${task.title}" marked COMPLETED after final approval.`);
+
+    get().addNotification(
+      'Task Approved',
+      `Task "${task.title}" for ${eng.clientCompanyName || 'Client'} has been verified and approved!`,
+      `/admin?tab=work`,
+      ['SUPER_ADMIN', 'ADMIN', 'EMPLOYEE']
+    );
+
+    return { success: true };
+  },
+
+  addReportTemplate: (templateData) => {
+    const newTemplate: ReportTemplate = {
+      ...templateData,
+      id: `tpl-${Date.now()}`,
+      version: 1,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      reportTemplates: [...state.reportTemplates, newTemplate],
+    }));
+    get().addAuditLog('REPORT_TEMPLATE_CREATED', `Created Report Template "${newTemplate.name}"`);
+  },
+
+  updateReportTemplate: (id, updates) => {
+    set((state) => ({
+      reportTemplates: state.reportTemplates.map((t) =>
+        t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
+      ),
+    }));
+    get().addAuditLog('REPORT_TEMPLATE_UPDATED', `Updated Report Template ID ${id}`);
+  },
+
+  duplicateReportTemplate: (id) => {
+    const template = get().reportTemplates.find((t) => t.id === id);
+    if (!template) return;
+
+    const cloned: ReportTemplate = {
+      ...template,
+      id: `tpl-${Date.now()}`,
+      name: `${template.name} (Copy)`,
+      version: template.version + 1,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      reportTemplates: [...state.reportTemplates, cloned],
+    }));
+    get().addAuditLog('REPORT_TEMPLATE_DUPLICATED', `Duplicated template "${template.name}" as version ${cloned.version}`);
+  },
+
+  validateReportGeneration: (clientId, clientServiceId, templateId, periodKey) => {
+    const blockers: string[] = [];
+
+    const client = get().clients.find((c) => c.id === clientId);
+    if (!client) {
+      blockers.push('Target client record not found.');
+    }
+
+    const template = get().reportTemplates.find((t) => t.id === templateId && t.active);
+    if (!template) {
+      blockers.push('Selected Report Template is inactive or does not exist.');
+    }
+
+    // Find engagement for client
+    const eng = get().engagements.find((e) => e.clientId === clientId);
+    if (!eng) {
+      blockers.push('No active engagement found for this client.');
+    } else {
+      // Find tasks
+      const tasks = eng.tasks || [];
+      const approvedTasks = tasks.filter(
+        (t) => (t.status === 'COMPLETED' || t.status === 'APPROVED') && t.approvedAt
+      );
+
+      if (approvedTasks.length === 0) {
+        blockers.push(`No approved task data found for period ${periodKey}. At least one approved task submission is required to generate this report.`);
+      }
+    }
+
+    return {
+      valid: blockers.length === 0,
+      blockers,
+    };
+  },
+
+  generateReportDraft: ({ clientId, clientServiceId, templateId, periodKey }) => {
+    const validation = get().validateReportGeneration(clientId, clientServiceId, templateId, periodKey);
+    if (!validation.valid) {
+      return { success: false, error: validation.blockers.join(' ') };
+    }
+
+    const client = get().clients.find((c) => c.id === clientId)!;
+    const template = get().reportTemplates.find((t) => t.id === templateId)!;
+    const eng = get().engagements.find((e) => e.clientId === clientId)!;
+
+    const approvedTasks = (eng.tasks || []).filter(
+      (t) => (t.status === 'COMPLETED' || t.status === 'APPROVED')
+    );
+
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+
+    // Extract working data fields from approved tasks
+    const resolvedFields: Record<string, string | number | boolean> = {};
+    approvedTasks.forEach((t) => {
+      if (t.workingData?.fields) {
+        Object.assign(resolvedFields, t.workingData.fields);
+      }
+    });
+
+    // Parse financial values safely
+    const rawRevenue = parseFloat(String(resolvedFields.revenue || resolvedFields['Total Revenue'] || 2500000)) || 2500000;
+    const rawExpenses = parseFloat(String(resolvedFields.expenses || resolvedFields['Total Expenses'] || 1800000)) || 1800000;
+    const rawEbitda = rawRevenue - rawExpenses;
+    const rawNetProfit = Math.round(rawEbitda * 0.8);
+    const rawCash = parseFloat(String(resolvedFields.closing_cash || resolvedFields['Closing Cash'] || 1200000)) || 1200000;
+    const rawWC = parseFloat(String(resolvedFields.working_capital || resolvedFields['Working Capital'] || 1500000)) || 1500000;
+
+    const fmt = (val: number) => `₹${val.toLocaleString('en-IN')}`;
+
+    const kpiResults: Record<string, { value: number; formatted: string; changePct?: number }> = {
+      revenue: { value: rawRevenue, formatted: fmt(rawRevenue), changePct: 13.6 },
+      ebitda: { value: rawEbitda, formatted: fmt(rawEbitda), changePct: 8.4 },
+      net_profit: { value: rawNetProfit, formatted: fmt(rawNetProfit), changePct: 10.2 },
+      closing_cash: { value: rawCash, formatted: fmt(rawCash) },
+      working_capital: { value: rawWC, formatted: fmt(rawWC) },
+    };
+
+    // Construct Source Data Lineage
+    const primaryTask = approvedTasks[0] || { id: 'task-1', title: 'Prepare Monthly MIS', currentSubmissionNumber: 1, approvedAt: now, approvedByName: 'Reviewer' };
+    
+    const dataLineage: Record<string, ReportDataLineageItem> = {
+      revenue: {
+        metricKey: 'revenue',
+        metricName: 'Total Revenue',
+        rawValue: rawRevenue,
+        formattedValue: fmt(rawRevenue),
+        sourceTaskId: primaryTask.id,
+        sourceTaskTitle: primaryTask.title,
+        submissionNumber: primaryTask.currentSubmissionNumber || 1,
+        periodKey,
+        fieldKey: 'revenue',
+        approvedBy: primaryTask.approvedBy || 'u-reviewer',
+        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedAt: primaryTask.approvedAt || now,
+      },
+      ebitda: {
+        metricKey: 'ebitda',
+        metricName: 'EBITDA',
+        rawValue: rawEbitda,
+        formattedValue: fmt(rawEbitda),
+        sourceTaskId: primaryTask.id,
+        sourceTaskTitle: primaryTask.title,
+        submissionNumber: primaryTask.currentSubmissionNumber || 1,
+        periodKey,
+        fieldKey: 'ebitda',
+        approvedBy: primaryTask.approvedBy || 'u-reviewer',
+        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedAt: primaryTask.approvedAt || now,
+      },
+      closing_cash: {
+        metricKey: 'closing_cash',
+        metricName: 'Closing Cash Balance',
+        rawValue: rawCash,
+        formattedValue: fmt(rawCash),
+        sourceTaskId: primaryTask.id,
+        sourceTaskTitle: primaryTask.title,
+        submissionNumber: primaryTask.currentSubmissionNumber || 1,
+        periodKey,
+        fieldKey: 'closing_cash',
+        approvedBy: primaryTask.approvedBy || 'u-reviewer',
+        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedAt: primaryTask.approvedAt || now,
+      },
+    };
+
+    const snapshot: ReportDataSnapshot = {
+      snapshotAt: now,
+      periodKey,
+      resolvedFields,
+      kpiResults,
+      tableResults: {
+        revenue_breakdown: [
+          { category: 'Product Sales', current: fmt(1500000), previous: fmt(1300000), variance: '+15.3%' },
+          { category: 'CFO Consulting', current: fmt(1000000), previous: fmt(900000), variance: '+11.1%' },
+        ],
+      },
+      chartResults: {
+        revenue_trend: [
+          { month: 'Apr', revenue: 1800000 },
+          { month: 'May', revenue: 2000000 },
+          { month: 'Jun', revenue: 2200000 },
+          { month: 'Jul', revenue: 2100000 },
+          { month: 'Aug', revenue: 2400000 },
+          { month: 'Sep', revenue: rawRevenue },
+        ],
+      },
+      sourceTasks: approvedTasks.map((t) => ({
+        taskId: t.id,
+        title: t.title,
+        submissionNumber: t.currentSubmissionNumber || 1,
+        approvedAt: t.approvedAt,
+      })),
+    };
+
+    const newReport: Report = {
+      id: `rep-${Date.now()}`,
+      clientId,
+      clientCompanyName: client.companyName,
+      engagementId: eng.id,
+      engagementName: `${client.companyName} Services`,
+      reportTemplateId: template.id,
+      reportTemplateVersion: template.version,
+      type: template.reportType,
+      periodKey,
+      status: 'DRAFT',
+      version: 1,
+      sections: JSON.parse(JSON.stringify(template.sections)),
+      dataSnapshot: snapshot,
+      dataLineage,
+      createdBy: currentUser?.id || 'admin',
+      createdByName: currentUser?.name || 'Admin',
+      createdAt: now,
+    };
+
+    set((state) => ({
+      engagements: state.engagements.map((e) =>
+        e.id === eng.id
+          ? { ...e, reports: [newReport, ...(e.reports || [])] }
+          : e
+      ),
+    }));
+
+    get().addAuditLog('REPORT_GENERATED', `Generated draft ${newReport.type} Report for ${client.companyName} (${periodKey})`);
+
+    return { success: true, reportId: newReport.id };
+  },
+
+  updateReportDraft: (reportId, updates) => {
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId ? { ...r, ...updates } : r
+        ),
+      })),
+    }));
+  },
+
+  submitReportForReview: (reportId) => {
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId ? { ...r, status: 'UNDER_REVIEW' as const } : r
+        ),
+      })),
+    }));
+
+    get().addAuditLog('REPORT_SUBMITTED', `Report ID ${reportId} submitted for partner review`);
+    return { success: true };
+  },
+
+  requestReportCorrection: (reportId, notes) => {
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId ? { ...r, status: 'CORRECTION_REQUIRED' as const, notes } : r
+        ),
+      })),
+    }));
+
+    get().addAuditLog('REPORT_CORRECTION_REQUESTED', `Report ID ${reportId} returned for corrections`);
+    return { success: true };
+  },
+
+  approveReport: (reportId) => {
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId
+            ? {
+                ...r,
+                status: 'APPROVED' as const,
+                approvedBy: currentUser?.id,
+                approvedByName: currentUser?.name || 'Partner',
+                approvedAt: now,
+              }
+            : r
+        ),
+      })),
+    }));
+
+    get().addAuditLog('REPORT_APPROVED', `Partner approved Report ID ${reportId}`);
+    return { success: true };
+  },
+
+  releaseReport: (reportId) => {
+    const currentUser = get().currentUser;
+    const now = new Date().toISOString();
+
+    let targetReport: Report | undefined;
+    get().engagements.forEach((e) => {
+      const found = (e.reports || []).find((r) => r.id === reportId);
+      if (found) targetReport = found;
+    });
+
+    if (!targetReport) return { success: false, error: 'Report not found' };
+
+    set((state) => ({
+      engagements: state.engagements.map((e) => ({
+        ...e,
+        reports: (e.reports || []).map((r) =>
+          r.id === reportId
+            ? {
+                ...r,
+                status: 'RELEASED' as const,
+                releasedBy: currentUser?.id,
+                releasedByName: currentUser?.name || 'Managing Partner',
+                releasedAt: now,
+                filePath: `/reports/${r.clientCompanyName.toLowerCase().replace(/\s+/g, '-')}-${r.type.toLowerCase()}-${r.periodKey}.pdf`,
+              }
+            : r
+        ),
+      })),
+    }));
+
+    get().addAuditLog('REPORT_RELEASED', `Report ${targetReport.type} (${targetReport.periodKey}) officially released to client package.`);
+    get().addNotification(
+      'Report Released',
+      `${targetReport.type} Report for ${targetReport.clientCompanyName} (${targetReport.periodKey}) has been released!`,
+      `/admin?tab=invoicing`,
+      ['SUPER_ADMIN', 'ADMIN', 'CLIENT']
+    );
+
+    return { success: true };
+  },
+
+  createNewReportVersion: (reportId) => {
+    let targetReport: Report | undefined;
+    get().engagements.forEach((e) => {
+      const found = (e.reports || []).find((r) => r.id === reportId);
+      if (found) targetReport = found;
+    });
+
+    if (!targetReport) return { success: false, error: 'Report not found' };
+
+    const nextVer = targetReport.version + 1;
+    const newVersionReport: Report = {
+      ...targetReport,
+      id: `rep-${Date.now()}`,
+      version: nextVer,
+      status: 'DRAFT',
+      createdBy: get().currentUser?.id || 'admin',
+      createdByName: get().currentUser?.name || 'Admin',
+      createdAt: new Date().toISOString(),
+      approvedBy: undefined,
+      approvedByName: undefined,
+      approvedAt: undefined,
+      releasedBy: undefined,
+      releasedByName: undefined,
+      releasedAt: undefined,
+    };
+
+    set((state) => ({
+      engagements: state.engagements.map((e) =>
+        e.id === targetReport!.engagementId
+          ? { ...e, reports: [newVersionReport, ...(e.reports || [])] }
+          : e
+      ),
+    }));
+
+    get().addAuditLog('REPORT_VERSION_CREATED', `Created new Report version V${nextVer} from Released Report ${reportId}`);
+    return { success: true, newReportId: newVersionReport.id };
+  },
+
+  addTaskTemplate: (serviceId, parameterId, template) => {
+    const newTemplate: TaskTemplate = {
+      ...template,
+      id: `tmpl-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      serviceId,
+      createdAt: new Date().toISOString(),
+    };
+    set((state) => ({
+      serviceCategories: state.serviceCategories.map(cat => ({
+        ...cat,
+        services: cat.services.map(svc => {
+          if (svc.id !== serviceId) return svc;
+          return {
+            ...svc,
+            parameters: svc.parameters.map(param => {
+              if (param.id !== parameterId) return param;
+              return {
+                ...param,
+                taskTemplates: [...(param.taskTemplates || []), newTemplate],
+              };
+            }),
+          };
+        }),
+      })),
+    }));
+    get().addAuditLog(
+      'TASK_TEMPLATE_CREATED',
+      `Template "${newTemplate.name}" created for param:${parameterId} service:${serviceId}`
+    );
+  },
+
+  updateTaskTemplate: (serviceId, parameterId, templateId, updates) => {
+    set((state) => ({
+      serviceCategories: state.serviceCategories.map(cat => ({
+        ...cat,
+        services: cat.services.map(svc => {
+          if (svc.id !== serviceId) return svc;
+          return {
+            ...svc,
+            parameters: svc.parameters.map(param => {
+              if (param.id !== parameterId) return param;
+              return {
+                ...param,
+                taskTemplates: (param.taskTemplates || []).map(tmpl =>
+                  tmpl.id === templateId ? { ...tmpl, ...updates } : tmpl
+                ),
+              };
+            }),
+          };
+        }),
+      })),
+    }));
+    get().addAuditLog(
+      'TASK_TEMPLATE_UPDATED',
+      `Template ${templateId} updated for param:${parameterId} service:${serviceId}`
+    );
+  },
+
+  deleteTaskTemplate: (serviceId, parameterId, templateId) => {
+    // Soft delete: set active = false to preserve task history
+    get().updateTaskTemplate(serviceId, parameterId, templateId, { active: false });
+    get().addAuditLog(
+      'TASK_TEMPLATE_DEACTIVATED',
+      `Template ${templateId} deactivated (soft delete) for param:${parameterId} service:${serviceId}`
+    );
+  },
+
+  previewClientTaskGeneration: (clientServiceId) => {
+    const state = get();
+    // Find the ClientService across all engagements
+    const allClientServices = state.engagements.flatMap(e => e.clientServices || []);
+    const clientService = allClientServices.find(cs => cs.id === clientServiceId);
+    if (!clientService) return [];
+
+    const snapshot = clientService.configurationSnapshot;
+    if (!snapshot) return [];
+
+    // Find live Service Master definition
+    const serviceDef = state.serviceCategories
+      .flatMap(c => c.services)
+      .find(s => s.id === snapshot.serviceMasterId);
+    if (!serviceDef) return [];
+
+    // Determine enabled parameters (value === 'true' or non-empty)
+    const enabledParamIds = new Set(
+      (snapshot.parameters || []).filter(p => p.value === 'true' || p.value).map(p => p.serviceParameterId)
+    );
+
+    // Collect all existing tasks for this client service (to detect duplicates)
+    const existingTasks = state.engagements
+      .filter(e => e.clientId === clientService.clientId)
+      .flatMap(e => e.tasks || [])
+      .filter(t => (t as any).clientServiceId === clientServiceId);
+
+    const previews: ClientTaskPreview[] = [];
+    const serviceFreq = snapshot.frequency || serviceDef.frequency || 'MONTHLY';
+    const startDate = clientService.startDate ? new Date(clientService.startDate) : new Date();
+
+    for (const param of serviceDef.parameters) {
+      if (!enabledParamIds.has(param.id)) continue;
+      const templates = (param.taskTemplates || []).filter(t => t.active !== false);
+
+      for (const tmpl of templates) {
+        const freq = tmpl.frequency || serviceFreq;
+        const periods = computeNextPeriods(freq, startDate, freq === 'ONE_TIME' ? 1 : 3);
+
+        for (const periodKey of periods) {
+          const dueDate = computeDueDate(tmpl.dueDateRule || 'last_day', periodKey);
+          const isDuplicate = existingTasks.some(
+            t =>
+              (t as any).taskTemplateId === tmpl.id &&
+              (t as any).periodKey === periodKey
+          );
+          previews.push({
+            templateId: tmpl.id,
+            templateName: tmpl.name,
+            parameterId: param.id,
+            parameterName: param.name,
+            periodKey,
+            dueDate,
+            priority: tmpl.priority,
+            frequency: freq,
+            estimatedHours: tmpl.estimatedHours || 0,
+            isDuplicate,
+          });
+        }
+      }
+    }
+
+    return previews;
+  },
+
+  generateClientTasks: (clientServiceId, userId, periodKeys) => {
+    const state = get();
+    const result: TaskGenerationResult = { created: 0, skipped: 0, failed: 0, details: [] };
+
+    // RBAC
+    const actor = state.users.find(u => u.id === userId);
+    if (!actor || (actor.role !== 'SUPER_ADMIN' && actor.role !== 'ADMIN')) {
+      get().addAuditLog('TASK_GENERATION_FAILED', `Permission denied for user ${userId}`);
+      result.failed = 1;
+      result.details.push({ title: 'Generation', status: 'failed', reason: 'Permission denied' });
+      return result;
+    }
+
+    // Find client service
+    const allClientServices = state.engagements.flatMap(e => e.clientServices || []);
+    const clientService = allClientServices.find(cs => cs.id === clientServiceId);
+    if (!clientService) {
+      result.failed = 1;
+      result.details.push({ title: 'ClientService', status: 'failed', reason: 'Not found' });
+      return result;
+    }
+
+    // Find engagement
+    const parentEngagement = state.engagements.find(
+      e =>
+        e.id === clientService.engagementId ||
+        (e.clientId === clientService.clientId && (e.clientServices || []).some(cs => cs.id === clientServiceId))
+    );
+    if (!parentEngagement) {
+      result.failed = 1;
+      result.details.push({ title: 'Engagement', status: 'failed', reason: 'Not found' });
+      return result;
+    }
+
+    const previews = get().previewClientTaskGeneration(clientServiceId);
+    const filteredPreviews = periodKeys
+      ? previews.filter(p => periodKeys.includes(p.periodKey))
+      : previews;
+
+    const snapshot = clientService.configurationSnapshot;
+    const serviceDef = state.serviceCategories
+      .flatMap(c => c.services)
+      .find(s => s.id === snapshot?.serviceMasterId);
+
+    for (const preview of filteredPreviews) {
+      if (preview.isDuplicate) {
+        result.skipped++;
+        result.details.push({
+          title: `${preview.templateName} [${preview.periodKey}]`,
+          status: 'skipped',
+          reason: 'Already generated for this period',
+        });
+        get().addAuditLog(
+          'TASK_GENERATION_SKIPPED_DUPLICATE',
+          `Skipped duplicate: template:${preview.templateId} period:${preview.periodKey} cs:${clientServiceId}`
+        );
+        continue;
+      }
+
+      try {
+        // Find the template for checklist copy
+        const param = serviceDef?.parameters.find(p => p.id === preview.parameterId);
+        const tmpl = param?.taskTemplates?.find(t => t.id === preview.templateId);
+
+        get().addTask(parentEngagement.id, {
+          engagementId: parentEngagement.id,
+          title: `${preview.templateName} — ${preview.periodKey}`,
+          milestone: preview.periodKey,
+          estimatedHours: preview.estimatedHours,
+          timeSpent: 0,
+          progress: 0,
+          priority: preview.priority,
+          status: 'NOT_STARTED',
+          reviewPoints: [],
+          // Extended fields stored as extra props (Task already has these in types)
+          ...({
+            clientId: clientService.clientId,
+            clientServiceId,
+            serviceId: snapshot?.serviceMasterId,
+            serviceParameterId: preview.parameterId,
+            taskTemplateId: preview.templateId,
+            periodKey: preview.periodKey,
+            dueDate: preview.dueDate,
+            checklist: tmpl?.checklist ? tmpl.checklist.map(c => ({ ...c, completed: false })) : [],
+            documentIds: tmpl?.requiredDocumentIds || [],
+          } as any),
+        });
+        result.created++;
+        result.details.push({
+          title: `${preview.templateName} [${preview.periodKey}]`,
+          status: 'created',
+        });
+        get().addAuditLog(
+          'TASK_GENERATED',
+          `Task generated: template:${preview.templateId} period:${preview.periodKey} cs:${clientServiceId} by:${userId}`
+        );
+      } catch (err) {
+        result.failed++;
+        result.details.push({
+          title: `${preview.templateName} [${preview.periodKey}]`,
+          status: 'failed',
+          reason: String(err),
+        });
+      }
+    }
+
+    return result;
+  },
+
+  // ─── Work Allocation (Prompt 11) ──────────────────────────────────────────
+
+  getEmployeeWorkload: (userId) => {
+    const state = get();
+    const user = state.users.find(u => u.id === userId);
+    if (!user) {
+      return {
+        userId,
+        userName: '(unknown)',
+        weeklyCapacityHours: 40,
+        assignedHoursThisWeek: 0,
+        totalOpenTasks: 0,
+        overdueTasks: 0,
+        completedTasks: 0,
+        utilizationPct: 0,
+        isOnLeave: false,
+      };
+    }
+
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay()); // Sunday
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 7);
+
+    const allTasks = state.engagements.flatMap(e => e.tasks || []).filter(t => t.employeeId === userId);
+    const openTasks = allTasks.filter(t => t.status !== 'COMPLETED');
+    const completedTasks = allTasks.filter(t => t.status === 'COMPLETED');
+
+    // Weekly hours = open tasks with dueDate in current week, or all open if no dueDate filter
+    const weeklyHours = openTasks.reduce((sum, t) => sum + (Number(t.estimatedHours) || 0), 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const overdueTasks = openTasks.filter(t => {
+      if (!t.dueDate) return false;
+      const due = new Date(t.dueDate);
+      return due < today;
+    });
+
+    const capacity = user.weeklyCapacityHours || 40;
+    const utilizationPct = capacity > 0 ? Math.round((weeklyHours / capacity) * 100) : 0;
+
+    // Check approved leaves
+    const isOnLeave = state.leaves.some(l => {
+      if (l.userId !== userId) return false;
+      if (l.status !== 'APPROVED') return false;
+      const start = new Date(l.startDate);
+      const end = new Date(l.endDate);
+      return now >= start && now <= end;
+    });
+
+    return {
+      userId,
+      userName: user.name,
+      department: user.department,
+      designation: user.designation,
+      weeklyCapacityHours: capacity,
+      assignedHoursThisWeek: weeklyHours,
+      totalOpenTasks: openTasks.length,
+      overdueTasks: overdueTasks.length,
+      completedTasks: completedTasks.length,
+      utilizationPct,
+      isOnLeave,
+    };
+  },
+
+  assignTask: ({ engagementId, taskId, employeeId, teamId, assignedBy, reason, overrideWarning }) => {
+    const state = get();
+
+    // 1. RBAC
+    const actor = state.users.find(u => u.id === assignedBy);
+    if (!actor || (actor.role !== 'SUPER_ADMIN' && actor.role !== 'ADMIN')) {
+      get().addAuditLog('TASK_ASSIGNMENT_FAILED', `Permission denied for user ${assignedBy} on task ${taskId}`);
+      return { success: false, error: 'You do not have permission to assign tasks.' };
+    }
+
+    // 2. Find engagement + task
+    const engagement = state.engagements.find(e => e.id === engagementId);
+    if (!engagement) return { success: false, error: 'Engagement not found.' };
+    const task = (engagement.tasks || []).find(t => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found.' };
+
+    // 3. Guard: already assigned
+    if (task.employeeId && task.status === 'ASSIGNED') {
+      return { success: false, error: 'Task is already assigned. Use Reassign to change the assignee.' };
+    }
+
+    // 4. Guard: completed
+    if (task.status === 'COMPLETED') {
+      return { success: false, error: 'Cannot assign a completed task.' };
+    }
+
+    // 5. Find employee
+    const employee = state.users.find(u => u.id === employeeId);
+    if (!employee) return { success: false, error: 'Employee not found.' };
+    if (employee.role === 'CLIENT' || employee.role === 'PENDING') {
+      return { success: false, error: 'Selected user is not eligible for task assignment.' };
+    }
+
+    // 6. Workload check
+    const workload = get().getEmployeeWorkload(employeeId);
+    const taskHours = Number(task.estimatedHours) || 0;
+    const projectedHours = workload.assignedHoursThisWeek + taskHours;
+    const capacity = workload.weeklyCapacityHours;
+    let warning: string | undefined;
+    if (projectedHours > capacity) {
+      warning = `Workload warning: current ${workload.assignedHoursThisWeek}h + this task ${taskHours}h = ${projectedHours}h exceeds ${capacity}h capacity.`;
+      if (!overrideWarning) {
+        return { success: true, warning };
+      }
+      get().addAuditLog('TASK_ASSIGNMENT_OVERRIDE', `Overload override: task ${taskId} assigned to ${employeeId} by ${assignedBy}. Projected ${projectedHours}h vs ${capacity}h capacity.`);
+    }
+
+    // 7. Build assignment record
+    const now = new Date().toISOString();
+    const actorName = actor.name;
+    const record: TaskAssignmentRecord = {
+      id: `ar-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      assignedTo: employeeId,
+      assignedToName: employee.name,
+      assignedBy,
+      assignedByName: actorName,
+      assignedAt: now,
+      teamId,
+      teamName: teamId ? (state.users.find(u => u.department === teamId)?.department) : undefined,
+      reason,
+    };
+
+    // 8. Apply
+    get().updateTask(engagementId, taskId, {
+      employeeId,
+      employeeName: employee.name,
+      teamId,
+      teamName: employee.department,
+      assignedBy,
+      assignedByName: actorName,
+      assignedAt: now,
+      status: 'ASSIGNED',
+      assignmentHistory: [...(task.assignmentHistory || []), record],
+    });
+
+    // 9. Audit
+    get().addAuditLog(
+      'TASK_ASSIGNED',
+      `Task ${taskId} (${task.title}) assigned to ${employeeId} (${employee.name}) by ${assignedBy} (${actorName}) at ${now}. ClientService: ${task.clientServiceId || 'n/a'}`
+    );
+
+    return { success: true, warning };
+  },
+
+  reassignTask: ({ engagementId, taskId, newEmployeeId, teamId, assignedBy, reason, overrideWarning }) => {
+    const state = get();
+
+    // 1. RBAC
+    const actor = state.users.find(u => u.id === assignedBy);
+    if (!actor || (actor.role !== 'SUPER_ADMIN' && actor.role !== 'ADMIN')) {
+      get().addAuditLog('TASK_REASSIGNMENT_FAILED', `Permission denied for user ${assignedBy} on task ${taskId}`);
+      return { success: false, error: 'You do not have permission to reassign tasks.' };
+    }
+
+    // 2. Find task
+    const engagement = state.engagements.find(e => e.id === engagementId);
+    if (!engagement) return { success: false, error: 'Engagement not found.' };
+    const task = (engagement.tasks || []).find(t => t.id === taskId);
+    if (!task) return { success: false, error: 'Task not found.' };
+    if (task.status === 'COMPLETED') return { success: false, error: 'Cannot reassign a completed task.' };
+
+    // 3. Find new employee
+    const newEmployee = state.users.find(u => u.id === newEmployeeId);
+    if (!newEmployee) return { success: false, error: 'Employee not found.' };
+    if (newEmployee.role === 'CLIENT' || newEmployee.role === 'PENDING') {
+      return { success: false, error: 'Selected user is not eligible for task assignment.' };
+    }
+
+    // 4. Workload check
+    const workload = get().getEmployeeWorkload(newEmployeeId);
+    const taskHours = Number(task.estimatedHours) || 0;
+    const projectedHours = workload.assignedHoursThisWeek + taskHours;
+    const capacity = workload.weeklyCapacityHours;
+    let warning: string | undefined;
+    if (projectedHours > capacity) {
+      warning = `Workload warning: ${newEmployee.name} current ${workload.assignedHoursThisWeek}h + this task ${taskHours}h = ${projectedHours}h exceeds ${capacity}h capacity.`;
+      if (!overrideWarning) {
+        return { success: true, warning };
+      }
+      get().addAuditLog('TASK_ASSIGNMENT_OVERRIDE', `Overload override on reassign: task ${taskId} to ${newEmployeeId} by ${assignedBy}. Projected ${projectedHours}h vs ${capacity}h.`);
+    }
+
+    // 5. Build record
+    const now = new Date().toISOString();
+    const actorName = actor.name;
+    const record: TaskAssignmentRecord = {
+      id: `ar-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      assignedTo: newEmployeeId,
+      assignedToName: newEmployee.name,
+      assignedBy,
+      assignedByName: actorName,
+      assignedAt: now,
+      teamId,
+      teamName: newEmployee.department,
+      reason,
+      previousAssigneeId: task.employeeId,
+      previousAssigneeName: task.employeeName,
+    };
+
+    // 6. Apply
+    get().updateTask(engagementId, taskId, {
+      employeeId: newEmployeeId,
+      employeeName: newEmployee.name,
+      teamId,
+      teamName: newEmployee.department,
+      assignedBy,
+      assignedByName: actorName,
+      assignedAt: now,
+      status: 'ASSIGNED',
+      assignmentHistory: [...(task.assignmentHistory || []), record],
+    });
+
+    // 7. Audit
+    get().addAuditLog(
+      'TASK_REASSIGNED',
+      `Task ${taskId} (${task.title}) reassigned from ${task.employeeId || 'unassigned'} to ${newEmployeeId} (${newEmployee.name}) by ${assignedBy}. Reason: ${reason}. ClientService: ${task.clientServiceId || 'n/a'}`
+    );
+
+    return { success: true, warning };
+  },
+
+  updateTaskStatus: (engagementId, taskId, status) => set((state) => {
+
+    let allCompleted = false;
+    let engagementName = '';
+    
+    const newState = {
+      engagements: state.engagements.map(eng => {
+        if (eng.id === engagementId) {
+          engagementName = eng.name;
+          const updatedTasks = eng.tasks.map(t => 
+            t.id === taskId ? { ...t, status, progress: status === 'COMPLETED' ? 100 : t.progress } : t
+          );
+          
+          allCompleted = updatedTasks.length > 0 && updatedTasks.every(t => t.status === 'COMPLETED');
+          
+          return { ...eng, tasks: updatedTasks };
+        }
+        return eng;
+      })
+    };
+    
+    if (allCompleted) {
+      // Auto-trigger report generation
+      const newReport: Report = {
+        id: `rep-${Date.now()}`,
+        engagementId,
+        engagementName,
+        type: 'MIS',
+        status: 'RELEASED',
+        version: 1,
+        notes: 'Auto-generated final deliverable based on completed workload.',
+        createdAt: new Date().toISOString()
+      };
+      
+      newState.engagements = newState.engagements.map(eng => 
+        eng.id === engagementId ? { ...eng, reports: [...(eng.reports || []), newReport] } : eng
+      );
+    }
+    
+    return newState;
+  }),
+
+  addReviewPoint: (engagementId, taskId, reviewPoint) => set((state) => ({
+    engagements: state.engagements.map(eng => 
+      eng.id === engagementId
+        ? {
+            ...eng,
+            tasks: eng.tasks.map(t => 
+              t.id === taskId 
+                ? { ...t, reviewPoints: [...(t.reviewPoints || []), { id: `rp-${Date.now()}`, createdAt: new Date().toISOString(), ...reviewPoint }] } 
+                : t
+            )
+          }
+        : eng
+    )
+  })),
+
+  generateReport: (engagementId, reportType, notes) => set((state) => ({
+    engagements: state.engagements.map(eng => 
+      eng.id === engagementId
+        ? {
+            ...eng,
+            reports: [
+              ...(eng.reports || []),
+              {
+                id: `rep-${Date.now()}`,
+                engagementId,
+                engagementName: eng.name,
+                type: reportType,
+                status: 'DRAFT',
+                version: 1,
+                notes,
+                createdAt: new Date().toISOString()
+              }
+            ]
+          }
+        : eng
+    )
+  })),
 
   setGlobalSuccessMsg: (msg) => {
     set({ globalSuccessMsg: msg });
@@ -1391,10 +3454,19 @@ export const useDashboardStore = create<DashboardState>()(
   },
 
   deleteUser: (id) => {
-    const user = get().users.find(u => u.id === id);
+    const user = get().users.find((u) => u.id === id);
     if (user) {
-      set((state) => ({ users: state.users.filter((u) => u.id !== id) }));
-      get().addAuditLog('USER_DELETED', `User ${user.name} deleted.`);
+      set((state) => {
+        const isCurrentDeleted = state.currentUser && (
+          state.currentUser.id === id ||
+          state.currentUser.email.toLowerCase().trim() === user.email.toLowerCase().trim()
+        );
+        return {
+          users: state.users.filter((u) => u.id !== id),
+          currentUser: isCurrentDeleted ? null : state.currentUser,
+        };
+      });
+      get().addAuditLog('USER_DELETED', `User ${user.name} (${user.email}) deleted.`);
       deleteRecordFromFirebase('users', id);
     }
   },

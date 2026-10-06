@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   keywords: "Virtual CFO, CFO Dashboard, Financial Advisory, Compliance Management, Audit checklist, Enterprise SaaS, ERP consulting, Milestone invoicing",
 };
 
-import { AICopilotWidget } from "../components/AICopilotWidget";
 import { TaxInvoiceModal } from "../components/TaxInvoiceModal";
 
 export default function RootLayout({
@@ -31,7 +30,6 @@ export default function RootLayout({
         <QueryProvider>
           {children}
           <TaxInvoiceModal />
-          <AICopilotWidget />
         </QueryProvider>
       </body>
     </html>

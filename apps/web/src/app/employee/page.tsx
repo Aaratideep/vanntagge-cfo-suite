@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { EmployeeDashboardView } from '../../components/EmployeeDashboardView';
 import { useDashboardStore } from '../../store/dashboardStore';
@@ -87,6 +88,8 @@ export default function EmployeePage() {
         setCurrentTab={setCurrentTab}
         collapsed={sidebarCollapsed}
         setCollapsed={setSidebarCollapsed}
+        mobileOpen={mobileMenuOpen}
+        setMobileOpen={setMobileMenuOpen}
       />
       <div className={`flex-1 flex flex-col min-w-0 ${spacingClass} transition-all duration-300`}>
         <Header onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -95,11 +98,19 @@ export default function EmployeePage() {
           setCurrentTab={setCurrentTab}
           setSearchTarget={setSearchTarget}
           currentTabTitle={tabTitles[currentTab] || 'Employee Portal'}
+          onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
-        <main className="flex-1 p-8 max-w-[1440px] w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-[1440px] w-full mx-auto font-outfit">
           {renderActiveSubView()}
         </main>
       </div>
+
+      {globalSuccessMsg && (
+        <div className="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 z-50">
+          <CheckCircle className="text-green-400" size={20} />
+          {globalSuccessMsg}
+        </div>
+      )}
     </div>
   );
 }

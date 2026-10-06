@@ -6,6 +6,8 @@ interface SidebarProps {
   setCurrentTab: (tab: string) => void;
   collapsed: boolean;
   setCollapsed: (collapsed: boolean) => void;
+  mobileOpen?: boolean;
+  setMobileOpen?: (open: boolean) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -13,6 +15,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCurrentTab,
   collapsed,
   setCollapsed,
+  mobileOpen = false,
+  setMobileOpen,
 }) => {
   const { currentUser } = useDashboardStore();
   
@@ -36,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = allNavItems.filter((item) => {
     if (currentUser.role === 'SUPER_ADMIN') {
-      return !['financial_docs', 'reports'].includes(item.id);
+      return !['services', 'client_tasks', 'documents', 'released_reports', 'client_invoices', 'insights', 'profile', 'employee_tasks', 'workload', 'submissions', 'reviews', 'performance', 'employee_profile'].includes(item.id);
     }
     
     if (currentUser.role === 'EMPLOYEE') {
@@ -44,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     
     if (currentUser.role === 'CLIENT') {
-      return ['dashboard', 'financial_docs', 'reports', 'calendar'].includes(item.id);
+      return ['dashboard', 'services', 'client_tasks', 'documents', 'released_reports', 'client_invoices', 'insights', 'profile'].includes(item.id);
     }
     
     return false;

@@ -14,6 +14,9 @@ const prisma_module_1 = require("./prisma/prisma.module");
 const ai_module_1 = require("./ai/ai.module");
 const communications_module_1 = require("./communications/communications.module");
 const services_module_1 = require("./services/services.module");
+const engagements_module_1 = require("./engagements/engagements.module");
+const tasks_module_1 = require("./tasks/tasks.module");
+const financials_module_1 = require("./financials/financials.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -26,6 +29,9 @@ exports.AppModule = AppModule = __decorate([
             ai_module_1.AiModule,
             communications_module_1.CommunicationsModule,
             services_module_1.ServicesModule,
+            engagements_module_1.EngagementsModule,
+            tasks_module_1.TasksModule,
+            financials_module_1.FinancialsModule,
         ],
         controllers: [],
         providers: [],

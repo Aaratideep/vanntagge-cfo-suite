@@ -40,7 +40,11 @@ import { exportToCSV } from '../../lib/exportExcel';
 import { ClientDeliverablesAdmin } from './ClientDeliverablesAdmin';
 import { ClientConfigAdminView } from './ClientConfigAdminView';
 
-export const ClientsView: React.FC = () => {
+interface ClientsViewProps {
+  initialTab?: 'directory' | 'onboarding' | 'services' | 'legacy';
+}
+
+export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'directory' }) => {
   const {
     clients,
     engagements,
@@ -48,6 +52,8 @@ export const ClientsView: React.FC = () => {
     standaloneReceipts = [],
     quotations = [],
     engagementLetters = [],
+    legacyClientDrafts = [],
+    deleteLegacyClientDraft,
     updateClientStatus,
     updateClient,
     deleteClient,
@@ -88,7 +94,9 @@ export const ClientsView: React.FC = () => {
 
   // Modal State
   const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
+  const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<import('../../types').ClientService | null>(null);
   const [isLegacyImport, setIsLegacyImport] = useState(false);
   const [newClientData, setNewClientData] = useState({
     companyName: '',
@@ -154,90 +162,64 @@ export const ClientsView: React.FC = () => {
   // Complete ERP Data Sync: Compute all clients from store + implied clients from all sections
   const clientMap = new Map<string, any>();
 
-  // 1. Registered Clients
+  // 1. Registered Clients (highest priority)
   (clients || []).forEach((c) => {
     if (c && c.companyName) {
       clientMap.set(c.companyName.toLowerCase().trim(), c);
     }
   });
 
+  // Helper to resolve or construct clean client data
+  const getOrCreateClient = (name: string, fallbackId: string, fallbackSource: string) => {
+    const key = name.toLowerCase().trim();
+    if (clientMap.has(key)) return clientMap.get(key);
+
+    const matchingClient = clients?.find(c => c.companyName.toLowerCase().trim() === key || c.id === fallbackId);
+    if (matchingClient) {
+      clientMap.set(key, matchingClient);
+      return matchingClient;
+    }
+
+    const matchingUser = users?.find(u => u.role === 'CLIENT' && (u.companyName?.toLowerCase().trim() === key || u.email.toLowerCase().includes(key)));
+    const newClientObj = {
+      id: fallbackId,
+      companyName: name,
+      ownerName: matchingUser?.name || 'Corporate Account',
+      contactPerson: matchingUser?.name || 'Primary Contact',
+      email: matchingUser?.email || '',
+      phone: matchingUser?.phone || '',
+      industry: 'Services',
+      businessType: 'Pvt. Ltd.',
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+    };
+    clientMap.set(key, newClientObj);
+    return newClientObj;
+  };
+
   // 2. Clients from Engagements
   (engagements || []).forEach((e) => {
     const name = e.clientCompanyName?.trim();
-    if (name && !clientMap.has(name.toLowerCase())) {
-      clientMap.set(name.toLowerCase(), {
-        id: e.clientId || `client-eng-${e.id}`,
-        companyName: name,
-        contactPerson: 'Executive Contact',
-        email: `contact@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.com`,
-        phone: '',
-        industry: 'Services',
-        businessType: 'Pvt. Ltd.',
-        status: 'ACTIVE',
-        createdAt: e.createdAt || new Date().toISOString(),
-      });
-    }
+    if (name) getOrCreateClient(name, e.clientId || `client-eng-${e.id}`, 'Engagements');
   });
 
   // 3. Clients from Standalone Invoices
   (standaloneInvoices || []).forEach((inv) => {
     const rawName = inv.engagementName || (inv as any).clientName || '';
     const name = rawName.replace(/CFO Advisory|Services|Virtual CFO/gi, '').trim() || rawName.trim();
-    if (name && !clientMap.has(name.toLowerCase())) {
-      clientMap.set(name.toLowerCase(), {
-        id: `client-inv-${inv.id}`,
-        companyName: name,
-        contactPerson: 'Accounts Dept',
-        email: `billing@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.com`,
-        phone: '',
-        industry: 'B2B Corporate',
-        businessType: 'Pvt. Ltd.',
-        gstin: inv.clientGstin || '',
-        pan: inv.clientPan || '',
-        status: 'ACTIVE',
-        createdAt: inv.createdAt || new Date().toISOString(),
-      });
-    }
+    if (name) getOrCreateClient(name, `client-inv-${inv.id}`, 'Invoices');
   });
 
   // 4. Clients from Standalone Receipts
   (standaloneReceipts || []).forEach((rec) => {
     const name = rec.clientName?.trim();
-    if (name && !clientMap.has(name.toLowerCase())) {
-      clientMap.set(name.toLowerCase(), {
-        id: `client-rec-${rec.id}`,
-        companyName: name,
-        contactPerson: 'Finance Team',
-        email: `finance@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.com`,
-        phone: '',
-        industry: 'B2B Corporate',
-        businessType: 'Pvt. Ltd.',
-        gstin: rec.clientGstin || '',
-        pan: rec.clientPan || '',
-        status: 'ACTIVE',
-        createdAt: rec.createdAt || new Date().toISOString(),
-      });
-    }
+    if (name) getOrCreateClient(name, `client-rec-${rec.id}`, 'Receipts');
   });
 
   // 5. Clients from Quotations
   (quotations || []).forEach((q) => {
     const name = q.leadCompanyName?.trim();
-    if (name && !clientMap.has(name.toLowerCase())) {
-      clientMap.set(name.toLowerCase(), {
-        id: `client-q-${q.id}`,
-        companyName: name,
-        contactPerson: 'Prospect Contact',
-        email: `info@${name.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}.com`,
-        phone: '',
-        industry: 'Lead / Prospect',
-        businessType: 'Pvt. Ltd.',
-        gstin: q.clientGstin || '',
-        pan: q.clientPan || '',
-        status: 'ACTIVE',
-        createdAt: q.createdAt || new Date().toISOString(),
-      });
-    }
+    if (name) getOrCreateClient(name, `client-quot-${q.id}`, 'Quotations');
   });
 
   // Deduplicate client IDs to ensure strict React key uniqueness
@@ -317,7 +299,7 @@ export const ClientsView: React.FC = () => {
   const selectedClient = allSyncedClients.find(c => c.id === selectedClientId) || allSyncedClients[0];
   const selectedEngagement = engagements.find((e) => e.clientId === selectedClient?.id || e.clientCompanyName?.toLowerCase().trim() === selectedClient?.companyName?.toLowerCase().trim());
 
-  // CA & CFO Service Master Documents Provider
+  // CA & CFO Service Master Data Bank Documents Provider
   const getDefaultCADocuments = (client: any): Document[] => {
     const now = new Date().toISOString();
     const cName = client?.companyName || 'Client';
@@ -325,150 +307,308 @@ export const ClientsView: React.FC = () => {
                        (client?.industry && (client.industry.includes('Personal') || client.industry.includes('Individual') || client.industry.includes('Freelance')));
 
     return [
-      // ── COMPANY MASTER DATA ──
+      // ── 1. COMPANY - KNOW YOUR CLIENT (KYC) & MASTER ENTITY DATA ──
       {
         id: `doc-${client?.id}-1`,
         category: 'COMPANY_MASTER_DATA',
-        name: isPersonal ? 'PAN Card & Aadhaar Verification' : 'Certificate of Incorporation & Trade License',
+        subCategory: 'Entity Registration',
+        name: isPersonal ? 'PAN Card & Aadhaar Verification' : 'Certificate of Incorporation (COI) & Trade License',
         createdAt: now,
         status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
         filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-registration.pdf`,
         uploaderName: 'Client Admin',
-        reviewerName: 'Priya Sharma (CA Lead)'
+        reviewerName: 'CA Audit Lead'
       },
       {
         id: `doc-${client?.id}-2`,
         category: 'COMPANY_MASTER_DATA',
-        name: 'PAN & TAN Allotment Letter',
+        subCategory: 'Articles & Memorandum',
+        name: 'Articles of Association (AOA) & Memorandum of Association (MOA)',
         createdAt: now,
         status: 'VERIFIED',
-        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-pan-tan.pdf`,
+        updateFrequency: 'NO',
+        periodicity: 'Subjective Change in org structure',
+        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-moa-aoa.pdf`,
         uploaderName: 'Client Admin',
-        reviewerName: 'Priya Sharma (CA Lead)'
+        reviewerName: 'CA Audit Lead'
       },
       {
         id: `doc-${client?.id}-3`,
         category: 'COMPANY_MASTER_DATA',
-        name: isPersonal ? 'Passport / Proof of Address' : 'Director / Partner KYC & DIN Verification',
+        subCategory: 'Tax Identifiers',
+        name: 'Company PAN Card & TAN Allotment Letter',
         createdAt: now,
-        status: 'RECEIVED',
-        filePath: `/docs/kyc-din-verification.pdf`,
-        uploaderName: 'Executive Team'
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-pan-tan.pdf`,
+        uploaderName: 'Client Admin',
+        reviewerName: 'CA Audit Lead'
       },
       {
         id: `doc-${client?.id}-4`,
         category: 'COMPANY_MASTER_DATA',
-        name: isPersonal ? 'Bank Account Cancelled Cheque' : 'MOA / AOA / Partnership Deed & Premises Lease',
-        createdAt: now,
-        status: 'RECEIVED',
-        filePath: `/docs/moa-aoa-deed.pdf`
-      },
-
-      // ── LEGAL COMPLIANCE ──
-      {
-        id: `doc-${client?.id}-5`,
-        category: 'LEGAL_COMPLIANCE',
-        name: 'Statutory Auditor Appointment Letter (Form ADT-1)',
+        subCategory: 'GST Registrations',
+        name: 'GST Certificates (Operating State & Branch Registrations)',
         createdAt: now,
         status: 'VERIFIED',
-        filePath: `/docs/adt1-auditor-appointment.pdf`,
-        uploaderName: 'CA Audit Desk',
-        reviewerName: 'Marcus Vance'
+        updateFrequency: 'NO',
+        periodicity: 'Branch Addition',
+        filePath: `/docs/gst-multi-certificates.pdf`,
+        uploaderName: 'Tax Filing Desk',
+        reviewerName: 'Tax Audit Lead'
+      },
+      {
+        id: `doc-${client?.id}-5`,
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Entity Certifications',
+        name: 'StartUp India Registration & MSME Udyam Certificate',
+        createdAt: now,
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/msme-startup-cert.pdf`
       },
       {
         id: `doc-${client?.id}-6`,
-        category: 'LEGAL_COMPLIANCE',
-        name: 'Board Resolution for Virtual CFO Services & Bank Signatories',
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Director KYC',
+        name: 'Director Master KYC (Board of Directors, PAN, Aadhaar, DIN & ROC Master Records)',
         createdAt: now,
         status: 'VERIFIED',
-        filePath: `/docs/cfo-board-resolution.pdf`,
-        uploaderName: 'Client Secretary',
-        reviewerName: 'Marcus Vance'
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/directors-kyc-master.pdf`,
+        uploaderName: 'Executive Team'
       },
       {
         id: `doc-${client?.id}-7`,
-        category: 'LEGAL_COMPLIANCE',
-        name: isPersonal ? 'Professional Registration / Bar Council License' : 'ROC Annual Filings (Form MGT-7 & AOC-4)',
+        category: 'COMPANY_MASTER_DATA',
+        subCategory: 'Premises KYC',
+        name: 'Registered Office Address Details (Rent Agreement HO, Electricity Bill, NOC)',
         createdAt: now,
         status: 'RECEIVED',
-        filePath: `/docs/roc-annual-filings.pdf`
-      },
-      {
-        id: `doc-${client?.id}-8`,
-        category: 'LEGAL_COMPLIANCE',
-        name: 'CFO Engagement Agreement & Non-Disclosure Agreement (NDA)',
-        createdAt: now,
-        status: 'VERIFIED',
-        filePath: `/docs/cfo-nda-agreement.pdf`,
-        uploaderName: 'Legal Desk',
-        reviewerName: 'Priya Sharma (CA Lead)'
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/rent-agreement-ebill.pdf`
       },
 
-      // ── FINANCIAL COMPLIANCE & CA AUDITED STATEMENTS ──
+      // ── 2. GROUP SUBSIDIARIES & AGENCY DETAILS ──
+      {
+        id: `doc-${client?.id}-8`,
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Group Subsidiaries',
+        name: 'Group Subsidiaries & Sister Partnership Entities Master',
+        createdAt: now,
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/subsidiary-group-master.pdf`
+      },
       {
         id: `doc-${client?.id}-9`,
-        category: 'FINANCIAL_COMPLIANCE',
-        name: 'Audited Financial Statements (Balance Sheet, P&L, Cash Flow certified by Chartered Accountant)',
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Agency Details',
+        name: 'Statutory Auditors, CS Firm, GST Lead, Legal Counsel & Valuer Directory',
         createdAt: now,
         status: 'VERIFIED',
-        filePath: `/docs/${cName.toLowerCase().replace(/[^a-z0-9]/g, '-')}-audited-financials.pdf`,
-        uploaderName: 'Statutory Auditor (CA Firm)',
-        reviewerName: 'Priya Sharma (CA Lead)'
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/advisors-agency-master.pdf`,
+        uploaderName: 'CA Audit Desk'
       },
       {
         id: `doc-${client?.id}-10`,
-        category: 'FINANCIAL_COMPLIANCE',
-        name: 'CA Tax Audit Report (Form 3CD with UDIN Verification)',
-        createdAt: now,
-        status: 'VERIFIED',
-        filePath: `/docs/tax-audit-form3cd-udin.pdf`,
-        uploaderName: 'CA Audit Desk',
-        reviewerName: 'Priya Sharma (CA Lead)'
-      },
-      {
-        id: `doc-${client?.id}-11`,
-        category: 'FINANCIAL_COMPLIANCE',
-        name: 'Net Worth Certificate & CA Turnover Certificate',
+        category: 'SUBSIDIARIES_AGENCIES',
+        subCategory: 'Insurances',
+        name: 'Insurance Policies Master (Keyman, Property, D&O & Cyber Policies)',
         createdAt: now,
         status: 'RECEIVED',
-        filePath: `/docs/ca-networth-certificate.pdf`,
-        uploaderName: 'CA Desk'
+        updateFrequency: 'YES',
+        periodicity: 'Refer to Summary File',
+        filePath: `/docs/insurance-d-a-policy.pdf`
+      },
+
+      // ── 3. FINANCIAL VAULT, STATEMENTS & RETURNS ──
+      {
+        id: `doc-${client?.id}-11`,
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Audited Financials',
+        name: 'Audited Financial Statements (5-Year Historical FY 2019-20 to FY 2024-25)',
+        createdAt: now,
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/audited-financials-5yr.pdf`,
+        uploaderName: 'Statutory Auditor (CA Firm)'
       },
       {
         id: `doc-${client?.id}-12`,
-        category: 'FINANCIAL_COMPLIANCE',
-        name: isPersonal ? 'Income Tax Return (ITR-3 / ITR-4) with Computation of Income' : 'Income Tax Return (ITR-6) & Advance Tax Challans',
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Bank Statements',
+        name: `Bank Account Statements (${cName} Operating Accounts)`,
         createdAt: now,
-        status: 'VERIFIED',
-        filePath: `/docs/itr-efiling-ack.pdf`,
-        uploaderName: 'Tax Filing Team',
-        reviewerName: 'Marcus Vance'
+        status: 'PENDING',
+        updateFrequency: 'Monthly',
+        periodicity: 'Before 5th of every month',
+        comments: 'Accounts Dept Owner'
       },
       {
         id: `doc-${client?.id}-13`,
-        category: 'FINANCIAL_COMPLIANCE',
-        name: 'GST Monthly Returns (GSTR-1, GSTR-3B) & Annual GST Audit (GSTR-9C)',
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Credit Cards & Loans',
+        name: 'Credit Cards & Active Loan Agreements (Sanction Letters & EMI Schedules)',
         createdAt: now,
         status: 'RECEIVED',
-        filePath: `/docs/gst-gstr9c-audit.pdf`
+        updateFrequency: 'Monthly',
+        periodicity: 'Statement Date',
+        filePath: `/docs/loans-credit-cards.pdf`
       },
       {
         id: `doc-${client?.id}-14`,
-        category: 'FINANCIAL_COMPLIANCE',
-        name: 'TDS & TCS Quarterly Certificates (Form 16A / Form 26Q)',
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'MIS Reports',
+        name: 'Management Information System (Monthly MIS & 3-Year Financial Projections)',
         createdAt: now,
         status: 'VERIFIED',
-        filePath: `/docs/tds-form16a.pdf`,
-        uploaderName: 'Accounts Lead',
-        reviewerName: 'Marcus Vance'
+        updateFrequency: 'Monthly',
+        periodicity: 'Before 10th of month',
+        filePath: `/docs/mis-projections-3yr.pdf`,
+        uploaderName: 'Virtual CFO Desk'
       },
       {
         id: `doc-${client?.id}-15`,
-        category: 'FINANCIAL_COMPLIANCE',
-        name: 'Bank Account Statements (12 Months) & Credit Sanction Letters',
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Income Tax Returns',
+        name: 'Income Tax Returns & Computations (Last 3 Financial Years)',
+        createdAt: now,
+        status: 'VERIFIED',
+        updateFrequency: 'Annually',
+        periodicity: 'ITR Due Date',
+        filePath: `/docs/itr-3yr-returns.pdf`,
+        uploaderName: 'Tax Filing Team'
+      },
+      {
+        id: `doc-${client?.id}-16`,
+        category: 'FINANCIAL_VAULT_STATEMENTS',
+        subCategory: 'Statutory Returns',
+        name: 'Statutory Returns Master (GSTR-1, GST-3B, TDS, PF/ESIC Monthly Filings)',
         createdAt: now,
         status: 'RECEIVED',
-        filePath: `/docs/bank-sanction-letter.pdf`
+        updateFrequency: 'Monthly / Quarterly',
+        periodicity: '15th & 20th of Month',
+        filePath: `/docs/periodic-statutory-returns.pdf`
+      },
+
+      // ── 4. INVESTMENTS, CAPITAL STRUCTURE & DEALS ──
+      {
+        id: `doc-${client?.id}-17`,
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Investment Rounds',
+        name: 'Investor Details, FIRC Foreign Investment Records & Investor KYC Master',
+        createdAt: now,
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/investor-firc-kyc.pdf`,
+        uploaderName: 'Legal Desk'
+      },
+      {
+        id: `doc-${client?.id}-18`,
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Share Certificates',
+        name: 'Promoter & Investor Share Certificates',
+        createdAt: now,
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/share-certificates-r1-r2.pdf`
+      },
+      {
+        id: `doc-${client?.id}-19`,
+        category: 'INVESTMENTS_CAP_TABLE',
+        subCategory: 'Cap Table & Valuation',
+        name: 'Cap Table, Valuation Reports & Investment Round Filings (PAS-3, SHA)',
+        createdAt: now,
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/cap-table-valuation-sha.pdf`,
+        uploaderName: 'Legal Desk'
+      },
+
+      // ── 5. AGREEMENTS, LICENCES & IP MASTER ──
+      {
+        id: `doc-${client?.id}-20`,
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'COFO & Franchise',
+        name: 'COFO Agreements, Franchise Agreements & Commercial Store Leases',
+        createdAt: now,
+        status: 'VERIFIED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly',
+        filePath: `/docs/cofo-franchise-lease.pdf`,
+        uploaderName: 'Operations Team'
+      },
+      {
+        id: `doc-${client?.id}-21`,
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'Operational Licences',
+        name: 'FSSAI Licences, Kitchen Fire Safety Permits & Health Establishment Licences',
+        createdAt: now,
+        status: 'RECEIVED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly',
+        filePath: `/docs/fssai-kitchen-licences.pdf`
+      },
+      {
+        id: `doc-${client?.id}-22`,
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'Vendor & Brand Deals',
+        name: 'Vendor Contracts, Marketplace Listing Agreements & NDAs',
+        createdAt: now,
+        status: 'VERIFIED',
+        updateFrequency: 'NO',
+        periodicity: 'Contract Term',
+        filePath: `/docs/vendor-zomato-swiggy-nda.pdf`
+      },
+      {
+        id: `doc-${client?.id}-23`,
+        category: 'AGREEMENTS_LICENCES',
+        subCategory: 'Strategic Deals',
+        name: 'Strategic Brand Partnerships & Trademark IP Registration Receipts',
+        createdAt: now,
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'NOT APPLICABLE',
+        filePath: `/docs/trademark-ip-partnerships.pdf`
+      },
+
+      // ── 6. HR, PAYROLL & OPERATIONS DATA ──
+      {
+        id: `doc-${client?.id}-24`,
+        category: 'HR_OPERATIONS',
+        subCategory: 'Employee Directory',
+        name: 'Human Resources Employee Data & Regional Directory',
+        createdAt: now,
+        status: 'VERIFIED',
+        updateFrequency: 'YES',
+        periodicity: 'Monthly / as required',
+        filePath: `/docs/employee-master-directory.pdf`,
+        uploaderName: 'Human Resource'
+      },
+      {
+        id: `doc-${client?.id}-25`,
+        category: 'HR_OPERATIONS',
+        subCategory: 'ESOPs & Acquisitions',
+        name: 'ESOP Policy Scheme & Mergers / Acquisition Expansion Agreements',
+        createdAt: now,
+        status: 'RECEIVED',
+        updateFrequency: 'NO',
+        periodicity: 'Not Applicable',
+        filePath: `/docs/esop-acquisitions-deals.pdf`
       }
     ].map(doc => ({ ...doc, engagementId: '' })) as Document[];
   };
@@ -646,11 +786,18 @@ export const ClientsView: React.FC = () => {
                           <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5">
                             {client.companyName}
                           </h3>
-                          <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded mt-1 ${
-                            isPersonal ? 'bg-purple-50 text-purple-700 border border-purple-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
-                          }`}>
-                            {isPersonal ? 'Personal Accounting' : 'Corporate B2B Client'}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded ${
+                              isPersonal ? 'bg-purple-50 text-purple-700 border border-purple-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
+                            }`}>
+                              {isPersonal ? 'Personal Accounting' : 'Corporate B2B Client'}
+                            </span>
+                            {client.onboardingSource === 'LEGACY_MANUAL' && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                                <History size={10} /> LEGACY MANUAL
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       
@@ -689,7 +836,7 @@ export const ClientsView: React.FC = () => {
                       </div>
                       <div>
                         <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider mb-0.5">Tally Ledger</span>
-                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${isLedgerMapped ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${isLedgerMapped ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
                           {isLedgerMapped ? <Check size={10} /> : <Clock size={10} />}
                           {isLedgerMapped ? 'Mapped' : 'Pending'}
                         </span>
@@ -1031,16 +1178,26 @@ export const ClientsView: React.FC = () => {
               ))}
             </div>
 
-            <div className="border-t border-slate-100 pt-4 space-y-2">
+            <div className="border-t border-slate-100 pt-4 space-y-2 font-outfit">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Client Profile</span>
-              <div className="text-xs space-y-1 text-slate-600">
+              <div className="text-xs space-y-1.5 text-slate-600">
                 <p><span className="font-semibold text-slate-800">Client:</span> {selectedClient.companyName}</p>
-                <p><span className="font-semibold text-slate-800">Owner/Contact:</span> {selectedClient.contactPerson}</p>
-                <p><span className="font-semibold text-slate-800">Email:</span> {selectedClient.email}</p>
-                <p><span className="font-semibold text-slate-800">Phone:</span> {selectedClient.phone}</p>
-                <p><span className="font-semibold text-slate-800">GSTIN:</span> {selectedClient.gstin || 'GST Verified'}</p>
-                <p className="pt-2"><span className="font-semibold text-slate-800">CFO Services:</span> {selectedEngagement ? selectedEngagement.name : 'Virtual CFO Retainer'}</p>
-                <p><span className="font-semibold text-slate-800">Status:</span> {selectedClient.status}</p>
+                <p><span className="font-semibold text-slate-800">Owner/Contact:</span> {
+                  selectedClient.ownerName && !selectedClient.ownerName.includes('Executive Contact')
+                    ? selectedClient.ownerName
+                    : selectedClient.contactPerson && !selectedClient.contactPerson.includes('Executive Contact')
+                    ? selectedClient.contactPerson
+                    : 'Not Provided'
+                }</p>
+                <p><span className="font-semibold text-slate-800">Email:</span> {
+                  selectedClient.email && !selectedClient.email.includes('contact@web.com') && !selectedClient.email.includes('@web.com') && !selectedClient.email.includes('@client.com')
+                    ? selectedClient.email
+                    : 'Not Provided'
+                }</p>
+                <p><span className="font-semibold text-slate-800">Phone:</span> {selectedClient.phone || selectedClient.ownerContact || 'Not Provided'}</p>
+                <p><span className="font-semibold text-slate-800">GSTIN:</span> {selectedClient.gstin || 'Not Provided'}</p>
+                <p className="pt-1"><span className="font-semibold text-slate-800">CFO Services:</span> {selectedEngagement ? selectedEngagement.name : `${selectedClient.companyName} Retainer`}</p>
+                <p><span className="font-semibold text-slate-800">Status:</span> <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">{selectedClient.status}</span></p>
               </div>
             </div>
           </div>
@@ -1569,6 +1726,734 @@ export const ClientsView: React.FC = () => {
         </div>
       )}
 
+      {/* ACTIVE SERVICES TAB */}
+      {activeClientTab === 'services' && selectedClient && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div>
+              <h3 className="font-bold text-slate-800 text-sm">Active Client Services</h3>
+              <p className="text-xs text-slate-500">Currently active service engagements for {selectedClient.companyName}</p>
+            </div>
+            <button
+              onClick={() => setShowAddServiceModal(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm shadow-emerald-200"
+            >
+              + Activate New Service
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(() => {
+              const clientEngagements = engagements.filter(e => e.clientId === selectedClient.id || e.clientCompanyName === selectedClient.companyName);
+              const activeServices = clientEngagements.flatMap(eng => eng.clientServices || []).filter(cs => cs.status === 'ACTIVE');
+
+              if (activeServices.length === 0) {
+                return (
+                  <div className="col-span-full py-12 bg-white rounded-xl border border-dashed border-slate-200 text-center">
+                    <p className="text-sm text-slate-500 font-medium">No active services found for this client.</p>
+                  </div>
+                );
+              }
+
+              return activeServices.map(cs => {
+                const snapshot = cs.configurationSnapshot;
+                const liveDef = serviceCategories.flatMap(c => c.services).find(s => s.id === cs.serviceMasterId);
+                const serviceName = snapshot?.serviceName || liveDef?.name || 'Unknown Service';
+                const frequency = cs.frequency || snapshot?.frequency || liveDef?.frequency || 'Monthly';
+                const category = snapshot?.categoryName || serviceCategories.find(c => c.services.some(s => s.id === cs.serviceMasterId))?.name || 'Unknown Category';
+
+                return (
+                  <div key={cs.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">{category}</span>
+                        <h4 className="font-bold text-slate-800">{serviceName}</h4>
+                      </div>
+                      <span className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        ACTIVE
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500 font-medium">Frequency</span>
+                        <span className="text-slate-800 font-bold">{frequency}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500 font-medium">Start Date</span>
+                        <span className="text-slate-800 font-bold">{cs.startDate ? new Date(cs.startDate).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-slate-500 font-medium">Activated</span>
+                        <span className="text-slate-800 font-bold">{cs.activatedAt ? new Date(cs.activatedAt).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-4 pt-3 border-t border-slate-100">
+                      <div className="bg-slate-50 p-2 rounded-lg text-center">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">Documents</span>
+                        <span className="font-bold text-emerald-600 text-sm">{cs.documentIds?.length || 0}</span>
+                      </div>
+                      <div className="bg-slate-50 p-2 rounded-lg text-center">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase">Params</span>
+                        <span className="font-bold text-blue-600 text-sm">{cs.clientParameters?.length || 0}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedServiceForDetail(cs)}
+                      className="w-full text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg py-2 transition-colors"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* LEGACY CLIENTS TAB */}
+      {activeClientTab === 'legacy' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          {/* Legacy Information Banner */}
+          <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white rounded-2xl p-6 shadow-md border border-blue-500/20 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="space-y-1.5 z-10 max-w-3xl">
+              <div className="flex items-center gap-2">
+                <span className="bg-blue-500/20 text-blue-300 border border-blue-400/30 text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <History size={12} /> Legacy Manual Onboarding
+                </span>
+                <span className="text-xs text-blue-200/80 font-medium">Bypasses CRM Sales Pipeline</span>
+              </div>
+              <h2 className="text-xl font-extrabold text-white tracking-tight">Existing / Historical Client Onboarding</h2>
+              <p className="text-xs text-slate-300">
+                Manually record master company data, contacts, legal registrations, multi-year financial history, active Service Master services, and historical paid invoices for pre-existing clients without generating retroactive tasks or automated collections.
+              </p>
+            </div>
+            <div className="flex items-center gap-3 z-10 shrink-0">
+              {legacyClientDrafts.length > 0 && (
+                <button
+                  onClick={() => setShowDraftsDrawer(true)}
+                  className="bg-slate-800/80 hover:bg-slate-800 text-blue-300 border border-blue-500/30 font-bold py-2.5 px-4 rounded-xl text-xs flex items-center gap-2 transition-all shadow-sm"
+                >
+                  <Clock size={14} /> Resume Drafts ({legacyClientDrafts.length})
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setEditingLegacyDraftId(undefined);
+                  setShowLegacyWizard(true);
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-xl text-xs flex items-center gap-2 transition-all shadow-md"
+              >
+                <Plus size={16} /> Launch Legacy Onboarding Wizard
+              </button>
+            </div>
+          </div>
+
+          {/* Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Legacy Clients</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {clients.filter(c => c.onboardingSource === 'LEGACY_MANUAL').length}
+                </h3>
+                <span className="text-[10px] font-bold text-blue-600">Onboarded Manually</span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
+                <History size={24} />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Completed Migrations</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {clients.filter(c => c.onboardingSource === 'LEGACY_MANUAL' && c.legacyMigrationStatus === 'COMPLETED').length}
+                </h3>
+                <span className="text-[10px] font-bold text-emerald-600">Full Records Active</span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center">
+                <CheckCircle size={24} />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Pending Drafts</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {legacyClientDrafts.length}
+                </h3>
+                <span className="text-[10px] font-bold text-slate-500">In Progress</span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center">
+                <Clock size={24} />
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Legacy Services</span>
+                <h3 className="text-2xl font-black text-slate-900 mt-1">
+                  {clients.filter(c => c.onboardingSource === 'LEGACY_MANUAL').reduce((acc, c) => acc + (c.services?.length || 0), 0)}
+                </h3>
+                <span className="text-[10px] font-bold text-indigo-600">Service Master Active</span>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center">
+                <Building size={24} />
+              </div>
+            </div>
+          </div>
+
+          {/* Legacy Client Directory Table */}
+          {(() => {
+            const legacyClients = clients.filter(c => c.onboardingSource === 'LEGACY_MANUAL');
+
+            if (legacyClients.length === 0) {
+              return (
+                <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center space-y-4 shadow-xs">
+                  <div className="w-16 h-16 rounded-3xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center mx-auto">
+                    <History size={32} />
+                  </div>
+                  <div className="max-w-md mx-auto">
+                    <h3 className="text-lg font-bold text-slate-900">No Legacy Clients Onboarded Yet</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Start adding pre-existing clients using the 10-step manual onboarding wizard to bypass CRM pipelines and import historical performance.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingLegacyDraftId(undefined);
+                      setShowLegacyWizard(true);
+                    }}
+                    className="btn-primary py-2.5 px-5 text-xs font-bold inline-flex items-center gap-2"
+                  >
+                    <Plus size={16} /> Onboard First Legacy Client
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                  <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                    <History size={16} className="text-blue-600" />
+                    Migrated Legacy Clients ({legacyClients.length})
+                  </h3>
+                  <span className="text-xs text-slate-500 font-medium">Bypassed CRM Pipeline</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 text-slate-500 uppercase font-bold text-[10px] border-b border-slate-200">
+                      <tr>
+                        <th className="px-6 py-3">Company & Contact</th>
+                        <th className="px-6 py-3">Entity & Industry</th>
+                        <th className="px-6 py-3">Legal Identifiers</th>
+                        <th className="px-6 py-3">Financials & FY End</th>
+                        <th className="px-6 py-3">Active Services</th>
+                        <th className="px-6 py-3">Migration Status</th>
+                        <th className="px-6 py-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                      {legacyClients.map((client) => {
+                        const eng = engagements.find(e => e.clientId === client.id);
+
+                        return (
+                          <tr key={client.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                {client.companyName}
+                                <span className="bg-blue-50 text-blue-700 text-[9px] font-extrabold px-1.5 py-0.5 rounded border border-blue-200 uppercase">
+                                  LEGACY
+                                </span>
+                              </div>
+                              <div className="text-slate-500 text-xs mt-0.5">
+                                {client.primaryContact?.name || client.ownerName || 'N/A'} • {client.primaryContact?.email || client.email || 'N/A'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-slate-800">{client.entityType || client.businessType || 'Pvt Ltd'}</div>
+                              <div className="text-slate-500 text-[11px]">{client.industry || 'Financial Services'}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-slate-800 font-mono text-[11px]">PAN: <span className="font-bold">{client.pan || 'N/A'}</span></div>
+                              <div className="text-slate-500 font-mono text-[11px]">GSTIN: {client.gstin || 'N/A'}</div>
+                              {client.cin && <div className="text-slate-400 font-mono text-[10px]">CIN: {client.cin}</div>}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="font-bold text-slate-800">FY End: {client.financialYearEnd || 'March 31'}</div>
+                              <div className="text-slate-500 text-[11px]">Est: {client.establishedDate || 'N/A'}</div>
+                              <div className="text-emerald-700 text-[10px] font-bold">
+                                {client.historicalFinancialRecords?.length || 0} Financial Year(s)
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-1 rounded-lg text-xs font-bold inline-block">
+                                {client.services?.length || eng?.services?.length || 0} Active Services
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2.5 py-1 rounded-full">
+                                <CheckCircle size={12} /> COMPLETED
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right space-x-2">
+                              <button
+                                onClick={() => {
+                                  setSelectedClientId(client.id);
+                                  setActiveClientTab('onboarding');
+                                }}
+                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-colors"
+                              >
+                                Docs
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedClientId(client.id);
+                                  setActiveClientTab('services');
+                                }}
+                                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs rounded-lg transition-colors"
+                              >
+                                Services
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+
+        </div>
+      )}
+
+      {/* Add Service Modal */}
+      <ClientServiceOnboardingModal
+        isOpen={showAddServiceModal}
+        onClose={() => setShowAddServiceModal(false)}
+        client={selectedClient}
+      />
+
+      {/* Service Detail Modal */}
+      {selectedServiceForDetail && selectedClient && (
+        <ClientServiceDetailModal
+          isOpen={!!selectedServiceForDetail}
+          onClose={() => setSelectedServiceForDetail(null)}
+          clientService={selectedServiceForDetail}
+          clientName={selectedClient.companyName}
+        />
+      )}
+
+      {/* SAVED DRAFTS DRAWER / MODAL */}
+      {showDraftsDrawer && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-outfit">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
+                  <Clock size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Saved Legacy Onboarding Drafts</h3>
+                  <p className="text-xs text-slate-500">Resume incomplete legacy client entries</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDraftsDrawer(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {legacyClientDrafts.length === 0 ? (
+              <div className="py-8 text-center text-slate-500 text-xs font-medium">
+                No saved drafts found.
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                {legacyClientDrafts.map((d) => (
+                  <div key={d.id} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex justify-between items-center hover:border-blue-300 transition-colors">
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-xs">{d.basicInfo?.companyName || d.companyName || 'Untitled Client Draft'}</h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Step {d.step || 1} of 10 • Last Saved: {d.updatedAt ? new Date(d.updatedAt).toLocaleString() : 'Recently'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          deleteLegacyClientDraft(d.id);
+                        }}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete Draft"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDraftsDrawer(false);
+                          setEditingLegacyDraftId(d.id);
+                          setShowLegacyWizard(true);
+                        }}
+                        className="btn-primary py-1.5 px-3 text-xs font-bold"
+                      >
+                        Resume
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowDraftsDrawer(false)}
+                className="btn-secondary py-2 px-4 text-xs font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* LEGACY ONBOARDING WIZARD MODAL */}
+      {showLegacyWizard && (
+        <LegacyClientOnboardingWizard
+          initialDraftId={editingLegacyDraftId}
+          onClose={() => {
+            setShowLegacyWizard(false);
+            setEditingLegacyDraftId(undefined);
+          }}
+          onCompleted={(clientId) => {
+            setShowLegacyWizard(false);
+            setEditingLegacyDraftId(undefined);
+            setSelectedClientId(clientId);
+            setActiveClientTab('legacy');
+          }}
+        />
+      )}
+
+      {/* ── 1. ADD MASTER DATA BANK ITEM MODAL ── */}
+      {showAddDataBankModal && selectedClient && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-outfit">
+          <div className="bg-white rounded-2xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-400/30 flex items-center justify-center font-bold">
+                  <Plus size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight text-white">+ Add Master Data Item</h3>
+                  <p className="text-xs text-blue-200/80">Adding record to {selectedClient.companyName}&apos;s Master Data Bank Repository</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddDataBankModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newDataBankForm.name.trim()) {
+                  alert('Please enter a document or record title.');
+                  return;
+                }
+                addMasterDataBankDocument(selectedClient.id, newDataBankForm);
+                setShowAddDataBankModal(false);
+                setNewDataBankForm({
+                  category: 'COMPANY_MASTER_DATA',
+                  subCategory: 'Entity Registration',
+                  name: '',
+                  filePath: '',
+                  updateFrequency: 'NO',
+                  periodicity: 'Not Applicable',
+                  status: 'PENDING',
+                  uploaderName: 'Client Admin',
+                  comments: '',
+                });
+              }}
+              className="p-6 space-y-4"
+            >
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Main Category / Folder <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={newDataBankForm.category}
+                  onChange={(e) => setNewDataBankForm({ ...newDataBankForm, category: e.target.value as DocCategory })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="COMPANY_MASTER_DATA">1. Company KYC & Master Entity Data</option>
+                  <option value="SUBSIDIARIES_AGENCIES">2. Group Subsidiaries & Agency Details</option>
+                  <option value="FINANCIAL_VAULT_STATEMENTS">3. Financial Vault, Statements & Tax Returns</option>
+                  <option value="INVESTMENTS_CAP_TABLE">4. Investments, Capital Structure & Cap Table</option>
+                  <option value="AGREEMENTS_LICENCES">5. Agreements, Licences & IP Master</option>
+                  <option value="HR_OPERATIONS">6. Business Operations, HR & ESOP Master</option>
+                </select>
+              </div>
+
+              {/* SubCategory Tag & Owner */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Sub Folder / Tag <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Entity Registration, Bank Statements, GST"
+                    value={newDataBankForm.subCategory}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, subCategory: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Owner / Responsible Desk
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Client Admin, Tax Desk, Accounts"
+                    value={newDataBankForm.uploaderName}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, uploaderName: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Document Title */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Document / Record Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Audited Financial Statements FY 2024-25"
+                  value={newDataBankForm.name}
+                  onChange={(e) => setNewDataBankForm({ ...newDataBankForm, name: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Drive Link / File Link */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Drive Link / Document URL
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. https://drive.google.com/file/d/... or file path"
+                  value={newDataBankForm.filePath}
+                  onChange={(e) => setNewDataBankForm({ ...newDataBankForm, filePath: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Frequency, Periodicity & Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Update Frequency
+                  </label>
+                  <select
+                    value={newDataBankForm.updateFrequency}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, updateFrequency: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="NO">NO (Static Record)</option>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                    <option value="Annually">Annually</option>
+                    <option value="YES">YES (Periodic Update)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Periodicity Rule
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Before 5th of month"
+                    value={newDataBankForm.periodicity}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, periodicity: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                    Initial Status
+                  </label>
+                  <select
+                    value={newDataBankForm.status}
+                    onChange={(e) => setNewDataBankForm({ ...newDataBankForm, status: e.target.value as DocStatus })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="PENDING">Pending</option>
+                    <option value="RECEIVED">Received</option>
+                    <option value="VERIFIED">Verified</option>
+                    <option value="MISSING">Missing</option>
+                    <option value="REJECTED">Rejected</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Comments / Remarks */}
+              <div>
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Comments / Remarks (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Folder path or special instructions"
+                  value={newDataBankForm.comments}
+                  onChange={(e) => setNewDataBankForm({ ...newDataBankForm, comments: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddDataBankModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <Plus size={14} /> Add Item to Data Bank
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 2. FIRST-TIME LOGIN MASTER DATA GUIDE MODAL ── */}
+      {showFirstTimeGuideModal && selectedClient && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 font-outfit">
+          <div className="bg-white rounded-2xl max-w-3xl w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 text-white px-6 py-4 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-400/30 flex items-center justify-center font-bold">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base tracking-tight text-white">First-Time Login Master Data Checklist</h3>
+                  <p className="text-xs text-blue-200/80">Recommended onboarding master dataset for {selectedClient.companyName}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowFirstTimeGuideModal(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 font-medium leading-relaxed flex items-start gap-2">
+                <Info size={16} className="text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Why is this required on First-Time Login?</span>
+                  <p className="mt-0.5">
+                    When onboarding a client or setting up their Virtual CFO & Statutory Compliance workspace, having complete KYC, historical audited financials, active bank account schedules, cap table details, and operating licences ensures seamless financial modeling, tax filing, and CFO advisory execution.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  {
+                    title: '1. Company KYC & Master Entity Data',
+                    items: ['Certificate of Incorporation (COI)', 'Articles & Memorandum (MOA/AOA)', 'Company PAN & TAN Allotment', 'GST Certificates (All state branches)', 'MSME Udyam / StartUp India Certificate', 'Director Master KYC (PAN, Aadhaar, DIN, ROC Data)', 'Registered Office Premises Proof (Rent Agreement, EB Bill)']
+                  },
+                  {
+                    title: '2. Group Subsidiaries & Agency Details',
+                    items: ['Sister Partnership Firms & Subsidiaries Master', 'Statutory Auditors, CS Firm, GST Consultant & Legal Contacts', 'Keyman, Property, D&O & Cyber Insurance Policies']
+                  },
+                  {
+                    title: '3. Financial Vault, Statements & Tax Returns',
+                    items: ['Audited Financial Statements (Last 5 FYs)', 'Monthly Bank Account Statements (Primary & Subsidiary Accounts)', 'Credit Card Statements & Loan Sanction Letters', 'Monthly MIS Reports & 3-Year Financial Projections', 'Income Tax Returns (ITR) & Computation Sheets (Last 3 FYs)', 'Periodic Statutory Returns (GSTR-1, GST-3B, TDS, PF/ESIC)']
+                  },
+                  {
+                    title: '4. Investments, Capital Structure & Cap Table',
+                    items: ['Cap Table & Valuation Reports (Seed / Series Rounds)', 'Investor Details & FIRC Foreign Investment Records', 'Promoter & Investor Share Certificates', 'Board Resolutions, PAS-3 & Shareholder Agreements (SHA)']
+                  },
+                  {
+                    title: '5. Agreements, Licences & Intellectual Property',
+                    items: ['Operational Licences (FSSAI, Fire NOC, Health Permit)', 'Store / Office Lease Contracts & Franchise Agreements', 'Vendor Contracts, NDAs & Marketplace Agreements (Zomato/Swiggy)', 'Trademark Registration Receipts & IP Master']
+                  },
+                  {
+                    title: '6. Business Operations, HR & ESOP Master',
+                    items: ['Human Resources Employee Directory & Salary Register', 'ESOP Policy Scheme & M&A Expansion Agreements']
+                  }
+                ].map((section, idx) => (
+                  <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                    <h4 className="font-extrabold text-xs text-slate-900 font-outfit uppercase tracking-wider mb-2">{section.title}</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {section.items.map((item, i) => (
+                        <div key={i} className="text-[11px] font-semibold text-slate-700 flex items-center gap-1.5">
+                          <Check size={12} className="text-emerald-600 shrink-0" />
+                          <span>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-100 border-t border-slate-200 flex items-center justify-between gap-3">
+              <button
+                onClick={() => setShowFirstTimeGuideModal(false)}
+                className="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl transition-colors"
+              >
+                Close Guide
+              </button>
+
+              <button
+                onClick={() => {
+                  populateInitialDataBankTemplate(selectedClient.id, selectedClient.companyName);
+                  setShowFirstTimeGuideModal(false);
+                }}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all flex items-center gap-1.5"
+              >
+                <Sparkles size={14} /> ⚡ Populate All Initial Template Data Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

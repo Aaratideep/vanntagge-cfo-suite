@@ -8,6 +8,12 @@ export const UsersView = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
   // Modal State
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
