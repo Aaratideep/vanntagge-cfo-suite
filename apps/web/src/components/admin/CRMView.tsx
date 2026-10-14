@@ -221,6 +221,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
   const [showConvertConfirm, setShowConvertConfirm] = useState<{ leadId: string; quotationId: string } | null>(null);
   const [editingLead, setEditingLead] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [leadFormError, setLeadFormError] = useState('');
   const [selectedQuotationPreview, setSelectedQuotationPreview] = useState<any>(null);
   const [selectedAgreementPreview, setSelectedAgreementPreview] = useState<any>(null);
 
@@ -366,6 +367,15 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newLeadForm.companyName.trim() && !newLeadForm.contactPerson.trim()) {
+      setLeadFormError('Company Name or Contact Name is required.');
+      return;
+    }
+    if (!newLeadForm.companyName.trim()) {
+      setLeadFormError('Company Name cannot be empty.');
+      return;
+    }
+    setLeadFormError('');
     addLead({ ...newLeadForm, status: 'NEW', expectedRevenue: Number(newLeadForm.expectedRevenue) });
 
     let finalPass = portalPassword;
@@ -440,6 +450,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
 
     setShowCreateLeadModal(false);
     setNewLeadForm({ ...EMPTY_LEAD });
+    setLeadFormError('');
     setPortalEmail('');
     setPortalPassword('');
   };
@@ -447,6 +458,15 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
   const handleUpdateLead = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLead) return;
+    if (!editLeadForm.companyName.trim() && !editLeadForm.contactPerson.trim()) {
+      setLeadFormError('Company Name or Contact Name is required.');
+      return;
+    }
+    if (!editLeadForm.companyName.trim()) {
+      setLeadFormError('Company Name cannot be empty.');
+      return;
+    }
+    setLeadFormError('');
     updateLead(selectedLead.id, { ...editLeadForm, expectedRevenue: Number(editLeadForm.expectedRevenue) });
     setEditingLead(false);
     showSuccess('Lead updated.');
@@ -1165,15 +1185,26 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                       { label: 'Phone', key: 'phone', type: 'text' },
                       { label: 'Owner Name', key: 'ownerName', type: 'text' },
                       { label: 'Owner Contact', key: 'ownerContact', type: 'text' },
-                    ].map(f => (
-                      <div key={f.key}>
-                        <label className="block text-slate-500 mb-1">{f.label}</label>
-                        <input type={f.type} required value={(editLeadForm as any)[f.key]}
-                          onChange={e => setEditLeadForm({ ...editLeadForm, [f.key]: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 focus:bg-white focus:border-blue-400 outline-none"
-                        />
-                      </div>
-                    ))}
+                    ].map(f => {
+                      const isRequired = f.key === 'companyName';
+                      const isEmpty = isRequired && !(editLeadForm as any)[f.key]?.trim();
+                      return (
+                        <div key={f.key}>
+                          <label className="block text-slate-500 mb-1">{f.label}{isRequired ? ' *' : ''}</label>
+                          <input
+                            type={f.type}
+                            value={(editLeadForm as any)[f.key]}
+                            onChange={e => { setEditLeadForm({ ...editLeadForm, [f.key]: e.target.value }); if (leadFormError) setLeadFormError(''); }}
+                            className={`w-full bg-slate-50 border rounded-xl p-2 focus:bg-white outline-none ${
+                              isEmpty && leadFormError ? 'border-red-400 focus:border-red-500' : 'border-slate-200 focus:border-blue-400'
+                            }`}
+                          />
+                          {isEmpty && leadFormError && (
+                            <p className="text-red-500 text-[10px] mt-0.5 font-semibold">{leadFormError}</p>
+                          )}
+                        </div>
+                      );
+                    })}
                     <div>
                       <label className="block text-slate-500 mb-1">Industry</label>
                       <select value={editLeadForm.industry}
@@ -1482,17 +1513,28 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Company Name *</label>
-                  <input type="text" required value={newLeadForm.companyName}
-                    onChange={e => setNewLeadForm({ ...newLeadForm, companyName: e.target.value })}
+                  <input
+                    type="text"
+                    value={newLeadForm.companyName}
+                    onChange={e => { setNewLeadForm({ ...newLeadForm, companyName: e.target.value }); if (leadFormError) setLeadFormError(''); }}
                     placeholder="e.g. Acme Pvt. Ltd."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:border-blue-400 outline-none transition-colors" />
+                    className={`w-full bg-slate-50 border rounded-xl p-2.5 focus:bg-white outline-none transition-colors ${
+                      leadFormError && !newLeadForm.companyName.trim() ? 'border-red-400 focus:border-red-500' : 'border-slate-200 focus:border-blue-400'
+                    }`}
+                  />
+                  {leadFormError && !newLeadForm.companyName.trim() && (
+                    <p className="text-red-500 text-[10px] mt-1 font-semibold">{leadFormError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Contact Person *</label>
-                  <input type="text" required value={newLeadForm.contactPerson}
-                    onChange={e => setNewLeadForm({ ...newLeadForm, contactPerson: e.target.value })}
+                  <input
+                    type="text"
+                    value={newLeadForm.contactPerson}
+                    onChange={e => { setNewLeadForm({ ...newLeadForm, contactPerson: e.target.value }); if (leadFormError) setLeadFormError(''); }}
                     placeholder="e.g. Ramesh Sharma"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:border-blue-400 outline-none transition-colors" />
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:border-blue-400 outline-none transition-colors"
+                  />
                 </div>
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Owner Name</label>
