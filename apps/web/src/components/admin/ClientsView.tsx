@@ -281,6 +281,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
   });
 
   const handleExportClientsExcel = () => {
+    if (!filteredClients || filteredClients.length === 0) {
+      setGlobalSuccessMsg('No clients available in current filter to export.');
+      return;
+    }
     const rows = filteredClients.map((c, idx) => {
       const spaceMB = c.spaceConsumedMB || Math.round(180 + ((idx * 79) % 520));
       const costINR = c.costEstimateINR || Math.round(spaceMB * 0.3);
@@ -298,9 +302,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
       };
     });
     exportToCSV(rows, `Clients_Directory_${new Date().toISOString().split('T')[0]}`);
+    setGlobalSuccessMsg(`Exported ${rows.length} client(s) to Excel CSV successfully!`);
   };
 
   const handleExportStorageExcel = () => {
+    if (!allSyncedClients || allSyncedClients.length === 0) {
+      setGlobalSuccessMsg('No storage audit data available to export.');
+      return;
+    }
     const rows = allSyncedClients.map((c, idx) => {
       const spaceMB = c.spaceConsumedMB || Math.round(180 + ((idx * 79) % 520));
       const costINR = c.costEstimateINR || Math.round(spaceMB * 0.3);
@@ -317,6 +326,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
       };
     });
     exportToCSV(rows, `Client_Cloud_Storage_Costs_${new Date().toISOString().split('T')[0]}`);
+    setGlobalSuccessMsg(`Exported ${rows.length} client storage audit record(s) to Excel CSV successfully!`);
   };
 
   const handleConfirmAssignPack = (packId: string) => {

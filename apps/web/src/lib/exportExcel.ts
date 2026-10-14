@@ -33,10 +33,21 @@ export function exportToExcel(
   const cleanFilename = filename.endsWith('.csv') ? filename : `${filename}.csv`;
   link.setAttribute('href', url);
   link.setAttribute('download', cleanFilename);
+  link.style.display = 'none';
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+
+  // Defer cleanup so Chrome/Edge download manager has time to retrieve the blob
+  setTimeout(() => {
+    try {
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
+      URL.revokeObjectURL(url);
+    } catch {
+      // ignore
+    }
+  }, 2000);
 }
 
 export function exportToCSV(

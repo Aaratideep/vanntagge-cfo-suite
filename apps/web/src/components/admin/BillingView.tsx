@@ -579,12 +579,13 @@ export const BillingView: React.FC<BillingViewProps> = ({ setCurrentTab }) => {
     }));
 
     exportToCSV(exportData, `Invoices_Register_${new Date().toISOString().split('T')[0]}.csv`);
+    useDashboardStore.getState().setGlobalSuccessMsg(`Exported ${invoices.length} invoice(s) to Excel CSV!`);
   };
 
   // Export Collections
   const handleExportCollectionsExcel = () => {
     if (paymentLogs.length === 0) {
-      alert('No collections available to export.');
+      useDashboardStore.getState().setGlobalSuccessMsg('No collections available to export.');
       return;
     }
 
@@ -599,6 +600,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ setCurrentTab }) => {
     }));
 
     exportToCSV(exportData, `Collections_Register_${new Date().toISOString().split('T')[0]}.csv`);
+    useDashboardStore.getState().setGlobalSuccessMsg(`Exported ${paymentLogs.length} collection record(s) to Excel CSV!`);
   };
 
   // Status Badge Helper
