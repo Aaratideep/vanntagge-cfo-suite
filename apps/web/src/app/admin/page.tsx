@@ -37,6 +37,8 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTarget, setSearchTarget] = useState('all');
   const [isMounted, setIsMounted] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [crmInitialAction, setCrmInitialAction] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -230,7 +232,7 @@ export default function AdminPage() {
       case 'legacy_onboarding':
         return <ClientsView initialTab="legacy" />;
       case 'invoicing':
-        return <BillingView />;
+        return <BillingView setCurrentTab={setCurrentTab} />;
       case 'automation':
         return <UsersView initialSubTab="automation" />;
       case 'ai_usage':
@@ -242,7 +244,11 @@ export default function AdminPage() {
       case 'outbox':
         return <CommunicationHistoryView />;
       case 'compliance':
-        return <ComplianceView />;
+        return <ComplianceView setCurrentTab={setCurrentTab} />;
+      case 'financial_docs':
+        return <FinancialDocsView />;
+      case 'reports':
+        return <ReportsView />;
       case 'notifications':
         return <NotificationsPanel setCurrentTab={setCurrentTab} />;
       default:

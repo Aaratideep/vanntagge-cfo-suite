@@ -6,7 +6,7 @@ import { formatINR } from '../../lib/currency';
 import { DocumentPreviewModal, DocType } from '../DocumentPreviewModal';
 
 export const FinancialDocsView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'quotation' | 'invoice' | 'receipt' | 'agreement' | 'vendor_agreement' | 'mou' | 'employee_agreement'>('quotation');
+  const [activeTab, setActiveTab] = useState<'quotation' | 'invoice' | 'receipt' | 'agreement' | 'vendor_agreement' | 'mou' | 'employee_agreement' | 'mrl'>('quotation');
   const [showModal, setShowModal] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<{ type: DocType; data: any } | null>(null);
   
@@ -149,7 +149,7 @@ export const FinancialDocsView: React.FC = () => {
         sacCode: formData.sacCode,
       });
       setGlobalSuccessMsg(`Quotation ${qNum} created & Client "${companyName}" synced across ERP!`);
-    } else if (activeTab === 'agreement' || activeTab === 'vendor_agreement' || activeTab === 'mou' || activeTab === 'employee_agreement') {
+    } else if (activeTab === 'agreement' || activeTab === 'vendor_agreement' || activeTab === 'mou' || activeTab === 'employee_agreement' || activeTab === 'mrl') {
       let scope = 'Complete Virtual CFO, Governance & Statutory Compliance Oversight';
       let deliverables = 'Monthly MIS, Board Deck, Statutory Tax Filings, Budget Variance Analysis';
       
@@ -162,6 +162,9 @@ export const FinancialDocsView: React.FC = () => {
       } else if (activeTab === 'employee_agreement') {
         scope = 'Employee Contract & Confidentiality Agreement';
         deliverables = 'Roles, Responsibilities, Non-Compete Clauses';
+      } else if (activeTab === 'mrl') {
+        scope = 'Management Representation Letter';
+        deliverables = 'Confirmation of Financial Statement Accuracy & Disclosures';
       }
 
       createEngagementLetter({
@@ -181,7 +184,7 @@ export const FinancialDocsView: React.FC = () => {
         companyGstin: '27AAAAA0000A1Z5',
         clientGstin: gstin,
         clientPan: pan,
-        agreementType: activeTab === 'vendor_agreement' ? 'VENDOR' : activeTab === 'mou' ? 'MOU' : activeTab === 'employee_agreement' ? 'EMPLOYEE' : 'ENGAGEMENT',
+        agreementType: activeTab === 'vendor_agreement' ? 'VENDOR' : activeTab === 'mou' ? 'MOU' : activeTab === 'employee_agreement' ? 'EMPLOYEE' : activeTab === 'mrl' ? 'MRL' : 'ENGAGEMENT',
         digitalSignatureUrl: '/signatures/authorized-cfo-sign.png',
       });
       setGlobalSuccessMsg(`Agreement generated & Client "${companyName}" synced across ERP!`);
@@ -424,6 +427,14 @@ export const FinancialDocsView: React.FC = () => {
           }`}
         >
           <FileSignature size={16} /> Employee ({displayEngagementLetters.filter(el => el.agreementType === 'EMPLOYEE').length})
+        </button>
+        <button
+          onClick={() => setActiveTab('mrl')}
+          className={`flex shrink-0 items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === 'mrl' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'
+          }`}
+        >
+          <FileSignature size={16} /> Mgmt Rep Letter (MRL) ({displayEngagementLetters.filter(el => el.agreementType === 'MRL').length})
         </button>
       </div>
 

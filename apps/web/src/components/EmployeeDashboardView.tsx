@@ -121,33 +121,28 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ in
 
   const now = new Date();
 
-  engagements.forEach((e) => {
-    // Tasks
-    (e.tasks || []).forEach((t) => {
-      if (t.employeeId === currentUser.id || !t.employeeId || t.employeeName?.includes('Priya') || currentUser.role === 'EMPLOYEE') {
-        myAssignedClients.add(e.id);
-        if (t.status === 'COMPLETED') {
-          myCompletedTasks++;
-        } else {
-          myOpenTasks++;
-          myTasks.push({ ...t, clientName: e.clientCompanyName, engagementId: e.id });
-          if (t.dueDate && new Date(t.dueDate) < now) {
-            myOverdueTasks++;
-          }
+  const allMyTasks = useMemo(() => {
+    const list: any[] = [];
+    engagements.forEach((e) => {
+      (e.tasks || []).forEach((t) => {
+        if (t.employeeId === currentUser.id || !t.employeeId || t.employeeName?.includes('Priya') || currentUser.role === 'EMPLOYEE') {
+          list.push({ ...t, clientName: e.clientCompanyName, engagementId: e.id });
         }
       });
     });
     return list;
   }, [engagements, currentUser.id]);
 
-    // Compliances
-    (e.compliances || []).forEach((c) => {
-      if (c.responsibleEmployeeId === currentUser.id || !c.responsibleEmployeeId || currentUser.role === 'EMPLOYEE') {
-        if (c.status !== 'COMPLETED') {
-          myAssignedClients.add(e.id);
-          myCompliances.push({ ...c, clientName: e.clientCompanyName });
+  const allMyCompliances = useMemo(() => {
+    const list: any[] = [];
+    engagements.forEach((e) => {
+      (e.compliances || []).forEach((c) => {
+        if (c.responsibleEmployeeId === currentUser.id || !c.responsibleEmployeeId || currentUser.role === 'EMPLOYEE') {
+          if (c.status !== 'COMPLETED') {
+            list.push({ ...c, clientName: e.clientCompanyName, engagementId: e.id });
+          }
         }
-      }
+      });
     });
     return list;
   }, [engagements, currentUser.id]);

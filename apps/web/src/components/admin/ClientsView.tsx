@@ -33,12 +33,17 @@ import {
   Table2,
   Send,
   FileSpreadsheet,
+  History,
+  Info,
 } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { ClientStatus, DocStatus, DocCategory, Document } from '../../types';
 import { exportToCSV } from '../../lib/exportExcel';
 import { ClientDeliverablesAdmin } from './ClientDeliverablesAdmin';
 import { ClientConfigAdminView } from './ClientConfigAdminView';
+import { ClientServiceOnboardingModal } from './ClientServiceOnboardingModal';
+import { ClientServiceDetailModal } from './ClientServiceDetailModal';
+import { LegacyClientOnboardingWizard } from './LegacyClientOnboardingWizard';
 
 interface ClientsViewProps {
   initialTab?: 'directory' | 'onboarding' | 'services' | 'legacy';
@@ -66,9 +71,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
     clientTemplatePacks,
     applyTemplateToEngagement,
     setGlobalSuccessMsg,
+    serviceCategories,
+    addMasterDataBankDocument,
+    populateInitialDataBankTemplate,
   } = useDashboardStore();
 
-  const [activeClientTab, setActiveClientTab] = useState<'directory' | 'onboarding' | 'templates' | 'storage' | 'deliverables' | 'config'>('directory');
+  const [activeClientTab, setActiveClientTab] = useState<'directory' | 'onboarding' | 'services' | 'templates' | 'storage' | 'deliverables' | 'config' | 'legacy'>(initialTab as any || 'directory');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedStorageClientId, setSelectedStorageClientId] = useState<string | null>(null);
@@ -81,6 +89,31 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
   const [onboardingSearch, setOnboardingSearch] = useState('');
   const [onboardingFilter, setOnboardingFilter] = useState<'ALL' | DocCategory>('ALL');
   const [onboardingViewMode, setOnboardingViewMode] = useState<'TABLE' | 'CARDS'>('TABLE');
+
+  // Master Data Bank Custom Item & Guide Modal State
+  const [showAddDataBankModal, setShowAddDataBankModal] = useState(false);
+  const [showFirstTimeGuideModal, setShowFirstTimeGuideModal] = useState(false);
+  const [newDataBankForm, setNewDataBankForm] = useState<{
+    category: DocCategory;
+    subCategory: string;
+    name: string;
+    uploaderName: string;
+    filePath: string;
+    updateFrequency: string;
+    periodicity: string;
+    status: DocStatus;
+    comments: string;
+  }>({
+    category: 'COMPANY_MASTER_DATA',
+    subCategory: 'Entity Registration',
+    name: '',
+    uploaderName: 'CFO Office',
+    filePath: '',
+    updateFrequency: 'ONE_TIME',
+    periodicity: 'ONE_TIME',
+    status: 'AVAILABLE',
+    comments: '',
+  });
 
   const canReview = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
 
@@ -97,6 +130,9 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<import('../../types').ClientService | null>(null);
+  const [showDraftsDrawer, setShowDraftsDrawer] = useState(false);
+  const [showLegacyWizard, setShowLegacyWizard] = useState(false);
+  const [editingLegacyDraftId, setEditingLegacyDraftId] = useState<string | undefined>(undefined);
   const [isLegacyImport, setIsLegacyImport] = useState(false);
   const [newClientData, setNewClientData] = useState({
     companyName: '',
@@ -1218,21 +1254,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="btn-primary py-2 px-3 text-[10px] flex items-center gap-1.5" onClick={() => {
-                    if (!selectedEngagement) { alert('Please create an engagement first.'); return; }
-                    const name = window.prompt("Enter new Master Data Item name:");
-                    if (name) {
-                      useDashboardStore.getState().addDocument(selectedEngagement.id, {
-                        engagementId: selectedEngagement.id,
-                        category: onboardingFilter === 'ALL' ? 'COMPANY_MASTER_DATA' : onboardingFilter,
-                        name,
-                        status: 'PENDING',
-                      });
-                    }
-                  }}>
+                  <button className="btn-primary py-2 px-3 text-[10px] flex items-center gap-1.5 cursor-pointer" onClick={() => setShowAddDataBankModal(true)}>
                     <Plus size={14} /> Add Master Data Item
                   </button>
-                  <button className="bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-200 py-2 px-3 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1.5" onClick={() => useDashboardStore.getState().setGlobalSuccessMsg('Initial Template Data loaded.')}>
+                  <button className="bg-amber-100 hover:bg-amber-200 text-amber-800 border border-amber-200 py-2 px-3 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1.5 cursor-pointer" onClick={() => setShowFirstTimeGuideModal(true)}>
                     <Sparkles size={14} /> Initial Template Data
                   </button>
                 </div>

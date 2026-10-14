@@ -18,6 +18,14 @@ export const SettingsView: React.FC = () => {
   const [seeding, setSeeding] = useState(false);
   const [seedSuccess, setSeedSuccess] = useState(false);
   const [seedError, setSeedError] = useState('');
+  const [toastMsg, setToastMsg] = useState<{type: 'error' | 'success', text: string} | null>(null);
+
+  // Auto-sync the provided app password into the store if missing
+  React.useEffect(() => {
+    if (adminSettings && !adminSettings.smtpPassword) {
+      setAdminSettings({ smtpPassword: 'whge zcfi iywk ttlc' });
+    }
+  }, [adminSettings, setAdminSettings]);
 
   if (!currentUser) return null;
 
@@ -62,13 +70,59 @@ export const SettingsView: React.FC = () => {
     addAuditLog('TOGGLE_INTEGRATION', `${feature} integration toggled to ${enabled ? 'ENABLED' : 'DISABLED'}`);
   };
 
+  const handleSaveSettings = () => {
+    if (tallyEnabled) {
+      if (!adminSettings.tallyServerUrl || !adminSettings.tallyUsername || !adminSettings.tallyPassword) {
+        setToastMsg({ type: 'error', text: 'Please fill all Tally Prime Sync fields before saving.' });
+        setTimeout(() => setToastMsg(null), 4000);
+        return;
+      }
+    }
+    if (aiEnabled) {
+      if (!adminSettings.geminiApiKey) {
+        setToastMsg({ type: 'error', text: 'Please enter a valid Gemini API Key for the AI Financial Assistant.' });
+        setTimeout(() => setToastMsg(null), 4000);
+        return;
+      }
+    }
+    if (whatsappEnabled) {
+      if (!adminSettings.twilioAccountSid || !adminSettings.twilioAuthToken || !adminSettings.twilioWhatsAppNumber) {
+        setToastMsg({ type: 'error', text: 'Please fill all Twilio WhatsApp configuration fields.' });
+        setTimeout(() => setToastMsg(null), 4000);
+        return;
+      }
+    }
+
+    setToastMsg({ type: 'success', text: 'All configurations and integrations saved successfully.' });
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
   return (
     <div className="space-y-6">
       
       {/* Header */}
-      <div className="border-b border-slate-200 pb-2">
-        <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Config Hub</h1>
-        <p className="text-xs text-slate-500">Configure parameters, role access control limits, and third-party integrations.</p>
+      <div className="border-b border-slate-200 pb-4 flex justify-between items-end relative">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit">Config Hub</h1>
+          <p className="text-xs text-slate-500 mt-1">Configure parameters, role access control limits, and third-party integrations.</p>
+        </div>
+        <div className="flex items-center gap-4">
+          {toastMsg && (
+            <div className={`px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 ${
+              toastMsg.type === 'error' ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-green-100 text-green-700 border border-green-200'
+            }`}>
+              {toastMsg.type === 'error' ? '⚠️' : <Check size={14} />}
+              {toastMsg.text}
+            </div>
+          )}
+          <button 
+            onClick={handleSaveSettings}
+            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-xl text-xs font-bold transition-all shadow-md shadow-slate-900/20 active:scale-95"
+          >
+            <Check size={16} />
+            Save Configurations
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

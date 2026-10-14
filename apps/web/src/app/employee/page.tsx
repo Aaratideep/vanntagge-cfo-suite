@@ -23,6 +23,7 @@ export default function EmployeePage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchTarget, setSearchTarget] = useState('all');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export default function EmployeePage() {
       case 'timesheet':
         return <TimesheetView />;
       case 'compliance':
-        return <ComplianceView />;
+        return <ComplianceView setCurrentTab={setCurrentTab} />;
       case 'calendar':
         return <CalendarView />;
       case 'settings':

@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { Role } from '../../types';
-import { Plus, Search, UserCheck, Shield, Briefcase, Building2, MoreVertical, X, Check, Lock, ArrowRight } from 'lucide-react';
+import { Plus, Search, UserCheck, Shield, Briefcase, Building2, MoreVertical, X, Check, Lock, ArrowRight, Zap, Sparkles } from 'lucide-react';
+import { AutomationDashboardView } from './AutomationDashboardView';
+import { AiDashboardView } from './AiDashboardView';
 
-export const UsersView = () => {
+interface UsersViewProps {
+  initialSubTab?: 'users' | 'automation' | 'ai_usage';
+}
+
+export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' }) => {
   const { users, addUser, updateUser, deleteUser, setGlobalSuccessMsg, currentUser, switchPersona } = useDashboardStore();
+  const [activeSubTab, setActiveSubTab] = useState<'users' | 'automation' | 'ai_usage'>(initialSubTab);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -97,7 +104,42 @@ export const UsersView = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Access Control Top Navigation Pills */}
+      <div className="bg-white border border-slate-200/80 p-1.5 rounded-2xl shadow-sm flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setActiveSubTab('users')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeSubTab === 'users' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Lock size={15} /> User Access & Permissions
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('automation')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeSubTab === 'automation' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Zap size={15} className="text-amber-500" /> Automation & Workflows
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('ai_usage')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeSubTab === 'ai_usage' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Sparkles size={15} className="text-blue-500" /> AI Usage & Config
+        </button>
+      </div>
+
+      {activeSubTab === 'automation' && <AutomationDashboardView />}
+      {activeSubTab === 'ai_usage' && <AiDashboardView />}
+
+      {activeSubTab === 'users' && (
+        <div className="space-y-6">
+          {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 font-outfit">User Accounts & Role Personas</h1>
@@ -282,6 +324,8 @@ export const UsersView = () => {
           </table>
         </div>
       </div>
+        </div>
+      )}
 
       {/* Add New User Modal */}
       {isModalOpen && (

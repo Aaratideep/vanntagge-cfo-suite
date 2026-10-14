@@ -26,9 +26,32 @@ type Category = {
 import { useDashboardStore } from '../../store/dashboardStore';
 
 export const ServiceMasterView: React.FC = () => {
-  const { serviceCategories, addServiceCategory, addServiceToCategory, removeServiceFromCategory, toggleServiceAutomation } = useDashboardStore();
+  const { currentUser, serviceCategories, addServiceCategory, addServiceToCategory, removeServiceFromCategory, toggleServiceAutomation } = useDashboardStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('');
+  
+  // Missing Modal & Template States
+  const [targetServiceId, setTargetServiceId] = useState<string | null>(null);
+  const [isParamModalOpen, setIsParamModalOpen] = useState(false);
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+
+  const canManageTemplates = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN';
+
+  const openEditService = (service: any) => {
+    alert(`Edit service feature coming soon for ${service.name}`);
+  };
+  
+  const openAddTemplate = (serviceId: string, paramId: string, paramName: string) => {
+    alert(`Add Task Template for parameter: ${paramName}`);
+  };
+
+  const openEditTemplate = (serviceId: string, paramId: string, paramName: string, tmpl: any) => {
+    alert(`Edit Task Template: ${tmpl.name}`);
+  };
+
+  const deleteTaskTemplate = (serviceId: string, paramId: string, tmplId: string) => {
+    alert(`Task Template deactivated`);
+  };
 
   // Fallback to first category if active is not set
   const currentActiveCategory = activeCategory || (serviceCategories[0]?.id ?? '');

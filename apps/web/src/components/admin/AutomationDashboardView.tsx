@@ -18,7 +18,12 @@ import {
   Check,
   ToggleLeft,
   ToggleRight,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  BrainCircuit,
+  Upload,
+  Database,
+  CheckCircle
 } from 'lucide-react';
 import { AutomationRule, AutomationTrigger, AutomationAction } from '../../types';
 
@@ -34,7 +39,7 @@ export const AutomationDashboardView: React.FC = () => {
     addAuditLog
   } = useDashboardStore();
 
-  const [activeSubTab, setActiveSubTab] = useState<'rules' | 'logs' | 'reminders'>('rules');
+  const [activeSubTab, setActiveSubTab] = useState<'rules' | 'logs' | 'reminders' | 'ai_accounting'>('ai_accounting');
   const [showRuleModal, setShowRuleModal] = useState(false);
 
   // New Rule Form State
@@ -172,6 +177,14 @@ export const AutomationDashboardView: React.FC = () => {
           }`}
         >
           Reminder Tracker ({(reminderRecords || []).length})
+        </button>
+        <button
+          onClick={() => setActiveSubTab('ai_accounting')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeSubTab === 'ai_accounting' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          <Sparkles size={14} className="inline mr-1" /> ERP & AI Accounting
         </button>
       </div>
 
@@ -335,6 +348,110 @@ export const AutomationDashboardView: React.FC = () => {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* SUB TAB 4: AI & ERP ACCOUNTING */}
+      {activeSubTab === 'ai_accounting' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+            <Sparkles size={120} className="absolute -top-10 -right-10 text-indigo-500/20 rotate-12" />
+            <div className="relative z-10 max-w-3xl">
+              <h2 className="text-2xl font-extrabold flex items-center gap-2 mb-2">
+                <BrainCircuit size={28} className="text-indigo-400" /> AI-Augmented Accounting
+              </h2>
+              <p className="text-slate-300 text-sm mb-4">
+                Configure next-gen accounting automations. Upload bank statements and bills for AI processing, map Tally ledgers using historical behavior, and sync with Zoho Books and QuickBooks.
+              </p>
+              <div className="flex gap-4">
+                <div className="bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                  <CheckCircle size={14} className="text-emerald-400" /> Bills Auto-Posted
+                </div>
+                <div className="bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5">
+                  <CheckCircle size={14} className="text-emerald-400" /> GST Auto-Reconciled
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Invoice to Voucher Automation */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4">
+                <ToggleRight size={32} className="text-emerald-500" />
+              </div>
+              <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-4 border border-blue-100">
+                <Upload size={24} />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 mb-1">Invoice to Voucher AI</h3>
+              <p className="text-xs text-slate-500 mb-4 h-12">
+                Upload PDF, WhatsApp images, or Scanned Bills. AI automatically reads GSTIN, detects the party, maps ledgers, and pushes entries to ERP.
+              </p>
+              <button onClick={() => alert('Opening AI Invoice Processing Engine...')} className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-md py-2.5 rounded-xl font-bold text-xs transition-colors">
+                Open AI Processor
+              </button>
+            </div>
+
+            {/* Bank Statement Automation */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4">
+                <ToggleRight size={32} className="text-emerald-500" />
+              </div>
+              <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-4 border border-purple-100">
+                <Database size={24} />
+              </div>
+              <h3 className="text-base font-bold text-slate-900 mb-1">Bank Statement Auto-Recon</h3>
+              <p className="text-xs text-slate-500 mb-4 h-12">
+                AI reads PDF or CSV bank exports, auto-categorizes entries, suggests ledgers, and generates matching vouchers in Tally.
+              </p>
+              <button onClick={() => alert('Opening Bank Statement Reconciler...')} className="w-full bg-purple-600 hover:bg-purple-700 text-white shadow-md py-2.5 rounded-xl font-bold text-xs transition-colors">
+                Run Bank Recon
+              </button>
+            </div>
+
+            {/* Tally Connector */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100">
+                    <Zap size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">Tally AI Ledger Mapping</h3>
+                    <p className="text-[10px] text-slate-500">Learns historical accounting behavior</p>
+                  </div>
+                </div>
+                <ToggleRight size={28} className="text-emerald-500" />
+              </div>
+              <div className="bg-slate-50 rounded-lg p-3 text-xs border border-slate-100">
+                <span className="font-bold text-slate-700">Example AI Logic:</span>
+                <p className="text-slate-600 mt-1">If "Amazon Seller Services" was mapped to Advertisement/Commission historically, AI remembers and predicts future classifications instantly.</p>
+              </div>
+            </div>
+
+            {/* Cloud ERP Integrations */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
+                <Database size={16} className="text-blue-600" /> External ERP Sync
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 border border-slate-100 rounded-xl bg-slate-50">
+                  <div>
+                    <span className="font-bold text-slate-800 block text-xs">Zoho Books (Zia AI)</span>
+                    <span className="text-[10px] text-slate-500">Voice queries, predictive insights, anomaly detection</span>
+                  </div>
+                  <button className="px-3 py-1.5 bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-lg border border-emerald-200">Connected</button>
+                </div>
+                <div className="flex items-center justify-between p-3 border border-slate-100 rounded-xl bg-slate-50">
+                  <div>
+                    <span className="font-bold text-slate-800 block text-xs">QuickBooks Online AI</span>
+                    <span className="text-[10px] text-slate-500">Automated bookkeeping, intelligent reporting</span>
+                  </div>
+                  <button className="px-3 py-1.5 bg-emerald-100 text-emerald-700 font-bold text-[10px] rounded-lg border border-emerald-200">Connected</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

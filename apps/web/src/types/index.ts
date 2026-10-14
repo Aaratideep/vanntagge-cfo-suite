@@ -927,7 +927,6 @@ export interface Invoice {
   amount: number;
   gst: number;
   finalAmount: number;
-  dueDate: string;
   issueDate?: string;
   status: InvoiceStatus;
   issuedAt?: string;
@@ -1071,27 +1070,27 @@ export interface ReportDataSnapshot {
 export interface Report {
   id: string;
   organizationId?: string;
-  clientId: string;
-  clientCompanyName: string;
+  clientId?: string;
+  clientCompanyName?: string;
   clientServiceId?: string;
   engagementId: string;
-  engagementName: string;
-  reportTemplateId: string;
-  reportTemplateVersion: number;
+  engagementName?: string;
+  reportTemplateId?: string;
+  reportTemplateVersion?: number;
   type: ReportType;
-  periodKey: string;
+  periodKey?: string;
   status: ReportStatus;
   version: number;
-  sections: ReportSectionConfig[];
-  dataSnapshot: ReportDataSnapshot;
-  dataLineage: Record<string, ReportDataLineageItem>;
+  sections?: ReportSectionConfig[];
+  dataSnapshot?: ReportDataSnapshot;
+  dataLineage?: Record<string, ReportDataLineageItem>;
   reviewPoints?: ReviewPoint[];
   notes?: string;
   filePath?: string;
   pdfUrl?: string;
   excelUrl?: string;
-  createdBy: string;
-  createdByName: string;
+  createdBy?: string;
+  createdByName?: string;
   createdAt: string;
   approvedBy?: string;
   approvedByName?: string;
@@ -1340,3 +1339,145 @@ export interface CommunicationLog {
   relatedEntityId?: string;
   relatedEntityType?: 'INVOICE' | 'DOCUMENT' | 'LEAD' | 'OTHER';
 }
+
+// ─── 4-Step Scalable Client Report & Delivery Cycle ─────────────────────────
+export interface AccountingClosureItem {
+  id: string;
+  name: string;
+  category: string;
+  isCompleted: boolean;
+  completedBy?: string;
+  completedAt?: string;
+  notes?: string;
+}
+
+export interface BankReconciliationRecord {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  ledgerBalance: number;
+  bankStatementBalance: number;
+  unpresentedCheques: number;
+  depositsInTransit: number;
+  netVariance: number;
+  isReconciled: boolean;
+  reconciledBy?: string;
+  reconciledAt?: string;
+}
+
+export interface PnLLineItem {
+  id: string;
+  label: string;
+  actualAmount: number;
+  budgetAmount: number;
+  category: 'REVENUE' | 'COGS' | 'OPEX' | 'TAX_OTHER';
+}
+
+export interface BalanceSheetItem {
+  id: string;
+  label: string;
+  currentPeriod: number;
+  priorPeriod: number;
+  category: 'ASSET' | 'LIABILITY' | 'EQUITY';
+}
+
+export interface CashflowItem {
+  id: string;
+  label: string;
+  amount: number;
+  category: 'OPERATING' | 'INVESTING' | 'FINANCING';
+}
+
+export interface VarianceItem {
+  id: string;
+  metric: string;
+  actual: number;
+  budget: number;
+  varianceAmount: number;
+  variancePercentage: number;
+  isFavorable: boolean;
+  driverExplanation: string;
+}
+
+export interface RiskItem {
+  id: string;
+  title: string;
+  category: string;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  impactDescription: string;
+  mitigationStrategy: string;
+  owner: string;
+  status: 'OPEN' | 'MITIGATING' | 'RESOLVED';
+}
+
+export interface OpportunityItem {
+  id: string;
+  title: string;
+  strategicArea: string;
+  potentialImpactINR: number;
+  feasibility: 'HIGH' | 'MEDIUM' | 'LOW';
+  targetTimeline: string;
+  actionPlan: string;
+}
+
+export interface PresentationCallDetails {
+  callDate: string;
+  callTime: string;
+  meetingLink: string;
+  status: 'SCHEDULED' | 'CONDUCTED' | 'RESCHEDULED' | 'PENDING';
+  attendees: string;
+  presentationDeckUrl?: string;
+  meetingMinutes?: string;
+}
+
+export interface DeliveryActionItem {
+  id: string;
+  description: string;
+  assignedTo: string;
+  assignedRole: 'CLIENT' | 'CFO_TEAM';
+  dueDate: string;
+  priority: 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW';
+  status: 'PENDING' | 'IN_PROGRESS' | 'DONE';
+}
+
+export interface ClientDeliveryCycle {
+  id: string;
+  clientId: string;
+  clientCompanyName: string;
+  periodKey: string;
+  currentStep: 1 | 2 | 3 | 4;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  step1: {
+    accountingClosure: AccountingClosureItem[];
+    bankReconciliations: BankReconciliationRecord[];
+    isApproved: boolean;
+    approvedAt?: string;
+  };
+  step2: {
+    pnl: PnLLineItem[];
+    balanceSheet: BalanceSheetItem[];
+    cashflow: CashflowItem[];
+    variances: VarianceItem[];
+    isApproved: boolean;
+    approvedAt?: string;
+  };
+  step3: {
+    aiExecutiveSummary: string;
+    manualCommentary: string;
+    risks: RiskItem[];
+    opportunities: OpportunityItem[];
+    isApproved: boolean;
+    approvedAt?: string;
+  };
+  step4: {
+    presentationCall: PresentationCallDetails;
+    actionItems: DeliveryActionItem[];
+    reportPdfGenerated: boolean;
+    deliveredAt?: string;
+    clientFeedbackScore?: number;
+    clientFeedbackNotes?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+

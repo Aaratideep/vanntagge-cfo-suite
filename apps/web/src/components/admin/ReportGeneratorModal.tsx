@@ -67,8 +67,8 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
 
   if (!isOpen) return null;
 
-  const activeTemplates = reportTemplates.filter((t) => t.active);
-  const selectedClient = clients.find((c) => c.id === selectedClientId);
+  const activeTemplates = (reportTemplates || []).filter((t) => t.active);
+  const selectedClient = (clients || []).find((c) => c.id === selectedClientId);
 
   const handleGenerate = () => {
     if (!selectedClientId || !selectedTemplateId || !periodKey) {
@@ -97,24 +97,24 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-700/60 animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in duration-200">
         {/* Header */}
-        <div className="bg-slate-950 px-6 py-5 border-b border-slate-800 text-white flex items-center justify-between">
+        <div className="bg-slate-50/80 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
               <FileText className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight font-outfit">Generate CFO Report Draft</h2>
-              <p className="text-xs text-slate-400">
-                TEMPLATE → APPROVED DATA → BUILDER → MAKER-CHECKER REVIEW → RELEASE
+              <h2 className="text-base font-bold text-slate-800 tracking-tight font-outfit">Generate CFO Report Draft</h2>
+              <p className="text-xs text-slate-500">
+                TEMPLATE &rarr; APPROVED DATA &rarr; BUILDER &rarr; MAKER-CHECKER REVIEW &rarr; RELEASE
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white hover:bg-slate-800 p-2 rounded-xl transition-colors"
+            className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-2 rounded-xl transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -123,8 +123,8 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
         {/* Body */}
         <div className="p-6 space-y-6">
           {errorMsg && (
-            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-rose-400 text-xs flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold">Generation Blocked</p>
                 <p>{errorMsg}</p>
@@ -135,14 +135,14 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Target Client */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5 font-outfit">
-                <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                Select Client <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5 font-outfit">
+                <Building2 className="w-3.5 h-3.5 text-blue-600" />
+                Select Client <span className="text-rose-500">*</span>
               </label>
               <select
                 value={selectedClientId}
                 onChange={(e) => setSelectedClientId(e.target.value)}
-                className="w-full text-xs border border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 p-2.5 bg-slate-950 text-white font-semibold"
+                className="w-full text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary p-2.5 bg-slate-50 text-slate-800 font-semibold"
               >
                 <option value="">-- Select Target Client --</option>
                 {clients.map((c) => (
@@ -155,30 +155,30 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
 
             {/* Target Period */}
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5 font-outfit">
-                <Calendar className="w-3.5 h-3.5 text-blue-400" />
-                Reporting Period <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5 font-outfit">
+                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                Reporting Period <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 value={periodKey}
                 onChange={(e) => setPeriodKey(e.target.value)}
                 placeholder="e.g. 2026-09 or 2026-Q3"
-                className="w-full text-xs border border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 p-2.5 bg-slate-950 text-white font-semibold"
+                className="w-full text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary p-2.5 bg-slate-50 text-slate-800 font-semibold"
               />
-              <p className="text-[11px] text-slate-500 mt-1">Format: YYYY-MM or YYYY-Q#</p>
+              <p className="text-[11px] text-slate-400 mt-1">Format: YYYY-MM or YYYY-Q#</p>
             </div>
 
             {/* Report Template */}
             <div className="md:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1.5 font-outfit">
-                <Layers className="w-3.5 h-3.5 text-blue-400" />
-                Report Structure Template <span className="text-rose-400">*</span>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5 font-outfit">
+                <Layers className="w-3.5 h-3.5 text-blue-600" />
+                Report Structure Template <span className="text-rose-500">*</span>
               </label>
               <select
                 value={selectedTemplateId}
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
-                className="w-full text-xs border border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 p-2.5 bg-slate-950 text-white font-semibold"
+                className="w-full text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary p-2.5 bg-slate-50 text-slate-800 font-semibold"
               >
                 <option value="">-- Select Template --</option>
                 {activeTemplates.map((t) => (
@@ -195,35 +195,35 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
             <div className="mt-4">
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 font-outfit flex items-center gap-2">
                 <span>Pre-Generation Data Verification</span>
-                <span className="h-px flex-1 bg-slate-800" />
+                <span className="h-px flex-1 bg-slate-200" />
               </div>
 
               {validationResult.valid ? (
-                <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                   <div>
-                    <h4 className="text-sm font-bold text-emerald-300 font-outfit">
+                    <h4 className="text-sm font-bold text-emerald-800 font-outfit">
                       Approved Task Data Ready for Compilation
                     </h4>
-                    <p className="text-xs text-emerald-400/90 mt-0.5 leading-relaxed">
+                    <p className="text-xs text-emerald-700 mt-0.5 leading-relaxed">
                       Verified approved task submissions for {selectedClient?.companyName} ({periodKey}). Source data lineage snapshot will be compiled automatically.
                     </p>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-amber-300 font-outfit">
+                    <h4 className="text-sm font-bold text-amber-800 font-outfit">
                       Generation Blocked — Missing Approved Task Data
                     </h4>
-                    <p className="text-xs text-amber-400/90 leading-relaxed">
+                    <p className="text-xs text-amber-700 leading-relaxed">
                       Reports can only be generated using verified, approved task data. Please complete and approve the required client tasks first.
                     </p>
                     <ul className="mt-2 space-y-1">
                       {validationResult.blockers.map((b, idx) => (
-                        <li key={idx} className="text-xs font-semibold text-amber-300 flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                        <li key={idx} className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                           {b}
                         </li>
                       ))}
@@ -236,11 +236,11 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+        <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -249,7 +249,7 @@ export const ReportGeneratorModal: React.FC<ReportGeneratorModalProps> = ({
             type="button"
             disabled={!validationResult?.valid || isSubmitting}
             onClick={handleGenerate}
-            className="px-5 py-2.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-md flex items-center gap-2 transition-all active:scale-[0.98]"
+            className="btn-primary px-5 py-2.5 text-xs font-semibold rounded-xl shadow-md flex items-center gap-2 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isSubmitting ? (
               <span>Compiling Snapshot...</span>

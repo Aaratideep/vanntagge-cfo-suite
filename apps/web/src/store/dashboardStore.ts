@@ -404,9 +404,116 @@ export const getInitialCurrentUser = (): User => {
   return FIXED_USERS[0];
 };
 
+const DEFAULT_REPORT_TEMPLATES: ReportTemplate[] = [
+  {
+    id: 'tpl-cfo-mis',
+    name: 'Monthly CFO Performance MIS',
+    description: 'Comprehensive month-end financial overview, P&L, balance sheet trends, and working capital commentary.',
+    reportType: 'MIS',
+    frequency: 'Monthly',
+    active: true,
+    version: 1,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    sections: [
+      { id: 'sec-1', title: 'Executive Summary', order: 1, visible: true, narrative: 'Strong operational trajectory with sustained top-line momentum across core business segments.' },
+      { id: 'sec-2', title: 'Revenue & Gross Profitability', order: 2, visible: true, kpiKeys: ['revenue', 'gross_profit'] },
+      { id: 'sec-3', title: 'Operating Cost Analysis & EBITDA', order: 3, visible: true, kpiKeys: ['ebitda', 'opex'] },
+      { id: 'sec-4', title: 'Working Capital & Liquidity Runway', order: 4, visible: true, kpiKeys: ['cash_runway', 'dso'] },
+    ],
+    kpiDefinitions: [
+      { key: 'revenue', name: 'Total Revenue', formula: 'revenue', format: 'CURRENCY', sourceFieldKey: 'revenue' },
+      { key: 'ebitda', name: 'Operating EBITDA', formula: 'ebitda', format: 'CURRENCY', sourceFieldKey: 'ebitda' },
+      { key: 'gross_profit', name: 'Gross Profit', formula: 'gross_profit', format: 'CURRENCY', sourceFieldKey: 'gross_profit' },
+    ],
+    chartDefinitions: [],
+  },
+  {
+    id: 'tpl-cashflow-13w',
+    name: 'Rolling 13-Week Cash Flow Forecast',
+    description: 'Dynamic liquidity model tracking vendor disbursements, receivables run-rate, and runway projection.',
+    reportType: 'CASH_FLOW',
+    frequency: 'Weekly',
+    active: true,
+    version: 1,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    sections: [
+      { id: 'sec-cf-1', title: 'Liquidity Overview & Bank Balances', order: 1, visible: true },
+      { id: 'sec-cf-2', title: 'Inflow Projections & Debtor Aging', order: 2, visible: true },
+      { id: 'sec-cf-3', title: 'Statutory & Critical Capex Outflows', order: 3, visible: true },
+    ],
+    kpiDefinitions: [
+      { key: 'cash_balance', name: 'Current Cash Balance', formula: 'cash', format: 'CURRENCY', sourceFieldKey: 'cash' },
+      { key: 'net_burn', name: 'Monthly Burn Rate', formula: 'burn', format: 'CURRENCY', sourceFieldKey: 'burn' },
+    ],
+    chartDefinitions: [],
+  },
+  {
+    id: 'tpl-financial-analysis',
+    name: 'Quarterly Strategic Board Review',
+    description: 'Executive board presentation deck evaluating business unit economics, margins, and variance vs annual budget.',
+    reportType: 'FINANCIAL_ANALYSIS',
+    frequency: 'Quarterly',
+    active: true,
+    version: 1,
+    createdAt: '2026-09-01T00:00:00.000Z',
+    sections: [
+      { id: 'sec-fa-1', title: 'Strategic Macro Commentary', order: 1, visible: true },
+      { id: 'sec-fa-2', title: 'Budget vs Actual Variance Highlights', order: 2, visible: true },
+      { id: 'sec-fa-3', title: 'Risks, Mitigation & Governance Decisions', order: 3, visible: true },
+    ],
+    kpiDefinitions: [
+      { key: 'revenue', name: 'Quarterly Revenue', formula: 'revenue', format: 'CURRENCY', sourceFieldKey: 'revenue' },
+      { key: 'ebitda', name: 'Quarterly EBITDA', formula: 'ebitda', format: 'CURRENCY', sourceFieldKey: 'ebitda' },
+    ],
+    chartDefinitions: [],
+  },
+];
+
+export const DEFAULT_BILLING_ENTITIES: BillingEntity[] = [
+  {
+    id: 'be-1',
+    name: 'CA TEJJASHRI S PAAWAR',
+    isGstRegistered: true,
+    gstin: '27AAPFP7890C1Z4',
+    pan: 'AAPFP7890C',
+    state: 'Maharashtra',
+    stateCode: '27',
+    address: 'Suite 402, Vantage Tower, Senapati Bapat Road, Pune 411016',
+    certificateUrl: 'https://gst.gov.in/cert/27AAPFP7890C1Z4.pdf'
+  },
+  {
+    id: 'be-2',
+    name: 'Sachin Pawar (HUF)',
+    isGstRegistered: false,
+    pan: 'AAHPS1234F',
+    state: 'Maharashtra',
+    stateCode: '27',
+    address: 'B-12 Prabhat Road, Pune 411004'
+  },
+  {
+    id: 'be-3',
+    name: 'Vanntagge CFO Services LLP',
+    isGstRegistered: false,
+    pan: 'AAFFV9876K',
+    state: 'Maharashtra',
+    stateCode: '27',
+    address: 'Level 5, ICC Trade Tower, Pune 411016'
+  },
+  {
+    id: 'be-4',
+    name: 'Ajit Shinde & CO',
+    isGstRegistered: false,
+    pan: 'AALPA4567L',
+    state: 'Maharashtra',
+    stateCode: '27',
+    address: 'Office 301, City Centre, Pune 411001'
+  }
+];
+
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
+  reportTemplates: DEFAULT_REPORT_TEMPLATES,
   users: FIXED_USERS,
   leaves: [
     {
@@ -802,46 +909,7 @@ export const useDashboardStore = create<DashboardState>()(
   customDataBankDocs: {},
   standaloneInvoices: [],
   standaloneReceipts: [],
-  billingEntities: [
-    {
-      id: 'be-1',
-      name: 'CA TEJJASHRI S PAAWAR',
-      isGstRegistered: true,
-      gstin: '27AAPFP7890C1Z4',
-      pan: 'AAPFP7890C',
-      state: 'Maharashtra',
-      stateCode: '27',
-      address: 'Suite 402, Vantage Tower, Senapati Bapat Road, Pune 411016',
-      certificateUrl: 'https://gst.gov.in/cert/27AAPFP7890C1Z4.pdf'
-    },
-    {
-      id: 'be-2',
-      name: 'Sachin Pawar (HUF)',
-      isGstRegistered: false,
-      pan: 'AAHPS1234F',
-      state: 'Maharashtra',
-      stateCode: '27',
-      address: 'B-12 Prabhat Road, Pune 411004'
-    },
-    {
-      id: 'be-3',
-      name: 'Vanntagge CFO Services LLP',
-      isGstRegistered: false,
-      pan: 'AAFFV9876K',
-      state: 'Maharashtra',
-      stateCode: '27',
-      address: 'Level 5, ICC Trade Tower, Pune 411016'
-    },
-    {
-      id: 'be-4',
-      name: 'Ajit Shinde & CO',
-      isGstRegistered: false,
-      pan: 'AALPA4567L',
-      state: 'Maharashtra',
-      stateCode: '27',
-      address: 'Office 301, City Centre, Pune 411001'
-    }
-  ],
+  billingEntities: DEFAULT_BILLING_ENTITIES,
   timesheets: [
     {
       id: 'ts-1',
@@ -2205,14 +2273,14 @@ export const useDashboardStore = create<DashboardState>()(
       createdAt: new Date().toISOString(),
     };
     set((state) => ({
-      reportTemplates: [...state.reportTemplates, newTemplate],
+      reportTemplates: [...(state.reportTemplates || DEFAULT_REPORT_TEMPLATES), newTemplate],
     }));
     get().addAuditLog('REPORT_TEMPLATE_CREATED', `Created Report Template "${newTemplate.name}"`);
   },
 
   updateReportTemplate: (id, updates) => {
     set((state) => ({
-      reportTemplates: state.reportTemplates.map((t) =>
+      reportTemplates: (state.reportTemplates || DEFAULT_REPORT_TEMPLATES).map((t) =>
         t.id === id ? { ...t, ...updates, updatedAt: new Date().toISOString() } : t
       ),
     }));
@@ -2220,7 +2288,8 @@ export const useDashboardStore = create<DashboardState>()(
   },
 
   duplicateReportTemplate: (id) => {
-    const template = get().reportTemplates.find((t) => t.id === id);
+    const templates = get().reportTemplates || DEFAULT_REPORT_TEMPLATES;
+    const template = templates.find((t) => t.id === id);
     if (!template) return;
 
     const cloned: ReportTemplate = {
@@ -2231,7 +2300,7 @@ export const useDashboardStore = create<DashboardState>()(
       createdAt: new Date().toISOString(),
     };
     set((state) => ({
-      reportTemplates: [...state.reportTemplates, cloned],
+      reportTemplates: [...(state.reportTemplates || DEFAULT_REPORT_TEMPLATES), cloned],
     }));
     get().addAuditLog('REPORT_TEMPLATE_DUPLICATED', `Duplicated template "${template.name}" as version ${cloned.version}`);
   },
@@ -2244,7 +2313,8 @@ export const useDashboardStore = create<DashboardState>()(
       blockers.push('Target client record not found.');
     }
 
-    const template = get().reportTemplates.find((t) => t.id === templateId && t.active);
+    const templates = get().reportTemplates || DEFAULT_REPORT_TEMPLATES;
+    const template = templates.find((t) => t.id === templateId && t.active);
     if (!template) {
       blockers.push('Selected Report Template is inactive or does not exist.');
     }
@@ -2278,7 +2348,8 @@ export const useDashboardStore = create<DashboardState>()(
     }
 
     const client = get().clients.find((c) => c.id === clientId)!;
-    const template = get().reportTemplates.find((t) => t.id === templateId)!;
+    const templates = get().reportTemplates || DEFAULT_REPORT_TEMPLATES;
+    const template = templates.find((t) => t.id === templateId)!;
     const eng = get().engagements.find((e) => e.clientId === clientId)!;
 
     const approvedTasks = (eng.tasks || []).filter(
@@ -4536,7 +4607,7 @@ export const useDashboardStore = create<DashboardState>()(
     const newCollection: Collection = {
       id: `col-${Date.now()}`,
       engagementId,
-      engagementName: invoiceData.engagementName,
+      engagementName: invoiceData.engagementName || 'Direct Engagement',
       invoiceId: newInvoice.id,
       invoiceNumber: newInvoice.invoiceNumber,
       outstanding: newInvoice.finalAmount,
@@ -4841,7 +4912,7 @@ export const useDashboardStore = create<DashboardState>()(
 }),
 {
   name: 'cfo-dashboard-storage',
-  version: 4,
+  version: 5,
   storage: createJSONStorage(() => storage),
   partialize: (state) => ({
     currentUser: state.currentUser,
@@ -4867,7 +4938,19 @@ export const useDashboardStore = create<DashboardState>()(
     performanceReviews: state.performanceReviews,
     serviceCategories: state.serviceCategories,
   }),
+  onRehydrateStorage: () => (state) => {
+    if (state) {
+      if (!state.billingEntities || state.billingEntities.length === 0) {
+        state.billingEntities = DEFAULT_BILLING_ENTITIES;
+      }
+    }
+  },
   migrate: (persistedState: any, version: number) => {
+    if (persistedState) {
+      if (!persistedState.billingEntities || persistedState.billingEntities.length === 0) {
+        persistedState.billingEntities = DEFAULT_BILLING_ENTITIES;
+      }
+    }
     return persistedState;
   },
 }

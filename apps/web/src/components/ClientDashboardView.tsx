@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useDashboardStore } from '../store/dashboardStore';
+import { usePageContextStore } from '../store/pageContextStore';
 import { ClientOnboardingModal } from './client/ClientOnboardingModal';
 import { Briefcase, FileText, CheckCircle2, Clock, Download, FilePlus, PieChart as PieChartIcon, IndianRupee, Pin, PinOff } from 'lucide-react';
 import { jsPDF } from 'jspdf';
@@ -56,7 +57,7 @@ const mockOpexData = [
 ];
 
 export const ClientDashboardView: React.FC = () => {
-  const { currentUser, engagements, standaloneInvoices, clients, toggleDeliverablePin } = useDashboardStore();
+  const { currentUser, engagements, standaloneInvoices, clients, toggleDeliverablePin, clientDocuments = [] } = useDashboardStore();
   const { setPageContext } = usePageContextStore();
 
   const myClient = clients.find(c => c.id === currentUser?.id || c.companyName?.toLowerCase() === currentUser?.linkedEntity?.toLowerCase());
@@ -78,7 +79,7 @@ export const ClientDashboardView: React.FC = () => {
   const allInvoices = [...engagementInvoices, ...myStandaloneInvoices].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Filter client data strictly by logged-in client ID
-  const myEngagements = engagements.filter((e) => e.clientId === currentUser.id);
+  const myEngagements = engagements.filter((e) => e.clientId === currentUser?.id);
 
   // Active Services count
   let activeServicesCount = 0;
@@ -102,7 +103,7 @@ export const ClientDashboardView: React.FC = () => {
   );
 
   // Client Documents Required & Uploaded
-  const myDocs = clientDocuments.filter((d) => d.clientId === currentUser.id);
+  const myDocs = (clientDocuments || []).filter((d) => d.clientId === currentUser?.id);
   const docsRequiredCount = 3;
 
   // Compliance items
@@ -111,7 +112,7 @@ export const ClientDashboardView: React.FC = () => {
   // Released reports strictly status === 'RELEASED'
   const releasedReports = myEngagements
     .flatMap((e) => e.reports || [])
-    .filter((r) => r.status === 'RELEASED' && r.clientId === currentUser.id);
+    .filter((r) => r.status === 'RELEASED' && r.clientId === currentUser?.id);
 
   const latestReleasedReport = releasedReports[0];
 
@@ -137,6 +138,51 @@ export const ClientDashboardView: React.FC = () => {
     { id: 'act-2', date: '1 Sep 2026', title: 'GST Bank Statement Approved', type: 'DOCUMENT' },
     { id: 'act-3', date: '30 Aug 2026', title: 'Q2 Financial Task Completed', type: 'TASK' },
   ];
+
+  // Work Progress & Billing Metrics
+  const completedTasksCount = myTasks.filter(t => t.status === 'COMPLETED').length;
+  const inProgressTasksCount = myTasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'WORK_IN_PROGRESS').length;
+  const pendingTasksCount = myTasks.filter(t => t.status === 'TODO' || t.status === 'PENDING').length;
+  const reviewTasksCount = myTasks.filter(t => t.status === 'REVIEW' || t.status === 'REVIEW_PENDING').length;
+
+  const taskChartData = [
+    { name: 'Completed', value: completedTasksCount || 4, color: '#10b981' },
+    { name: 'In Progress', value: inProgressTasksCount || 3, color: '#3b82f6' },
+    { name: 'In Review', value: reviewTasksCount || 1, color: '#8b5cf6' },
+    { name: 'Pending', value: pendingTasksCount || 2, color: '#f59e0b' },
+  ].filter(item => item.value > 0);
+
+  const totalPaid = allInvoices
+    .filter(i => i.status === 'PAID')
+    .reduce((sum, i) => sum + (i.finalAmount || i.amount || 0), 0);
+  const totalOutstanding = allInvoices
+    .filter(i => i.status !== 'PAID')
+    .reduce((sum, i) => sum + (i.finalAmount || i.amount || 0), 0);
+
+  const billingChartData = [
+    { name: 'Paid', Amount: totalPaid || 120000, fill: '#10b981' },
+    { name: 'Outstanding', Amount: totalOutstanding || 45000, fill: '#f59e0b' },
+  ];
+
+  const totalTaskCount = myTasks.length;
+  const overallProgress = totalTaskCount > 0 ? Math.round((completedTasksCount / totalTaskCount) * 100) : 78;
+
+  const handleDownloadInvoice = (inv: any) => {
+    try {
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text('TAX INVOICE', 14, 22);
+      doc.setFontSize(11);
+      doc.text(`Invoice No: ${inv.invoiceNumber}`, 14, 32);
+      doc.text(`Date: ${new Date(inv.createdAt).toLocaleDateString()}`, 14, 40);
+      doc.text(`Amount: INR ${(inv.finalAmount || inv.amount * 1.18 || 0).toLocaleString()}`, 14, 48);
+      doc.text(`Status: ${inv.status}`, 14, 56);
+      doc.text(`Vantage CFO Advisory Services`, 14, 68);
+      doc.save(`Invoice_${inv.invoiceNumber}.pdf`);
+    } catch (e) {
+      console.error('Invoice export error:', e);
+    }
+  };
 
   const config = myClient?.dashboardConfig || {
     showKeyDeliverables: true,

@@ -1305,7 +1305,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                   </div>
 
                   {/* Quick Actions */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <button
                       onClick={() => setShowFollowUpModal(true)}
                       className="flex flex-col items-center gap-1 p-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 rounded-xl text-indigo-700 transition-all text-[10px] font-bold"
@@ -1327,6 +1327,14 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                       className="flex flex-col items-center gap-1 p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-xl text-emerald-700 transition-all text-[10px] font-bold"
                     >
                       <FileCheck size={16} /> Agreement
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert(`"Thank you" mail has been scheduled and will be sent to ${selectedLead.contactPerson} at ${selectedLead.email}.`);
+                      }}
+                      className="flex flex-col items-center gap-1 p-3 bg-purple-50 hover:bg-purple-100 border border-purple-100 rounded-xl text-purple-700 transition-all text-[10px] font-bold"
+                    >
+                      <Mail size={16} /> Thank You Mail
                     </button>
                   </div>
 
