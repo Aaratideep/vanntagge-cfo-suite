@@ -29,6 +29,10 @@ import {
   Eye,
   Download,
   Handshake,
+  Key,
+  Lock,
+  EyeOff,
+  Sparkles,
 } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { Lead, LeadStatus, Priority, FollowUpMode } from '../../types';
