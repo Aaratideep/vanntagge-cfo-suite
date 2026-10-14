@@ -33,6 +33,9 @@ import {
   ResponsiveContainer,
   Legend
 } from 'recharts';
+import WorkAllocationView from './admin/WorkAllocationView';
+import { TaskReviewQueueView } from './admin/TaskReviewQueueView';
+import { TaskExecutionModal } from './TaskExecutionModal';
 
 export const WorkView: React.FC = () => {
   const {
