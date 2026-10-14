@@ -5,7 +5,8 @@ import { useDashboardStore } from '../../store/dashboardStore';
 import { 
   Users, CheckCircle2, Clock, Calendar as CalendarIcon, 
   Briefcase, FileText, IndianRupee, ShieldAlert, FileSignature, 
-  Search, Filter, ChevronDown, Check, X, Trash2, Eye, Download, AlertCircle, Sparkles
+  Search, Filter, ChevronDown, Check, X, Trash2, Eye, Download, AlertCircle, Sparkles,
+  Key, Mail, Lock, EyeOff
 } from 'lucide-react';
 import { formatINR } from '../../lib/currency';
 import { EmployeeProfileView } from './EmployeeProfileView';
