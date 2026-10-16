@@ -31,6 +31,31 @@ function convertToINRWords(amount: number): string {
   return inWords(a) + ' Rupees Only';
 }
 
+function formatDateDisplay(dateStr?: string): string {
+  if (!dateStr || dateStr === 'N/A') {
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2, '0')} / ${String(d.getMonth() + 1).padStart(2, '0')} / ${d.getFullYear()}`;
+  }
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return `${String(d.getDate()).padStart(2, '0')} / ${String(d.getMonth() + 1).padStart(2, '0')} / ${d.getFullYear()}`;
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatPeriodDisplay(dateStr?: string, customPeriod?: string): string {
+  if (customPeriod) return customPeriod;
+  try {
+    const d = dateStr ? new Date(dateStr) : new Date();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[d.getMonth()]} ${d.getFullYear()}`;
+  } catch {
+    return 'Oct 2026';
+  }
+}
+
 export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
   type,
   data,
@@ -348,14 +373,12 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
       {/* Main Clean & Premium Document Sheet */}
       <div
         ref={printRef}
-        className="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden my-auto border border-slate-200 print:shadow-none print:border-none print:w-full print:max-w-none text-slate-800 font-sans"
+        className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden my-auto border border-slate-200 print:shadow-none print:border-none print:w-full print:max-w-none text-slate-800 font-sans"
       >
-        {/* Top Minimal Accent Bar */}
-        <div className="h-2 bg-slate-800 w-full" />
-
-        <div className="p-6 sm:p-10 space-y-6">
-          {isAgreement ? (
-            <div className="space-y-8">
+        {isAgreement ? (
+          <div>
+            <div className="h-2 bg-slate-800 w-full" />
+            <div className="p-6 sm:p-10 space-y-6">
               {/* ── LEGAL HEADER ── */}
               <div className="text-center space-y-2 border-b-2 border-slate-900 pb-6 mb-8">
                 <img
@@ -379,7 +402,7 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 <div className="my-6 space-y-4">
                   <div className="pl-6 border-l-4 border-slate-300">
                     <p className="font-bold text-base uppercase">{upperBillingEntityName}</p>
-                    <p className="text-slate-600">A registered entity having its principal place of business at Level 8, Corporate Tower B, BKC Financial Hub, Bandra East, Mumbai, MH - 400051 (hereinafter referred to as the <strong>"Service Provider"</strong> or <strong>"First Party"</strong>).</p>
+                    <p className="text-slate-600">A registered entity having its principal place of business at Gala No. 28, OM Anand Industrial Premises Co-op, Wagle I.E., Thane - 400604, Maharashtra (hereinafter referred to as the <strong>"Service Provider"</strong> or <strong>"First Party"</strong>).</p>
                   </div>
                   <div className="text-center italic text-slate-500 font-bold">AND</div>
                   <div className="pl-6 border-l-4 border-slate-300">
@@ -394,7 +417,6 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
 
               {/* ── CLAUSES ── */}
               <div className="space-y-6 text-sm text-slate-800 font-serif leading-relaxed">
-                
                 <section>
                   <h3 className="font-bold text-base uppercase tracking-wider mb-2 text-slate-900 border-b border-slate-200 pb-1">1. Scope of Services</h3>
                   <p className="text-justify whitespace-pre-wrap">{data.serviceScope || 'The Service Provider agrees to provide the services as agreed upon by the Parties.'}</p>
@@ -473,307 +495,340 @@ export const DocumentPreviewModal: React.FC<DocumentPreviewModalProps> = ({
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-6 gap-4">
-            <div className="flex items-center gap-4">
-              <img
-                src="/vanntagge-logo.png"
-                alt={upperBillingEntityName}
-                className="h-12 w-auto object-contain shrink-0"
-              />
-              <div>
-                <h1 className="font-extrabold text-lg sm:text-xl text-slate-900 tracking-tight font-outfit uppercase">
-                  {upperBillingEntityName}
-                </h1>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Corporate Financial Consultants & Virtual CFO Advisors
-                </p>
-                <p className="text-[10px] text-slate-400 mt-0.5">
-                  GSTIN: <span className="font-semibold text-slate-700">
-                    {(billingEntityName.toUpperCase().includes('TEJJASHRI') || billingEntityName.includes('Tejashri')) 
-                      ? '27AAPFP7890C1Z4' 
-                      : isUnregistered 
-                      ? 'Not Applicable / Unregistered Entity (No GST)' 
-                      : '27AAPFP7890C1Z4'}
-                  </span> &bull; State: <span className="font-semibold text-slate-700">27 - Maharashtra</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="sm:text-right space-y-1">
-              <span className={`inline-block px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider border ${
-                isInvoice
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                  : isReceipt
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : isQuotation
-                  ? 'bg-amber-50 text-amber-800 border-amber-200'
-                  : 'bg-purple-50 text-purple-700 border-purple-200'
-              }`}>
-                {docTitle}
-              </span>
-              {isInvoice && data.invoiceType && (
-                <span className="inline-block px-2 py-0.5 ml-2 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">
-                  {data.invoiceType}
-                </span>
-              )}
-              <p className="text-xs font-mono font-bold text-slate-800">{docRefNo}</p>
-              <p className="text-[10px] text-slate-500 font-mono">
-                UDIN: 24096033AAAAA{Math.floor(1000 + Math.random() * 9000)}
-              </p>
-            </div>
           </div>
+        ) : (
+          /* ── OFFICIAL VANNTAGGE CORPORATE TEMPLATE (INVOICE / QUOTATION / RECEIPT) ── */
+          (() => {
+            const storeClients = useDashboardStore.getState().clients;
+            const matchedClient = storeClients.find(
+              (c) => c.companyName?.toLowerCase() === clientName.toLowerCase() || c.id === data.clientId
+            );
+            const clientAddress = data.clientAddress || data.address || matchedClient?.address || 'Registered Office Address, Maharashtra';
+            const clientGstin = data.clientGstin || data.gstin || matchedClient?.gstin || 'Unregistered';
+            const placeOfSupply = data.placeOfSupply || '27 - Maharashtra';
+            const isInterstate = data.gstType === 'Interstate' || (!placeOfSupply.includes('27') && !placeOfSupply.toLowerCase().includes('maharashtra'));
 
-          {/* ── 2. PARTY & METADATA GRID (Clean Light Cards) ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50/70 rounded-xl p-5 border border-slate-200/80">
-            {/* Service Provider */}
-            <div className="space-y-1 text-xs">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Issued By (Service Provider)
-              </span>
-              <p className="font-bold text-slate-800 text-sm uppercase">{upperBillingEntityName}</p>
-              <p className="text-slate-600">Level 8, Corporate Tower B, BKC Financial Hub</p>
-              <p className="text-slate-600">Bandra East, Mumbai, MH - 400051</p>
-              <p className="text-slate-600">Email: billing@vanntaggecfo.com | Phone: +91 22 6789 0000</p>
-              <p className="text-slate-500 text-[10px]">SAC Code: 998311 (Financial Consulting)</p>
-            </div>
+            const itemsList: Array<{ description: string; period: string; sac: string; amount: number }> = [];
 
-            {/* Client Details & Dates */}
-            <div className="space-y-1 text-xs sm:border-l sm:border-slate-200 sm:pl-6">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
-                Billed To (Client / Customer)
-              </span>
-              <p className="font-bold text-slate-800 text-sm">{clientName}</p>
-              {data.clientGstin && <p className="text-slate-600 font-medium">GSTIN: <span className="font-mono text-slate-800">{data.clientGstin}</span></p>}
-              {data.clientPan && <p className="text-slate-600 font-medium">PAN: <span className="font-mono text-slate-800">{data.clientPan}</span></p>}
-              <p className="text-slate-600">Place of Supply: <span className="font-semibold text-slate-800">27 - Maharashtra</span></p>
+            if (data.lineItems && Array.isArray(data.lineItems) && data.lineItems.length > 0) {
+              data.lineItems.forEach((li: any) => {
+                itemsList.push({
+                  description: li.description || li.name || 'Virtual CFO Advisory Services',
+                  period: li.period || data.billingPeriod || formatPeriodDisplay(issueDate),
+                  sac: li.sac || li.sacCode || data.sacCode || '998311',
+                  amount: Number(li.amount || li.price || 0)
+                });
+              });
+            } else if (data.services && Array.isArray(data.services) && data.services.length > 0) {
+              data.services.forEach((svc: any) => {
+                itemsList.push({
+                  description: svc.name || svc.description || 'Virtual CFO Advisory Services',
+                  period: svc.period || data.billingPeriod || formatPeriodDisplay(issueDate),
+                  sac: svc.sac || svc.sacCode || data.sacCode || '998311',
+                  amount: Number(svc.price || svc.amount || 0)
+                });
+              });
+            } else {
+              itemsList.push({
+                description: data.serviceName || data.milestone || data.serviceScope || 'Virtual CFO Retainer - MIS & advisory',
+                period: data.billingPeriod || formatPeriodDisplay(issueDate),
+                sac: data.sacCode || '998311',
+                amount: taxableAmount > 0 ? taxableAmount : baseAmount
+              });
+            }
 
-              <div className="pt-2 mt-2 border-t border-slate-200/60 grid grid-cols-2 gap-2 text-[11px]">
-                <div>
-                  <span className="text-slate-400 block text-[9px] uppercase font-semibold">Issue Date</span>
-                  <span className="font-semibold text-slate-800">{issueDate}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[9px] uppercase font-semibold">
-                    {isInvoice ? 'Due Date' : isQuotation ? 'Valid Until' : 'Payment Status'}
-                  </span>
-                  <span className="font-semibold text-slate-800">
-                    {isReceipt ? 'PAID IN FULL' : dueDate}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
+            const emptyRows: number[] = [];
+            for (let i = itemsList.length + 1; i <= 4; i++) {
+              emptyRows.push(i);
+            }
 
-          {/* ── 3. ITEMIZED SERVICES TABLE ── */}
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-              Scope of CFO Advisory Services & Fee Breakdown
-            </span>
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-100 text-slate-700 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-200">
-                  <tr>
-                    <th className="py-2.5 px-4">#</th>
-                    <th className="py-2.5 px-4">Description of Service / Milestone</th>
-                    <th className="py-2.5 px-4 text-center">SAC Code</th>
-                    <th className="py-2.5 px-4 text-right">Taxable Base (₹)</th>
-                    <th className="py-2.5 px-4 text-right">GST Rate</th>
-                    <th className="py-2.5 px-4 text-right">Total Amount (₹)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-                  {data.services && Array.isArray(data.services) && data.services.length > 0 ? (
-                    data.services.map((svc: any, idx: number) => (
-                      <tr key={idx}>
-                        <td className="py-3 px-4 font-semibold text-slate-400">{(idx + 1).toString().padStart(2, '0')}</td>
-                        <td className="py-3 px-4">
-                          <p className="font-semibold text-slate-800">{svc.name}</p>
-                        </td>
-                        <td className="py-3 px-4 text-center font-mono text-slate-600">{data.sacCode || '998311'}</td>
-                        <td className="py-3 px-4 text-right font-semibold text-slate-800">{formatINR(Number(svc.price))}</td>
-                        <td className="py-3 px-4 text-right text-slate-600">18.00%</td>
-                        <td className="py-3 px-4 text-right font-bold text-slate-900">{formatINR(Number(svc.price) * 1.18)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td className="py-3 px-4 font-semibold text-slate-400">01</td>
-                      <td className="py-3 px-4">
-                        <p className="font-semibold text-slate-800">
-                          {data.milestone || data.serviceScope || 'Virtual CFO Advisory Services'}
-                        </p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">
-                          Strategic Financial Governance, Cashflow Optimization, Tax Compliance & Board Reporting.
-                        </p>
-                      </td>
-                      <td className="py-3 px-4 text-center font-mono text-slate-600">{data.sacCode || '998311'}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-slate-800">{formatINR(baseAmount)}</td>
-                      <td className="py-3 px-4 text-right text-slate-600">18.00%</td>
-                      <td className="py-3 px-4 text-right font-bold text-slate-900">{formatINR(baseAmount * 1.18)}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* ── 4. LIGHT SUMMARY & TOTAL CALCULATIONS ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
-            
-            {/* Amount in Words & Bank Details */}
-            <div className="space-y-3">
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
-                  Amount Chargeable (In Words)
-                </span>
-                <p className="font-semibold text-slate-800 capitalize leading-snug">
-                  {convertToINRWords(finalTotal)}
-                </p>
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[10px] space-y-1 text-slate-600">
-                <span className="font-bold text-slate-700 block uppercase tracking-wider text-[9px]">
-                  Bank Details for Wire Transfer / NEFT / RTGS:
-                </span>
-                <p><span className="font-medium text-slate-500">Bank:</span> HDFC Bank Ltd (BKC Branch, Mumbai)</p>
-                <p><span className="font-medium text-slate-500">Account Name:</span> Vanntagge CFO Services LLP</p>
-                <p><span className="font-medium text-slate-500">A/C No:</span> 50200098765432 &bull; <span className="font-medium text-slate-500">IFSC:</span> HDFC0000123</p>
-                <p><span className="font-medium text-slate-500">UPI ID:</span> vanntagge.cfo@hdfcbank</p>
-              </div>
-
-              {data.terms && (
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-[10px] space-y-1 text-slate-600">
-                  <span className="font-bold text-slate-700 block uppercase tracking-wider text-[9px]">
-                    Terms & Conditions
-                  </span>
-                  <p className="whitespace-pre-line">{data.terms}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Clean Light Calculations Box */}
-            <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 space-y-2 text-xs text-slate-600">
-              <div className="flex justify-between">
-                <span>Total Services Amount:</span>
-                <span className="font-semibold text-slate-800">{formatINR(baseAmount)}</span>
-              </div>
-              {discountAmount > 0 && (
-                <div className="flex justify-between text-rose-600">
-                  <span>Discount:</span>
-                  <span>- {formatINR(discountAmount)}</span>
-                </div>
-              )}
-              {discountAmount > 0 && (
-                <div className="flex justify-between border-t border-slate-200 pt-2">
-                  <span>Taxable Base Subtotal:</span>
-                  <span className="font-semibold text-slate-800">{formatINR(taxableAmount)}</span>
-                </div>
-              )}
-              {!discountAmount && (
-                <div className="flex justify-between">
-                  <span>Taxable Base Subtotal:</span>
-                  <span className="font-semibold text-slate-800">{formatINR(baseAmount)}</span>
-                </div>
-              )}
-              {gstAmount > 0 ? (
-                data.gstType === 'Interstate' ? (
-                  <div className="flex justify-between">
-                    <span>IGST @ 18.00%:</span>
-                    <span>{formatINR(gstAmount)}</span>
+            return (
+              <div className="bg-white text-slate-800 font-sans">
+                {/* 1. TOP NAVY CORPORATE HEADER */}
+                <div className="bg-[#0B192C] px-6 sm:px-8 py-5 text-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div className="space-y-1">
+                    <h1 className="text-xl sm:text-2xl font-black uppercase tracking-wide text-white">
+                      VANNTAGGE CFO SERVICES LLP
+                    </h1>
+                    <p className="text-[#38BDF8] text-xs font-semibold tracking-wide">
+                      Virtual CFO | Funding Advisory | Due Diligence | Franchise Development
+                    </p>
+                    <p className="text-slate-300 text-[11px] leading-tight max-w-lg">
+                      Gala No. 28, OM Anand Industrial Premises Co-op, Wagle I.E., Thane - 400604, Maharashtra
+                    </p>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between">
-                      <span>CGST @ 9.00%:</span>
-                      <span>{formatINR(gstAmount / 2)}</span>
+
+                  <div className="text-left sm:text-right space-y-0.5 sm:shrink-0">
+                    <div className="text-[#F59E0B] font-extrabold text-xl sm:text-2xl uppercase tracking-wider">
+                      {docTitle}
                     </div>
-                    <div className="flex justify-between">
-                      <span>SGST @ 9.00%:</span>
-                      <span>{formatINR(gstAmount / 2)}</span>
+                    <div className="text-slate-200 text-xs font-medium space-y-0.5">
+                      <p>GSTIN: <span className="font-mono text-white">27AABCU9603R1ZX</span></p>
+                      <p>PAN: <span className="font-mono text-white">AABCU9603R</span> &nbsp;&bull;&nbsp; LLPIN: <span className="font-mono text-white">AAT-1234</span></p>
+                      <p className="text-slate-300 text-[11px]">www.vcfoedge.net &nbsp;|&nbsp; info@vcfoedge.net</p>
                     </div>
-                  </>
-                )
-              ) : (
-                <div className="flex justify-between text-amber-700 font-medium">
-                  <span>GST @ 0.00% (Unregistered Entity):</span>
-                  <span>₹0.00</span>
+                  </div>
                 </div>
-              )}
-              
-              <div className="border-t border-slate-200 pt-2 flex justify-between items-baseline text-slate-900">
-                <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 block">
-                    {isReceipt ? 'Total Received' : 'Grand Total Payable'}
-                  </span>
-                  <span className="text-[9px] text-slate-400">Includes all GST taxes</span>
+
+                {/* GOLD ACCENT STRIPE */}
+                <div className="h-1 bg-[#D97706] w-full" />
+
+                {/* 2. DOCUMENT BODY */}
+                <div className="p-6 sm:p-8 space-y-5">
+                  {/* SIDE-BY-SIDE METADATA CARDS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    {/* BILL TO */}
+                    <div className="border border-slate-300 bg-[#F8FAFC] p-3.5 rounded-sm">
+                      <div className="font-bold text-slate-900 uppercase tracking-wider text-xs border-b border-slate-200 pb-1 mb-2">
+                        BILL TO
+                      </div>
+                      <div className="space-y-1.5 text-slate-700">
+                        <div className="flex">
+                          <span className="w-24 text-slate-500 shrink-0">Client Name</span>
+                          <span className="font-bold text-slate-900">{clientName}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-24 text-slate-500 shrink-0">Address</span>
+                          <span className="text-slate-800 leading-snug">{clientAddress}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-24 text-slate-500 shrink-0">GSTIN</span>
+                          <span className="font-mono font-medium text-slate-900">{clientGstin}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-24 text-slate-500 shrink-0">State / Code</span>
+                          <span className="text-slate-800">{placeOfSupply}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* INVOICE / QUOTATION DETAILS */}
+                    <div className="border border-slate-300 bg-[#F8FAFC] p-3.5 rounded-sm">
+                      <div className="font-bold text-slate-900 uppercase tracking-wider text-xs border-b border-slate-200 pb-1 mb-2">
+                        {isInvoice ? 'INVOICE DETAILS' : isQuotation ? 'QUOTATION DETAILS' : 'RECEIPT DETAILS'}
+                      </div>
+                      <div className="space-y-1.5 text-slate-700">
+                        <div className="flex">
+                          <span className="w-28 text-slate-500 shrink-0">
+                            {isInvoice ? 'Invoice No.' : isQuotation ? 'Quotation No.' : 'Receipt No.'}
+                          </span>
+                          <span className="font-mono font-bold text-slate-900">{docRefNo}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-28 text-slate-500 shrink-0">
+                            {isInvoice ? 'Invoice Date' : isQuotation ? 'Quotation Date' : 'Receipt Date'}
+                          </span>
+                          <span className="font-medium text-slate-900">{formatDateDisplay(issueDate)}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-28 text-slate-500 shrink-0">
+                            {isInvoice ? 'Due Date' : isQuotation ? 'Validity' : 'Payment Status'}
+                          </span>
+                          <span className="font-medium text-slate-900">
+                            {isReceipt
+                              ? 'PAID IN FULL'
+                              : isQuotation && (dueDate === 'N/A' || !dueDate)
+                              ? '30 Days from issue'
+                              : formatDateDisplay(dueDate)}
+                          </span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-28 text-slate-500 shrink-0">Place of Supply</span>
+                          <span className="text-slate-800">{placeOfSupply}</span>
+                        </div>
+                        <div className="flex">
+                          <span className="w-28 text-slate-500 shrink-0">SAC Code</span>
+                          <span className="font-mono text-slate-900">{data.sacCode || '998311 (Mgmt. Consulting)'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. ITEMIZED SERVICES TABLE */}
+                  <div className="border border-slate-300 rounded-sm overflow-hidden">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead className="bg-[#0B192C] text-white font-bold text-[11px] uppercase tracking-wider">
+                        <tr>
+                          <th className="py-2.5 px-3 text-center border-r border-slate-700 w-12">#</th>
+                          <th className="py-2.5 px-3 border-r border-slate-700">Description of Services</th>
+                          <th className="py-2.5 px-3 text-center border-r border-slate-700 w-28">Period</th>
+                          <th className="py-2.5 px-3 text-center border-r border-slate-700 w-24">SAC</th>
+                          <th className="py-2.5 px-3 text-right w-36">Amount (Rs.)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 bg-white text-slate-800">
+                        {itemsList.map((item, idx) => (
+                          <tr key={idx} className={idx % 2 === 1 ? 'bg-slate-50/50' : 'bg-white'}>
+                            <td className="py-3 px-3 text-center text-slate-500 border-r border-slate-200 font-medium">
+                              {idx + 1}
+                            </td>
+                            <td className="py-3 px-3 border-r border-slate-200">
+                              <span className="font-semibold text-slate-900">{item.description}</span>
+                            </td>
+                            <td className="py-3 px-3 text-center text-slate-600 border-r border-slate-200">
+                              {item.period}
+                            </td>
+                            <td className="py-3 px-3 text-center font-mono text-slate-600 border-r border-slate-200">
+                              {item.sac}
+                            </td>
+                            <td className="py-3 px-3 text-right font-bold text-slate-900">
+                              {item.amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        ))}
+                        {emptyRows.map((rowNum) => (
+                          <tr key={`empty-${rowNum}`} className="h-8">
+                            <td className="py-2.5 px-3 text-center text-slate-400 border-r border-slate-200 font-medium">
+                              {rowNum}
+                            </td>
+                            <td className="py-2.5 px-3 border-r border-slate-200"></td>
+                            <td className="py-2.5 px-3 border-r border-slate-200"></td>
+                            <td className="py-2.5 px-3 border-r border-slate-200"></td>
+                            <td className="py-2.5 px-3 text-right"></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 4. SUMMARY & TAX BREAKDOWN */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-start text-xs pt-1">
+                    {/* Left: Words & Reverse Charge */}
+                    <div className="sm:col-span-6 space-y-4 pt-1">
+                      <div>
+                        <span className="font-bold text-slate-900 block mb-1">Amount in words:</span>
+                        <p className="text-slate-800 font-medium leading-relaxed italic border-b border-slate-200 pb-2">
+                          {convertToINRWords(finalTotal)}
+                        </p>
+                      </div>
+                      <div className="text-slate-600 text-xs">
+                        <span className="font-semibold text-slate-800">Whether tax payable on reverse charge:</span> No
+                      </div>
+                    </div>
+
+                    {/* Right: Tax Breakdown and Total Block */}
+                    <div className="sm:col-span-6 space-y-1.5">
+                      <div className="flex justify-between py-1 border-b border-slate-200 text-slate-700">
+                        <span>Taxable Value</span>
+                        <span className="font-semibold text-slate-900">
+                          Rs. {taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-slate-200 text-slate-700">
+                        <span>CGST @ 9%</span>
+                        <span className="text-slate-900">
+                          {isInterstate ? '—' : `Rs. ${(gstAmount / 2).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-slate-200 text-slate-700">
+                        <span>SGST @ 9%</span>
+                        <span className="text-slate-900">
+                          {isInterstate ? '—' : `Rs. ${(gstAmount / 2).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        </span>
+                      </div>
+                      <div className="flex justify-between py-1 border-b border-slate-200 text-slate-700">
+                        <span>IGST @ 18% (inter-state)</span>
+                        <span className="text-slate-900">
+                          {isInterstate ? `Rs. ${gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+                        </span>
+                      </div>
+
+                      {/* TOTAL INVOICE VALUE SOLID NAVY BANNER */}
+                      <div className="bg-[#0B192C] text-white px-3.5 py-2.5 flex justify-between items-center rounded-sm font-bold text-sm mt-2">
+                        <span className="tracking-wide uppercase">
+                          {isReceipt ? 'TOTAL AMOUNT RECEIVED' : isQuotation ? 'TOTAL PROPOSED VALUE' : 'TOTAL INVOICE VALUE'}
+                        </span>
+                        <span className="text-[#FBBF24] font-extrabold text-base">
+                          Rs. {finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 5. SIDE-BY-SIDE BANK DETAILS & TERMS */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-1">
+                    {/* BANK DETAILS */}
+                    <div className="border border-slate-300 bg-[#F8FAFC] p-3.5 rounded-sm">
+                      <div className="font-bold text-slate-900 uppercase tracking-wider text-xs border-b border-slate-200 pb-1 mb-2">
+                        BANK DETAILS (for NEFT / RTGS / UPI)
+                      </div>
+                      <div className="space-y-1 text-slate-700 text-[11px] leading-relaxed">
+                        <p><span className="font-semibold text-slate-900">Account Name :</span> VANNTAGGE CFO Services LLP</p>
+                        <p><span className="font-semibold text-slate-900">Bank &amp; Branch :</span> HDFC Bank, Wagle Industrial Estate, Thane - 400604</p>
+                        <p><span className="font-semibold text-slate-900">A/c No. :</span> 50200088991122</p>
+                        <p><span className="font-semibold text-slate-900">IFSC :</span> HDFC0000123 &nbsp;&nbsp;&nbsp;&nbsp; <span className="font-semibold text-slate-900">UPI :</span> vanntagge.cfo@hdfcbank</p>
+                      </div>
+                    </div>
+
+                    {/* TERMS */}
+                    <div className="border border-slate-300 bg-[#F8FAFC] p-3.5 rounded-sm">
+                      <div className="font-bold text-slate-900 uppercase tracking-wider text-xs border-b border-slate-200 pb-1 mb-2">
+                        TERMS
+                      </div>
+                      <div className="space-y-1 text-slate-700 text-[11px] leading-relaxed">
+                        {isInvoice ? (
+                          <>
+                            <p>1. Payment due within 7 days of invoice date.</p>
+                            <p>2. Please quote invoice no. while remitting.</p>
+                            <p>3. TDS u/s 194J, if deducted, kindly share Form 16A.</p>
+                            <p>4. Subject to Thane jurisdiction.</p>
+                          </>
+                        ) : isQuotation ? (
+                          <>
+                            <p>1. Quotation valid for 30 days from date of issue.</p>
+                            <p>2. 50% mobilization advance payable upon confirmation.</p>
+                            <p>3. TDS u/s 194J applicable on management consulting services.</p>
+                            <p>4. Subject to Thane jurisdiction.</p>
+                          </>
+                        ) : (
+                          <>
+                            <p>1. Payment received with thanks and subject to realization.</p>
+                            <p>2. Please retain this receipt for GST input tax credit (ITC) reconciliation.</p>
+                            <p>3. TDS u/s 194J credit will reflect in Form 26AS.</p>
+                            <p>4. Subject to Thane jurisdiction.</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 6. SIGN-OFF & FOOTER */}
+                  <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-end gap-6 text-xs">
+                    {/* Slogan and Thanks */}
+                    <div className="space-y-1 text-left">
+                      <p className="font-semibold text-slate-800 text-sm">Thank you for your business.</p>
+                      <p className="italic font-semibold text-[#D97706] text-xs">Insight. Strategy. Growth.</p>
+                    </div>
+
+                    {/* Designated Partner Sign-off */}
+                    <div className="text-right space-y-1 flex flex-col items-end">
+                      <p className="font-bold text-slate-900 text-xs uppercase">
+                        For VANNTAGGE CFO Services LLP
+                      </p>
+                      <div className="h-12 w-44 flex items-center justify-end">
+                        <img
+                          src="/signature-tejjashri.png"
+                          alt="Signature"
+                          className="h-12 w-auto object-contain select-none"
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/signature.png'; }}
+                        />
+                      </div>
+                      <p className="text-xs text-slate-700 font-medium">Designated Partner</p>
+                    </div>
+                  </div>
+
+                  {/* BOTTOM CENTER COMPUTER GENERATED NOTE & VASHI OFFICE */}
+                  <div className="text-center pt-4 border-t border-slate-100 text-[10px] text-slate-400 space-y-0.5">
+                    <p className="italic">This is a computer-generated invoice.</p>
+                    <p className="text-slate-500 font-medium">
+                      Vashi Office: Office No. 318 &amp; 319, Commodity Exchange Bldg., Sector 19A, Opp. Dana Bunder, Vashi, Navi Mumbai - 400705
+                    </p>
+                  </div>
                 </div>
-                <span className="text-lg font-extrabold text-slate-900">
-                  {formatINR(finalTotal)}
-                </span>
               </div>
-            </div>
-          </div>
-
-          {/* ── 5. AUTHORIZED SIGNATURE & STATUTORY FOOTER ── */}
-          <div className="pt-6 border-t border-slate-200 grid grid-cols-2 items-end gap-4 text-xs">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1 text-emerald-700 font-semibold text-[10px]">
-                <CheckCircle2 size={12} /> Statutory Compliance Verified
-              </div>
-              <p className="text-[9px] text-slate-400 leading-tight">
-                Computer-generated statutory document under Section 31 of CGST Act, 2017 & RBI Digital Guidelines.
-              </p>
-            </div>
-
-            <div className="text-right space-y-1">
-              <div className="inline-block border-b border-slate-300 pb-1 px-4 mb-1 relative text-right flex flex-col items-end">
-                <img 
-                  src="/signature-tejjashri.png" 
-                  alt="Signature" 
-                  className="h-10 sm:h-12 w-auto object-contain mb-1 drop-shadow-xs select-none" 
-                  onError={(e) => { (e.target as HTMLImageElement).src = '/signature.png'; }} 
-                />
-                <span 
-                  className="font-serif italic font-semibold text-slate-800 text-xs block focus:outline-none hover:bg-slate-100 cursor-text rounded px-1 -mx-1 transition-colors"
-                  contentEditable
-                  suppressContentEditableWarning
-                  title="Click to edit name"
-                >
-                  {defaultSignatoryName}
-                </span>
-                <span 
-                  className="text-[9px] font-sans text-slate-500 block focus:outline-none hover:bg-slate-100 cursor-text rounded px-1 -mx-1 transition-colors"
-                  contentEditable
-                  suppressContentEditableWarning
-                  title="Click to edit qualifications"
-                >
-                  {defaultSignatoryRole}
-                </span>
-              </div>
-              <span 
-                className="font-bold text-slate-800 block text-[10px] uppercase tracking-wider focus:outline-none hover:bg-slate-100 cursor-text rounded px-1 -mx-1 transition-colors"
-                contentEditable
-                suppressContentEditableWarning
-                title="Click to edit company name"
-              >
-                For {upperBillingEntityName}
-              </span>
-              <span 
-                className="text-[9px] text-slate-400 block focus:outline-none hover:bg-slate-100 cursor-text rounded px-1 -mx-1 transition-colors"
-                contentEditable
-                suppressContentEditableWarning
-                title="Click to edit role"
-              >
-                Authorized Signatory
-              </span>
-            </div>
-            </div>
-          </div>
-          )}
-        </div>
-
+            );
+          })()
+        )}
       </div>
 
     </div>

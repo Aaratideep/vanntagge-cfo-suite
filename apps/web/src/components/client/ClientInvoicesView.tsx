@@ -5,6 +5,7 @@ import { useDashboardStore } from '../../store/dashboardStore';
 import { Invoice } from '../../types';
 import { formatINR } from '../../lib/currency';
 import { exportInvoicePdf } from '../../lib/invoicePdfExporter';
+import { DocumentPreviewModal } from '../DocumentPreviewModal';
 import {
   FileText,
   Download,
@@ -14,6 +15,7 @@ import {
   Search,
   Filter,
   CreditCard,
+  Eye,
 } from 'lucide-react';
 
 export const ClientInvoicesView: React.FC = () => {
@@ -21,6 +23,7 @@ export const ClientInvoicesView: React.FC = () => {
     useDashboardStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedInvoiceDetail, setSelectedInvoiceDetail] = useState<Invoice | null>(null);
+  const [selectedInvoicePreview, setSelectedInvoicePreview] = useState<Invoice | null>(null);
 
   // Client visibility security: resolve client ID linked to current client user
   const clientId = currentUser?.linkedEntity || currentUser?.id;
@@ -227,12 +230,22 @@ export const ClientInvoicesView: React.FC = () => {
                         </span>
                       </td>
                       <td className="p-3 text-right">
-                        <button
-                          onClick={() => exportInvoicePdf(inv, adminSettings)}
-                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded border border-blue-200 transition flex items-center gap-1 ml-auto"
-                        >
-                          <Download className="w-3.5 h-3.5" /> Download PDF
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => setSelectedInvoicePreview(inv)}
+                            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded border border-slate-300 transition flex items-center gap-1"
+                            title="View Official Invoice"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> View
+                          </button>
+                          <button
+                            onClick={() => exportInvoicePdf(inv, adminSettings)}
+                            className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded border border-blue-200 transition flex items-center gap-1"
+                            title="Download PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" /> PDF
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -331,20 +344,38 @@ export const ClientInvoicesView: React.FC = () => {
 
             <div className="flex justify-end gap-2 pt-3">
               <button
+                onClick={() => {
+                  setSelectedInvoicePreview(selectedInvoiceDetail);
+                  setSelectedInvoiceDetail(null);
+                }}
+                className="px-4 py-2 bg-slate-900 text-white font-semibold rounded-lg text-sm flex items-center gap-1.5 hover:bg-slate-800 transition"
+              >
+                <FileText className="w-4 h-4" /> View Official Invoice
+              </button>
+              <button
                 onClick={() => exportInvoicePdf(selectedInvoiceDetail, adminSettings)}
-                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg text-sm flex items-center gap-1.5"
+                className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg text-sm flex items-center gap-1.5 hover:bg-blue-700 transition"
               >
                 <Download className="w-4 h-4" /> Download PDF
               </button>
               <button
                 onClick={() => setSelectedInvoiceDetail(null)}
-                className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg text-sm"
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-semibold rounded-lg text-sm hover:bg-slate-200 transition"
               >
                 Close
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Official Vanntagge Invoice Template Modal */}
+      {selectedInvoicePreview && (
+        <DocumentPreviewModal
+          type="invoice"
+          data={selectedInvoicePreview}
+          onClose={() => setSelectedInvoicePreview(null)}
+        />
       )}
     </div>
   );
