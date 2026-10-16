@@ -625,20 +625,20 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* ── Top Header & Global Status ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between border-b border-cyan-500/20 pb-4 gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between border-b border-teal-200/80 pb-4 gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 rounded-xl bg-teal-50 border border-teal-200 text-teal-600 shadow-xs">
               <ShieldCheck size={22} />
             </span>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white font-outfit flex items-center gap-2">
+              <h1 className="text-xl font-black tracking-tight text-slate-900 font-outfit flex items-center gap-2.5">
                 VCFO Compliance & Audit Control
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+                <span className="text-[10px] uppercase font-black tracking-wider px-2.5 py-0.5 rounded-full bg-teal-100/80 border border-teal-300 text-teal-800 shadow-xs">
                   24-Step Master Engine
                 </span>
               </h1>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600 font-medium mt-0.5">
                 End-to-end statutory oversight, step-wise audit programs, initial requirements tracking, and automated client follow-ups.
               </p>
             </div>
@@ -647,15 +647,15 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
 
         {/* Active Client Engagement Selector */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs">
-            <span className="text-slate-400 font-medium">Active Engagement:</span>
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200 shadow-xs text-xs">
+            <span className="text-slate-500 font-semibold">Active Engagement:</span>
             <select
               value={activeEngId}
               onChange={(e) => setActiveEngId(e.target.value)}
-              className="bg-transparent font-bold text-cyan-300 outline-none cursor-pointer"
+              className="bg-transparent font-bold text-teal-700 outline-none cursor-pointer"
             >
               {engagements.map((eng) => (
-                <option key={eng.id} value={eng.id} className="bg-slate-900 text-white">
+                <option key={eng.id} value={eng.id} className="bg-white text-slate-800">
                   {eng.clientCompanyName} &mdash; {eng.name}
                 </option>
               ))}
@@ -665,44 +665,50 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
       </div>
 
       {/* ── Sub-navigation Tabs ── */}
-      <div className="flex items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-2xl border border-slate-800/80 overflow-x-auto">
+      <div className="flex items-center gap-1.5 bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200/80 overflow-x-auto shadow-xs">
         <button
           onClick={() => setActiveTab('flow_map')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'flow_map'
-              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-white text-teal-800 border border-slate-200/80 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold'
           }`}
         >
-          <Sparkles size={14} className="text-cyan-400" />
+          <Sparkles size={14} className={activeTab === 'flow_map' ? 'text-teal-600' : 'text-slate-400'} />
           24-Step Master Flow Map
-          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">24/24</span>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+            activeTab === 'flow_map' ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-slate-200 text-slate-600'
+          }`}>24/24</span>
         </button>
 
         <button
           onClick={() => setActiveTab('tax_audit_15_step')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'tax_audit_15_step'
-              ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-white text-amber-800 border border-slate-200/80 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold'
           }`}
         >
-          <Scale size={14} className="text-amber-400" />
+          <Scale size={14} className={activeTab === 'tax_audit_15_step' ? 'text-amber-600' : 'text-slate-400'} />
           Practical Tax Audit (15 Steps)
-          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">15-Step Core</span>
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+            activeTab === 'tax_audit_15_step' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-200 text-slate-600'
+          }`}>15-Step Core</span>
         </button>
 
         <button
           onClick={() => setActiveTab('requirements')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'requirements'
-              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-white text-blue-800 border border-slate-200/80 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold'
           }`}
         >
-          <Building2 size={14} className="text-blue-400" />
+          <Building2 size={14} className={activeTab === 'requirements' ? 'text-blue-600' : 'text-slate-400'} />
           Initial List of Requirements (Step 7)
-          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-300 font-mono">
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+            activeTab === 'requirements' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-200 text-slate-600'
+          }`}>
             {masterVerified + legalVerified + financialVerified}/{requirementsList.length}
           </span>
         </button>
@@ -711,11 +717,11 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           onClick={() => setActiveTab('audit_program')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'audit_program'
-              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-white text-emerald-800 border border-slate-200/80 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold'
           }`}
         >
-          <FileCheck size={14} className="text-emerald-400" />
+          <FileCheck size={14} className={activeTab === 'audit_program' ? 'text-emerald-600' : 'text-slate-400'} />
           Audit Programs (Step 8 & 9)
         </button>
 
@@ -723,11 +729,11 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           onClick={() => setActiveTab('filings')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'filings'
-              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-white text-indigo-800 border border-slate-200/80 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold'
           }`}
         >
-          <Calendar size={14} className="text-amber-400" />
+          <Calendar size={14} className={activeTab === 'filings' ? 'text-indigo-600' : 'text-slate-400'} />
           Filings Pipeline (GST, TDS, ROC)
         </button>
 
@@ -735,11 +741,11 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           onClick={() => setActiveTab('reminders')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'reminders'
-              ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-white text-purple-800 border border-slate-200/80 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold'
           }`}
         >
-          <MessageSquare size={14} className="text-purple-400" />
+          <MessageSquare size={14} className={activeTab === 'reminders' ? 'text-purple-600' : 'text-slate-400'} />
           Data Reminders Queue (Step 11)
         </button>
       </div>
@@ -750,13 +756,13 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
       {activeTab === 'flow_map' && (
         <div className="space-y-5">
           {/* Summary Banner */}
-          <div className="relative overflow-hidden p-5 rounded-2xl bg-gradient-to-r from-slate-900/90 via-cyan-950/40 to-slate-900/90 border border-cyan-500/30">
+          <div className="relative overflow-hidden p-6 rounded-2xl bg-gradient-to-r from-teal-900 via-slate-900 to-teal-950 border border-teal-800/80 shadow-md text-white">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">
+                <span className="text-[10px] font-black uppercase tracking-wider text-teal-300">
                   Comprehensive VCFO Audit & Operations Lifecycle
                 </span>
-                <h2 className="text-lg font-extrabold text-white font-outfit mt-0.5">
+                <h2 className="text-xl font-black text-white font-outfit mt-0.5">
                   Complete 24-Step VCFO Operating System
                 </h2>
                 <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
@@ -766,13 +772,13 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
               </div>
 
               <div className="flex items-center gap-3 shrink-0">
-                <div className="px-4 py-2.5 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-center">
-                  <div className="text-xl font-extrabold text-cyan-400 font-outfit">24 / 24</div>
-                  <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Steps Connected</div>
+                <div className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-center shadow-xs">
+                  <div className="text-2xl font-black text-teal-300 font-outfit">24 / 24</div>
+                  <div className="text-[9px] uppercase tracking-wider text-slate-300 font-bold">Steps Connected</div>
                 </div>
-                <div className="px-4 py-2.5 rounded-xl bg-slate-900/90 border border-emerald-500/40 text-center">
-                  <div className="text-xl font-extrabold text-emerald-400 font-outfit">100%</div>
-                  <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Operational Status</div>
+                <div className="px-5 py-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 text-center shadow-xs">
+                  <div className="text-2xl font-black text-emerald-300 font-outfit">100%</div>
+                  <div className="text-[9px] uppercase tracking-wider text-slate-300 font-bold">Operational Status</div>
                 </div>
               </div>
             </div>
@@ -787,11 +793,11 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
                 placeholder="Search audit areas or documents..."
                 value={flowSearch}
                 onChange={(e) => setFlowSearch(e.target.value)}
-                className="w-full bg-slate-900/80 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 shadow-xs"
               />
             </div>
 
-            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
               {[
                 { key: 'ALL', label: 'All 24 Steps' },
                 { key: 'PRE_ENGAGEMENT', label: '1-6: Pre-Engagement' },
@@ -803,10 +809,10 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
                 <button
                   key={cat.key}
                   onClick={() => setFlowCategoryFilter(cat.key)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all whitespace-nowrap ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                     flowCategoryFilter === cat.key
-                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                      : 'text-slate-400 hover:text-white bg-slate-900/60 border border-slate-800'
+                      ? 'bg-teal-600 text-white shadow-xs border border-teal-600'
+                      : 'text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 shadow-xs'
                   }`}
                 >
                   {cat.label}
@@ -816,70 +822,70 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           </div>
 
           {/* Master Flow Table */}
-          <div className="premium-card overflow-hidden border border-slate-800/80 bg-slate-950/60">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px] whitespace-nowrap">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px] whitespace-nowrap">
                     <th className="p-3.5 w-16 text-center">Sr#</th>
-                    <th className="p-3.5 min-w-[220px]">Area of Audit</th>
+                    <th className="p-3.5 min-w-[240px]">Area of Audit</th>
                     <th className="p-3.5 min-w-[340px]">Document List / Verification Deliverables</th>
                     <th className="p-3.5 min-w-[130px]">Linked Subsystem</th>
                     <th className="p-3.5 text-center w-28">Status</th>
-                    <th className="p-3.5 text-right min-w-[120px]">Action</th>
+                    <th className="p-3.5 text-right min-w-[130px]">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 font-outfit">
+                <tbody className="divide-y divide-slate-100 font-outfit">
                   {filteredFlowSteps.map((step) => {
                     const isGreenHighlight = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 23, 24].includes(step.sr);
                     return (
                       <tr
                         key={step.sr}
-                        className={`hover:bg-slate-900/60 transition-colors ${
-                          isGreenHighlight ? 'bg-emerald-950/10' : ''
+                        className={`hover:bg-slate-50/80 transition-colors ${
+                          isGreenHighlight ? 'bg-teal-50/30' : ''
                         }`}
                       >
-                        <td className="p-3.5 text-center font-bold text-slate-400">
+                        <td className="p-3.5 text-center">
                           <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-mono font-bold ${
                             isGreenHighlight
-                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                              : 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30'
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : 'bg-teal-50 text-teal-800 border border-teal-200'
                           }`}>
                             {step.sr}
                           </span>
                         </td>
                         <td className="p-3.5">
-                          <span className="font-bold text-white text-xs block leading-snug">
+                          <span className="font-bold text-slate-900 text-xs block leading-snug">
                             {step.areaOfAudit}
                           </span>
-                          <span className="text-[10px] text-slate-400 block mt-0.5 line-clamp-1">
+                          <span className="text-[11px] text-slate-500 block mt-0.5">
                             {step.description}
                           </span>
                         </td>
                         <td className="p-3.5">
-                          <div className="flex items-start gap-1.5">
-                            <FileText size={12} className="text-cyan-400 shrink-0 mt-0.5" />
-                            <span className="text-slate-300 text-[11px] leading-relaxed">
+                          <div className="flex items-start gap-2">
+                            <FileText size={14} className="text-teal-600 shrink-0 mt-0.5" />
+                            <span className="text-slate-700 text-xs font-medium leading-relaxed">
                               {step.documentList}
                             </span>
                           </div>
                         </td>
                         <td className="p-3.5 whitespace-nowrap">
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-800/80 text-cyan-300 border border-slate-700/80">
+                          <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 font-mono">
                             {step.linkedTab.replace('_', ' ').toUpperCase()}
                           </span>
                         </td>
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            <CheckCircle2 size={10} /> Active
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 size={11} className="text-emerald-600" /> Active
                           </span>
                         </td>
                         <td className="p-3.5 text-right whitespace-nowrap">
                           <button
                             onClick={() => handleNavigateStep(step.linkedTab)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 text-[11px] font-bold transition-all hover:scale-105 active:scale-95"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-600 hover:text-white text-teal-700 border border-teal-200 text-xs font-bold transition-all shadow-xs group"
                           >
-                            Open Process <ArrowRight size={11} />
+                            Open Process <ArrowRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
                           </button>
                         </td>
                       </tr>
@@ -902,25 +908,25 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
             {/* 1. Company Master Data */}
             <div
               onClick={() => setReqCategoryFilter(reqCategoryFilter === 'COMPANY_MASTER' ? 'ALL' : 'COMPANY_MASTER')}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+              className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
                 reqCategoryFilter === 'COMPANY_MASTER'
-                  ? 'bg-blue-950/40 border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.25)]'
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-blue-50/60 border-blue-300 ring-2 ring-blue-500/20'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="p-2 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                  <Building2 size={18} />
+                <span className="p-2.5 rounded-xl bg-blue-50 text-blue-600 border border-blue-200">
+                  <Building2 size={20} />
                 </span>
-                <span className="text-[10px] font-bold text-blue-400 font-mono">
+                <span className="text-xs font-bold text-blue-700 font-mono px-2 py-0.5 rounded-full bg-blue-50 border border-blue-200">
                   {masterVerified}/{masterReqCount} Verified
                 </span>
               </div>
-              <h3 className="font-extrabold text-white text-sm mt-3">Company Master Data</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">COI, MOA/AOA, Corporate PAN, TAN, GSTIN, Director KYC, Bank Accounts, Cap Table.</p>
-              <div className="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <h3 className="font-bold text-slate-900 text-sm mt-3">Company Master Data</h3>
+              <p className="text-xs text-slate-500 mt-1">COI, MOA/AOA, Corporate PAN, TAN, GSTIN, Director KYC, Bank Accounts, Cap Table.</p>
+              <div className="mt-3.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-blue-500 h-1.5 transition-all duration-500"
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${(masterVerified / masterReqCount) * 100}%` }}
                 />
               </div>
@@ -929,25 +935,25 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
             {/* 2. Legal Compliance */}
             <div
               onClick={() => setReqCategoryFilter(reqCategoryFilter === 'LEGAL_COMPLIANCE' ? 'ALL' : 'LEGAL_COMPLIANCE')}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+              className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
                 reqCategoryFilter === 'LEGAL_COMPLIANCE'
-                  ? 'bg-purple-950/40 border-purple-500/60 shadow-[0_0_20px_rgba(168,85,247,0.25)]'
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-purple-50/60 border-purple-300 ring-2 ring-purple-500/20'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="p-2 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                  <Scale size={18} />
+                <span className="p-2.5 rounded-xl bg-purple-50 text-purple-600 border border-purple-200">
+                  <Scale size={20} />
                 </span>
-                <span className="text-[10px] font-bold text-purple-400 font-mono">
+                <span className="text-xs font-bold text-purple-700 font-mono px-2 py-0.5 rounded-full bg-purple-50 border border-purple-200">
                   {legalVerified}/{legalReqCount} Verified
                 </span>
               </div>
-              <h3 className="font-extrabold text-white text-sm mt-3">Legal Compliance</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Statutory Registers, Board Minutes, ROC Returns, Labor Laws, Commercial Contracts.</p>
-              <div className="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <h3 className="font-bold text-slate-900 text-sm mt-3">Legal Compliance</h3>
+              <p className="text-xs text-slate-500 mt-1">Statutory Registers, Board Minutes, ROC Returns, Labor Laws, Commercial Contracts.</p>
+              <div className="mt-3.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-purple-500 h-1.5 transition-all duration-500"
+                  className="bg-purple-600 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${(legalVerified / legalReqCount) * 100}%` }}
                 />
               </div>
@@ -956,25 +962,25 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
             {/* 3. Financial Compliance */}
             <div
               onClick={() => setReqCategoryFilter(reqCategoryFilter === 'FINANCIAL_COMPLIANCE' ? 'ALL' : 'FINANCIAL_COMPLIANCE')}
-              className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+              className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
                 reqCategoryFilter === 'FINANCIAL_COMPLIANCE'
-                  ? 'bg-emerald-950/40 border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.25)]'
-                  : 'bg-slate-900/60 border-slate-800 hover:border-slate-700'
+                  ? 'bg-emerald-50/60 border-emerald-300 ring-2 ring-emerald-500/20'
+                  : 'bg-white border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  <Receipt size={18} />
+                <span className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  <Receipt size={20} />
                 </span>
-                <span className="text-[10px] font-bold text-emerald-400 font-mono">
+                <span className="text-xs font-bold text-emerald-700 font-mono px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
                   {financialVerified}/{financialReqCount} Verified
                 </span>
               </div>
-              <h3 className="font-extrabold text-white text-sm mt-3">Financial Compliance</h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Audited Financials, Trial Balance, FAR, Bank Statements, GST ITC, TDS Challans.</p>
-              <div className="mt-3 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+              <h3 className="font-bold text-slate-900 text-sm mt-3">Financial Compliance</h3>
+              <p className="text-xs text-slate-500 mt-1">Audited Financials, Trial Balance, FAR, Bank Statements, GST ITC, TDS Challans.</p>
+              <div className="mt-3.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-emerald-500 h-1.5 transition-all duration-500"
+                  className="bg-emerald-600 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${(financialVerified / financialReqCount) * 100}%` }}
                 />
               </div>
@@ -982,13 +988,13 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           </div>
 
           {/* Filters Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-xs">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-semibold">Filter Category:</span>
+              <span className="text-xs text-slate-600 font-semibold">Filter Category:</span>
               <select
                 value={reqCategoryFilter}
                 onChange={(e) => setReqCategoryFilter(e.target.value as any)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-cyan-300 font-bold outline-none"
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-bold outline-none cursor-pointer"
               >
                 <option value="ALL">All Categories ({requirementsList.length})</option>
                 <option value="COMPANY_MASTER">Company Master Data ({masterReqCount})</option>
@@ -998,11 +1004,11 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-400 font-semibold">Status Check (Step 10):</span>
+              <span className="text-xs text-slate-600 font-semibold">Status Check (Step 10):</span>
               <select
                 value={reqStatusFilter}
                 onChange={(e) => setReqStatusFilter(e.target.value)}
-                className="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-300 font-bold outline-none"
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-bold outline-none cursor-pointer"
               >
                 <option value="ALL">All Statuses</option>
                 <option value="VERIFIED">Verified Compliant</option>
@@ -1014,53 +1020,53 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           </div>
 
           {/* Requirements List Table */}
-          <div className="premium-card overflow-hidden border border-slate-800 bg-slate-950/60">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px] whitespace-nowrap">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px] whitespace-nowrap">
                     <th className="p-3.5">Requirement & Statutory Reference</th>
                     <th className="p-3.5 min-w-[280px]">Verification Document Deliverable</th>
                     <th className="p-3.5">Assigned Auditor</th>
-                    <th className="p-3.5 text-center min-w-[140px]">Status Check (Step 10)</th>
+                    <th className="p-3.5 text-center min-w-[150px]">Status Check (Step 10)</th>
                     <th className="p-3.5 text-right min-w-[180px]">Follow up & Actions (Step 11)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60 font-outfit">
+                <tbody className="divide-y divide-slate-100 font-outfit">
                   {filteredRequirements.map((req) => (
-                    <tr key={req.id} className="hover:bg-slate-900/60 transition-colors">
+                    <tr key={req.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="p-3.5">
                         <div className="space-y-0.5">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-2">
                             <span className={`w-2 h-2 rounded-full ${
-                              req.category === 'COMPANY_MASTER' ? 'bg-blue-400' :
-                              req.category === 'LEGAL_COMPLIANCE' ? 'bg-purple-400' : 'bg-emerald-400'
+                              req.category === 'COMPANY_MASTER' ? 'bg-blue-500' :
+                              req.category === 'LEGAL_COMPLIANCE' ? 'bg-purple-500' : 'bg-emerald-500'
                             }`} />
-                            <span className="font-bold text-white text-xs">{req.name}</span>
+                            <span className="font-bold text-slate-900 text-xs">{req.name}</span>
                           </div>
-                          <span className="text-[10px] text-cyan-400/80 font-mono block pl-3.5">
+                          <span className="text-[11px] text-teal-700 font-mono block pl-4 font-semibold">
                             {req.statutoryReference}
                           </span>
                         </div>
                       </td>
 
                       <td className="p-3.5">
-                        <span className="text-slate-300 text-[11px] leading-relaxed block">
+                        <span className="text-slate-700 text-xs leading-relaxed block font-medium">
                           {req.documentDescription}
                         </span>
                         {req.notes && (
-                          <span className="mt-1 inline-block text-[10px] text-rose-300 bg-rose-950/40 border border-rose-500/30 px-2 py-0.5 rounded">
+                          <span className="mt-1 inline-block text-[11px] text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded font-medium">
                             ⚠️ Note: {req.notes}
                           </span>
                         )}
                       </td>
 
                       <td className="p-3.5 whitespace-nowrap">
-                        <span className="text-slate-400 font-medium text-[11px]">
+                        <span className="text-slate-700 font-medium text-xs">
                           {req.assignedAuditor}
                         </span>
                         {req.verifiedAt && (
-                          <span className="text-[9px] text-emerald-400 block font-mono">
+                          <span className="text-[10px] text-emerald-700 block font-mono font-bold mt-0.5">
                             Verified: {req.verifiedAt}
                           </span>
                         )}
@@ -1070,20 +1076,20 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
                         <select
                           value={req.status}
                           onChange={(e) => handleRequirementStatusChange(req.id, e.target.value as any)}
-                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border outline-none cursor-pointer ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border outline-none cursor-pointer shadow-xs ${
                             req.status === 'VERIFIED'
-                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : req.status === 'COLLECTED'
-                              ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
                               : req.status === 'FLAGGED'
-                              ? 'bg-rose-500/15 text-rose-400 border-rose-500/40'
-                              : 'bg-amber-500/15 text-amber-400 border-amber-500/40'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}
                         >
-                          <option value="VERIFIED" className="bg-slate-900 text-emerald-400">✓ VERIFIED COMPLIANT</option>
-                          <option value="COLLECTED" className="bg-slate-900 text-cyan-300">COLLECTED / IN REVIEW</option>
-                          <option value="PENDING" className="bg-slate-900 text-amber-400">PENDING COLLECTION</option>
-                          <option value="FLAGGED" className="bg-slate-900 text-rose-400">DISCREPANCY FLAGGED</option>
+                          <option value="VERIFIED" className="bg-white text-emerald-700 font-bold">✓ VERIFIED COMPLIANT</option>
+                          <option value="COLLECTED" className="bg-white text-blue-700 font-bold">COLLECTED / IN REVIEW</option>
+                          <option value="PENDING" className="bg-white text-amber-700 font-bold">PENDING COLLECTION</option>
+                          <option value="FLAGGED" className="bg-white text-rose-700 font-bold">DISCREPANCY FLAGGED</option>
                         </select>
                       </td>
 
@@ -1092,22 +1098,22 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
                           {/* Follow-up for data collection (Step 11) */}
                           <button
                             onClick={() => handleTriggerFollowUp('whatsapp', req.name)}
-                            className="p-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 transition-all"
+                            className="p-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-all shadow-xs"
                             title="Send WhatsApp Data Collection Nudge (Step 11)"
                           >
-                            <MessageSquare size={13} />
+                            <MessageSquare size={14} />
                           </button>
                           <button
                             onClick={() => handleTriggerFollowUp('email', req.name)}
-                            className="p-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 transition-all"
+                            className="p-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition-all shadow-xs"
                             title="Send Email Data Collection Request (Step 11)"
                           >
-                            <Mail size={13} />
+                            <Mail size={14} />
                           </button>
                           {req.status !== 'VERIFIED' && (
                             <button
                               onClick={() => handleRequirementStatusChange(req.id, 'VERIFIED')}
-                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold transition-all"
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs"
                             >
                               Verify
                             </button>
@@ -1134,21 +1140,21 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           TAB 3: AUDIT PROGRAMS (STEP 8 & 9)
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'audit_program' && (
-        <div className="premium-card p-5 space-y-5 border border-slate-800 bg-slate-950/60">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
-              <h3 className="font-extrabold text-white text-sm">Step-by-Step Audit Program (Step 8 & 9)</h3>
-              <p className="text-[11px] text-slate-400">
+              <h3 className="font-bold text-slate-900 text-base">Step-by-Step Audit Program (Step 8 & 9)</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
                 Structured verification checklists, section-wise statutory adherence, and working paper references.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-[11px] text-slate-400 font-semibold">Audit Template:</span>
+              <span className="text-xs text-slate-600 font-semibold">Audit Template:</span>
               <select
                 value={selectedAuditTemplate}
                 onChange={(e) => setSelectedAuditTemplate(e.target.value)}
-                className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-cyan-300 font-bold outline-none cursor-pointer"
+                className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 font-bold outline-none cursor-pointer"
               >
                 <option value="tax-audit">Standard Tax Audit Program (Sec 44AB)</option>
                 <option value="statutory">Statutory Audit Program (Companies Act 2013)</option>
@@ -1159,18 +1165,18 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           </div>
 
           {/* Progress summary bar */}
-          <div className="bg-slate-900/80 border border-cyan-500/30 rounded-xl p-3.5 flex items-center justify-between text-xs">
-            <span className="font-bold text-cyan-300">Overall Audit Program Verification Completion:</span>
-            <div className="flex items-center gap-3 font-bold text-cyan-400 font-mono">
-              <div className="w-36 bg-slate-800 rounded-full h-2 overflow-hidden">
+          <div className="bg-teal-50/70 border border-teal-200 rounded-xl p-4 flex items-center justify-between text-xs">
+            <span className="font-bold text-teal-900">Overall Audit Program Verification Completion:</span>
+            <div className="flex items-center gap-3 font-bold text-teal-800 font-mono">
+              <div className="w-44 bg-slate-200 rounded-full h-2.5 overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-2 transition-all duration-500"
+                  className="bg-teal-600 h-2.5 transition-all duration-500"
                   style={{
                     width: `${(auditSteps.filter((s) => s.status === 'COMPLETED').length / auditSteps.length) * 100}%`,
                   }}
                 />
               </div>
-              <span>
+              <span className="text-xs font-bold">
                 {((auditSteps.filter((s) => s.status === 'COMPLETED').length / auditSteps.length) * 100).toFixed(0)}%
               </span>
             </div>
@@ -1180,19 +1186,19 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
             {auditSteps.map((step) => (
               <div
                 key={step.id}
-                className="p-3.5 border border-slate-800/80 rounded-xl bg-slate-900/50 hover:border-cyan-500/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                className="p-4 border border-slate-200 rounded-xl bg-white hover:border-teal-300 hover:shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
               >
                 <div className="space-y-1.5 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 font-mono">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200 font-mono">
                       {step.section}
                     </span>
-                    <span className="font-bold text-white text-xs">{step.step}</span>
+                    <span className="font-bold text-slate-900 text-xs">{step.step}</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-3 text-[10px] text-slate-400">
-                    <span>Evidence Required: <strong className="text-slate-300">{step.evidence}</strong></span>
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
+                    <span>Evidence Required: <strong className="text-slate-700 font-semibold">{step.evidence}</strong></span>
                     <span>&bull;</span>
-                    <span>Auditor: <strong className="text-slate-300">{step.assigned}</strong></span>
+                    <span>Auditor: <strong className="text-slate-700 font-semibold">{step.assigned}</strong></span>
                   </div>
                 </div>
 
@@ -1200,7 +1206,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
                   <select
                     value={step.status}
                     onChange={(e) => handleStepStatusChange(step.id, e.target.value)}
-                    className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-[11px] font-bold text-white outline-none cursor-pointer"
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none cursor-pointer"
                   >
                     <option value="NOT_STARTED">Not Started</option>
                     <option value="IN_PROGRESS">In Progress</option>
@@ -1211,14 +1217,14 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
                   {step.status !== 'COMPLETED' ? (
                     <button
                       onClick={() => handleStepStatusChange(step.id, 'COMPLETED')}
-                      className="p-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-lg transition-all"
+                      className="p-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl transition-all shadow-xs"
                       title="Verify Evidence & Approve Step"
                     >
-                      <Check size={13} />
+                      <Check size={14} />
                     </button>
                   ) : (
-                    <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
-                      <CheckCheck size={13} />
+                    <span className="p-2 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      <CheckCheck size={14} />
                     </span>
                   )}
                 </div>
@@ -1232,56 +1238,56 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           TAB 4: FILINGS PIPELINE (SECTIONAL COMPLIANCE - STEP 9)
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'filings' && (
-        <div className="premium-card p-5 space-y-4 border border-slate-800 bg-slate-950/60">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
           <div>
-            <h3 className="font-extrabold text-white text-sm">Regulatory Filing Pipeline (Sectional Adherence)</h3>
-            <p className="text-[11px] text-slate-400">GST, TDS, Corporate Tax, and ROC filing schedules with due date controls.</p>
+            <h3 className="font-bold text-slate-900 text-base">Regulatory Filing Pipeline (Sectional Adherence)</h3>
+            <p className="text-xs text-slate-500 mt-0.5">GST, TDS, Corporate Tax, and ROC filing schedules with due date controls.</p>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px] whitespace-nowrap">
-                  <th className="p-3">Filing Type & Scope</th>
-                  <th className="p-3">Due Date</th>
-                  <th className="p-3">Responsible Consultant</th>
-                  <th className="p-3">Filing Status</th>
-                  <th className="p-3 text-right">Actions</th>
+                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px] whitespace-nowrap">
+                  <th className="p-3.5">Filing Type & Scope</th>
+                  <th className="p-3.5">Due Date</th>
+                  <th className="p-3.5">Responsible Consultant</th>
+                  <th className="p-3.5">Filing Status</th>
+                  <th className="p-3.5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-outfit">
+              <tbody className="divide-y divide-slate-100 font-outfit">
                 {selectedEngagement.compliances.map((c) => {
                   const isOverdue = new Date(c.dueDate) < new Date() && c.status !== 'COMPLETED';
                   return (
-                    <tr key={c.id} className="hover:bg-slate-900/60 transition-colors whitespace-nowrap">
-                      <td className="p-3 font-bold text-white">{c.type} filing verification</td>
-                      <td className={`p-3 font-semibold ${isOverdue ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>
+                    <tr key={c.id} className="hover:bg-slate-50/80 transition-colors whitespace-nowrap">
+                      <td className="p-3.5 font-bold text-slate-900">{c.type} filing verification</td>
+                      <td className={`p-3.5 font-semibold ${isOverdue ? 'text-rose-600 font-bold' : 'text-slate-700'}`}>
                         {new Date(c.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
-                      <td className="p-3 text-slate-400 font-medium">{c.responsibleEmployeeName || 'Unassigned'}</td>
-                      <td className="p-3">
+                      <td className="p-3.5 text-slate-600 font-medium">{c.responsibleEmployeeName || 'Unassigned'}</td>
+                      <td className="p-3.5">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold border inline-block ${
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-bold border inline-block ${
                             c.status === 'COMPLETED'
-                              ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : isOverdue || c.status === 'OVERDUE'
-                              ? 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse'
-                              : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
+                              : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}
                         >
                           {isOverdue ? 'OVERDUE' : c.status}
                         </span>
                       </td>
-                      <td className="p-3 text-right">
+                      <td className="p-3.5 text-right">
                         {c.status !== 'COMPLETED' ? (
                           <button
                             onClick={() => handleUpdateComplianceStatus(c.id, 'COMPLETED')}
-                            className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 rounded-lg text-[10px] font-bold text-emerald-400 transition-all"
+                            className="px-3 py-1 bg-emerald-50 hover:bg-emerald-600 hover:text-white border border-emerald-200 rounded-xl text-xs font-bold text-emerald-700 transition-all shadow-xs"
                           >
                             Mark Filed
                           </button>
                         ) : (
-                          <span className="text-[10px] text-slate-500 italic">
+                          <span className="text-[11px] text-slate-500 font-medium italic">
                             Filed on {c.completionDate ? c.completionDate.split('T')[0] : 'N/A'}
                           </span>
                         )}
@@ -1299,24 +1305,24 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           TAB 5: DATA REMINDERS QUEUE (STEP 11)
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'reminders' && (
-        <div className="premium-card p-5 space-y-4 border border-slate-800 bg-slate-950/60">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
           <div>
-            <h3 className="font-extrabold text-white text-sm">Data Collection Reminders Queue (Step 11)</h3>
-            <p className="text-[11px] text-slate-400">Trigger multi-channel client alerts for missing or pending documents.</p>
+            <h3 className="font-bold text-slate-900 text-base">Data Collection Reminders Queue (Step 11)</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Trigger multi-channel client alerts for missing or pending documents.</p>
           </div>
 
-          <div className="divide-y divide-slate-800/60">
+          <div className="divide-y divide-slate-100">
             {selectedEngagement.documents
               .filter((d) => d.status === 'PENDING' || d.status === 'MISSING')
               .map((doc) => (
                 <div key={doc.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="space-y-1">
-                    <span className="font-bold text-white block">{doc.name}</span>
+                    <span className="font-bold text-slate-900 text-xs block">{doc.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 bg-rose-500/15 text-rose-400 border border-rose-500/30 rounded font-bold text-[9px]">
+                      <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded font-bold text-[10px]">
                         {doc.status}
                       </span>
-                      {doc.remarks && <span className="text-[10px] text-slate-400">Remarks: {doc.remarks}</span>}
+                      {doc.remarks && <span className="text-[11px] text-slate-500 font-medium">Remarks: {doc.remarks}</span>}
                     </div>
                   </div>
 
@@ -1324,25 +1330,25 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleTriggerFollowUp('whatsapp', doc.name)}
-                      className="px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold text-[10px] flex items-center gap-1.5 transition-all"
+                      className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
                     >
-                      <MessageSquare size={12} />
+                      <MessageSquare size={13} />
                       WhatsApp Nudge
                     </button>
                     <button
                       onClick={() => handleTriggerFollowUp('email', doc.name)}
-                      className="px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 border border-blue-500/30 rounded-xl font-bold text-[10px] flex items-center gap-1.5 transition-all"
+                      className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
                     >
-                      <Mail size={12} />
+                      <Mail size={13} />
                       Email Request
                     </button>
                   </div>
                 </div>
               ))}
             {selectedEngagement.documents.filter((d) => d.status === 'PENDING' || d.status === 'MISSING').length === 0 && (
-              <div className="py-12 text-center text-slate-400">
-                <CheckCircle2 size={32} className="mx-auto text-emerald-400 mb-2" />
-                <p className="font-bold text-white text-sm">All Client Documents Collected!</p>
+              <div className="py-12 text-center text-slate-500">
+                <CheckCircle2 size={36} className="mx-auto text-emerald-600 mb-2" />
+                <p className="font-bold text-slate-900 text-sm">All Client Documents Collected!</p>
                 <p className="text-xs text-slate-500 mt-0.5">No pending or missing documentation items for this engagement.</p>
               </div>
             )}
@@ -1352,25 +1358,25 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
 
       {/* ── Follow-Up / Reminder Dispatch Modal ── */}
       {reminderModal && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-cyan-500/40 rounded-2xl shadow-2xl max-w-lg w-full p-5 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
                 <span className={`p-2 rounded-xl ${
-                  reminderModal.channel === 'whatsapp' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'
+                  reminderModal.channel === 'whatsapp' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-blue-50 text-blue-700 border border-blue-200'
                 }`}>
                   {reminderModal.channel === 'whatsapp' ? <MessageSquare size={18} /> : <Mail size={18} />}
                 </span>
                 <div>
-                  <h3 className="font-bold text-white text-sm">
+                  <h3 className="font-bold text-slate-900 text-sm">
                     Dispatch {reminderModal.channel === 'whatsapp' ? 'WhatsApp Nudge' : 'Email Notice'}
                   </h3>
-                  <p className="text-[10px] text-slate-400">Step 11: Follow up for Data Collection</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Step 11: Follow up for Data Collection</p>
                 </div>
               </div>
               <button
                 onClick={() => setReminderModal(null)}
-                className="text-slate-400 hover:text-white text-sm"
+                className="text-slate-400 hover:text-slate-700 text-sm p-1 rounded-lg"
               >
                 ✕
               </button>
@@ -1378,15 +1384,15 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
 
             <div className="space-y-3 text-xs">
               <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">Client Recipient</span>
-                <p className="font-bold text-white mt-0.5">{reminderModal.clientName} ({reminderModal.recipientContact})</p>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Client Recipient</span>
+                <p className="font-bold text-slate-900 mt-0.5 text-xs">{reminderModal.clientName} ({reminderModal.recipientContact})</p>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 font-bold uppercase">Requested Document</span>
-                <p className="text-cyan-300 font-semibold mt-0.5">{reminderModal.docName}</p>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Requested Document</span>
+                <p className="text-teal-700 font-bold mt-0.5 text-xs">{reminderModal.docName}</p>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-300 leading-relaxed font-mono">
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed font-sans">
                 {reminderModal.channel === 'whatsapp' ? (
                   <>
                     "Dear {reminderModal.clientName}, this is an automated priority notice from VANNTAGGE CFO Services.
@@ -1394,7 +1400,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
                   </>
                 ) : (
                   <>
-                    Subject: Urgent: Pending Statutory Document Upload - {reminderModal.docName}
+                    <strong className="text-slate-900">Subject:</strong> Urgent: Pending Statutory Document Upload - {reminderModal.docName}
                     <br /><br />
                     Dear Client Team,
                     <br /><br />
@@ -1406,19 +1412,19 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-3">
+            <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
               <button
                 onClick={() => setReminderModal(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white bg-slate-800/80 transition-all"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 bg-slate-50 border border-slate-200 transition-all"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmSendReminder}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg ${
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-md ${
                   reminderModal.channel === 'whatsapp'
-                    ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30'
-                    : 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/30'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
                 }`}
               >
                 <Send size={13} />
