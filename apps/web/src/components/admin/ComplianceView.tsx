@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { ComplianceStatus } from '../../types';
+import { TaxAudit15StepView } from './TaxAudit15StepView';
 
 interface ComplianceViewProps {
   setCurrentTab?: (tab: string) => void;
@@ -482,7 +483,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
   } = useDashboardStore();
 
   const [activeEngId, setActiveEngId] = useState<string>(engagements[0]?.id || '');
-  const [activeTab, setActiveTab] = useState<'flow_map' | 'requirements' | 'audit_program' | 'filings' | 'reminders'>('flow_map');
+  const [activeTab, setActiveTab] = useState<'flow_map' | 'tax_audit_15_step' | 'requirements' | 'audit_program' | 'filings' | 'reminders'>('flow_map');
 
   // Search & Filters
   const [flowSearch, setFlowSearch] = useState('');
@@ -676,6 +677,19 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           <Sparkles size={14} className="text-cyan-400" />
           24-Step Master Flow Map
           <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-mono">24/24</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('tax_audit_15_step')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'tax_audit_15_step'
+              ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Scale size={14} className="text-amber-400" />
+          Practical Tax Audit (15 Steps)
+          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">15-Step Core</span>
         </button>
 
         <button
@@ -1107,6 +1121,13 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
             </div>
           </div>
         </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          PRACTICAL TAX AUDIT (15-STEP PROCEDURE)
+         ═══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'tax_audit_15_step' && (
+        <TaxAudit15StepView />
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════════

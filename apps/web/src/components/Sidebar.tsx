@@ -35,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'calendar', label: 'Schedule Hub', icon: 'calendar_month' },
     { id: 'outbox', label: 'Communication Hub', icon: 'forward_to_inbox' },
     { id: 'financial_docs', label: 'Financial Documents', icon: 'description' },
+    { id: 'compliance', label: 'Audit & Compliance', icon: 'verified_user' },
     { id: 'reports', label: 'MIS Reporting', icon: 'monitoring' },
   ];
 
@@ -44,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     
     if (currentUser.role === 'EMPLOYEE') {
-      return ['dashboard', 'work', 'timesheet', 'calendar', 'client_management', 'outbox'].includes(item.id);
+      return ['dashboard', 'work', 'compliance', 'timesheet', 'calendar', 'client_management', 'outbox'].includes(item.id);
     }
     
     if (currentUser.role === 'CLIENT') {

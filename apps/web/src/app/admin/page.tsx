@@ -73,6 +73,7 @@ export default function AdminPage() {
     client_management: 'Client Hub',
     invoicing: 'Revenue Hub',
     outbox: 'Communication Hub',
+    compliance: 'Audit & Compliance Hub',
     settings: 'Config Hub',
     user_management: 'Secure Hub',
     notifications: 'Alert Hub',
