@@ -11,12 +11,16 @@ interface Props {
   clientId: string;
 }
 
-const STATUS_COLORS: Record<TaskStatus, { bg: string; text: string; label: string }> = {
+const STATUS_COLORS: Partial<Record<TaskStatus, { bg: string; text: string; label: string }>> = {
   NOT_STARTED:      { bg: 'rgba(148,163,184,0.15)', text: '#94a3b8', label: 'Not Started' },
   IN_PROGRESS:      { bg: 'rgba(59,130,246,0.15)', text: '#60a5fa', label: 'In Progress' },
   WAITING_FOR_CLIENT: { bg: 'rgba(245,158,11,0.15)', text: '#fbbf24', label: 'Waiting Client' },
   REVIEW_PENDING:   { bg: 'rgba(168,85,247,0.15)', text: '#c084fc', label: 'Review Pending' },
   COMPLETED:        { bg: 'rgba(34,197,94,0.15)', text: '#4ade80', label: 'Completed' },
+};
+
+const getStatusColor = (status: TaskStatus): { bg: string; text: string; label: string } => {
+  return STATUS_COLORS[status] || { bg: 'rgba(255,255,255,0.04)', text: '#64748b', label: status };
 };
 
 const PRIORITY_COLORS: Record<Priority, string> = {
@@ -92,13 +96,13 @@ export default function ClientTaskListModal({ isOpen, onClose, clientServiceId, 
               onClick={() => setStatusFilter(statusFilter === s.status ? 'ALL' : s.status)}
               style={{
                 padding: '4px 12px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
-                background: statusFilter === s.status ? STATUS_COLORS[s.status].bg : 'rgba(255,255,255,0.04)',
-                color: statusFilter === s.status ? STATUS_COLORS[s.status].text : '#64748b',
+                background: statusFilter === s.status ? getStatusColor(s.status).bg : 'rgba(255,255,255,0.04)',
+                color: statusFilter === s.status ? getStatusColor(s.status).text : '#64748b',
                 transition: 'all 0.15s',
                 opacity: s.count === 0 ? 0.4 : 1,
               }}
             >
-              {STATUS_COLORS[s.status].label} ({s.count})
+              {getStatusColor(s.status).label} ({s.count})
             </button>
           ))}
         </div>
@@ -156,7 +160,7 @@ export default function ClientTaskListModal({ isOpen, onClose, clientServiceId, 
                   const dueDate = (task as any).dueDate || '—';
                   const checklist = (task as any).checklist || [];
                   const completedChecks = checklist.filter((c: any) => c.completed).length;
-                  const sc = STATUS_COLORS[task.status] || STATUS_COLORS['NOT_STARTED'];
+                  const sc = getStatusColor(task.status);
                   return (
                     <tr key={task.id} style={{ background: 'rgba(255,255,255,0.03)' }}>
                       <td style={{ padding: '10px 10px', borderRadius: '8px 0 0 8px', color: '#e2e8f0', fontSize: 13, fontWeight: 500, maxWidth: 220 }}>

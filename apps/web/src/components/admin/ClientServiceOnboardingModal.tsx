@@ -307,7 +307,7 @@ export const ClientServiceOnboardingModal: React.FC<Props> = ({ isOpen, onClose,
     setActivationError(null);
     const result = activateClientService(
       client.id,
-      engagementId,
+      engagementId || '',
       selectedService.id,
       serviceParameters,
       currentClientDocs.filter(d => d.reviewStatus === 'APPROVED').map(d => d.id),

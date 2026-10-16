@@ -10,6 +10,7 @@ interface HeaderProps {
   setSearchTarget: (target: string) => void;
   currentTabTitle: string;
   onMenuToggle?: () => void;
+  onToggleMobileMenu?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({

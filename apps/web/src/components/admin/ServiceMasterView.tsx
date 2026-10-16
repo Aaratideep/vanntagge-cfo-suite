@@ -352,7 +352,7 @@ export const ServiceMasterView: React.FC = () => {
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {doc.allowedFileTypes.map(t => (
+                              {doc.allowedFileTypes.map((t: string) => (
                                 <span key={t} className="text-[9px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
                                   {t}
                                 </span>

@@ -83,7 +83,7 @@ const InvoiceDrilldownModal: React.FC<{
 
     content = (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {Object.entries(grouped).map(([month, data]) => (
+        {Object.entries(grouped).map(([month, data]: [string, any]) => (
           <div key={month} onClick={() => { setSelectedMonth(month); setLevel('CUSTOMER'); }} className="p-5 bg-white border border-slate-200 shadow-sm rounded-xl hover:border-blue-300 hover:shadow-md cursor-pointer transition-all group">
             <h4 className="font-bold text-slate-800 text-base">{month}</h4>
             <div className="flex justify-between items-end mt-4">
@@ -106,7 +106,7 @@ const InvoiceDrilldownModal: React.FC<{
 
     content = (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {Object.entries(grouped).map(([client, data]) => (
+        {Object.entries(grouped).map(([client, data]: [string, any]) => (
           <div key={client} onClick={() => { setSelectedCustomer(client); setLevel('INVOICE'); }} className="p-5 bg-white border border-slate-200 shadow-sm rounded-xl hover:border-blue-300 hover:shadow-md cursor-pointer transition-all group">
             <h4 className="font-bold text-slate-800 text-base truncate pr-2">{client}</h4>
             <div className="flex justify-between items-end mt-4">

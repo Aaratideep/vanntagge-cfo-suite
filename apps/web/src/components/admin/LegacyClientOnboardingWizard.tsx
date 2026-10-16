@@ -49,7 +49,7 @@ export const LegacyClientOnboardingWizard: React.FC<LegacyClientOnboardingWizard
     setGlobalSuccessMsg
   } = useDashboardStore() as any;
 
-  const foundDraft = initialDraft || (initialDraftId ? legacyClientDrafts.find(d => d.id === initialDraftId) : undefined);
+  const foundDraft = initialDraft || (initialDraftId ? legacyClientDrafts.find((d: any) => d.id === initialDraftId) : undefined);
 
   const [currentStep, setCurrentStep] = useState<number>(foundDraft?.step || 1);
   const [duplicateMatches, setDuplicateMatches] = useState<Client[]>([]);
@@ -146,7 +146,7 @@ export const LegacyClientOnboardingWizard: React.FC<LegacyClientOnboardingWizard
     { num: 10, label: 'Review & Create', icon: CheckCircle2 },
   ];
 
-  const allServicesList = serviceCategories.flatMap(c => c.services || []);
+  const allServicesList = serviceCategories.flatMap((c: any) => c.services || []);
 
   const handleSaveDraft = () => {
     const updatedDraft: LegacyClientDraft = {
@@ -167,7 +167,7 @@ export const LegacyClientOnboardingWizard: React.FC<LegacyClientOnboardingWizard
     const queryName = (draft.basicInfo.companyName || '').trim().toLowerCase();
     const queryEmail = (draft.contactInfo.email || '').trim().toLowerCase();
 
-    clients.forEach(c => {
+    clients.forEach((c: any) => {
       if (
         (queryPan && c.pan?.toLowerCase() === queryPan) ||
         (queryGstin && c.gstin?.toLowerCase() === queryGstin) ||
@@ -696,7 +696,7 @@ export const LegacyClientOnboardingWizard: React.FC<LegacyClientOnboardingWizard
             <p className="text-xs text-slate-500 font-medium">Select services from Service Master that this client has already been receiving.</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {allServicesList.map(sm => {
+              {allServicesList.map((sm: any) => {
                 const isSelected = draft.services.some(s => s.serviceMasterId === sm.id);
                 return (
                   <div key={sm.id} className={`p-4 rounded-2xl border transition-all flex items-center justify-between ${

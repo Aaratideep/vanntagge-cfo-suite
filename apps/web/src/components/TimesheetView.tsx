@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react';
 import { useDashboardStore } from '../store/dashboardStore';
 import { Clock, Send, Calendar, CheckCircle2, User, Building2, Briefcase, ChevronRight, Activity, Users } from 'lucide-react';
 import { Task } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 
 export const TimesheetView: React.FC = () => {
   const { engagements, updateTask, addTaskFollowUp, currentUser, timesheets, submitTimesheet, users } = useDashboardStore();

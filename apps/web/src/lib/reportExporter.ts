@@ -9,7 +9,8 @@ export function exportReportToPDF(report: Report): string {
   
   // Construct formatted text representation for client download
   let textContent = `=======================================================\n`;
-  textContent += `                ${report.clientCompanyName.toUpperCase()}\n`;
+  const clientName = report.clientCompanyName || 'Client';
+  textContent += `                ${clientName.toUpperCase()}\n`;
   textContent += `             ${report.type} FINANCIAL PERFORMANCE REPORT\n`;
   textContent += `=======================================================\n`;
   textContent += `Report Period : ${report.periodKey}\n`;
@@ -46,7 +47,7 @@ export function exportReportToPDF(report: Report): string {
   // Trigger file download
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${report.clientCompanyName.toLowerCase().replace(/\s+/g, '-')}-${report.type.toLowerCase()}-${report.periodKey}.txt`;
+  link.download = `${(report.clientCompanyName || 'client').toLowerCase().replace(/\s+/g, '-')}-${report.type.toLowerCase()}-${report.periodKey || 'period'}.txt`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -58,7 +59,7 @@ export function exportReportToPDF(report: Report): string {
  * Simulates / generates Excel CSV document Data URL or triggers download for a released Report.
  */
 export function exportReportToExcel(report: Report): string {
-  let csv = `Client,${report.clientCompanyName}\n`;
+  let csv = `Client,${report.clientCompanyName || 'Client'}\n`;
   csv += `Report Type,${report.type}\n`;
   csv += `Period,${report.periodKey}\n`;
   csv += `Status,${report.status}\n`;
@@ -83,7 +84,7 @@ export function exportReportToExcel(report: Report): string {
 
   const link = document.createElement('a');
   link.href = url;
-  link.download = `${report.clientCompanyName.toLowerCase().replace(/\s+/g, '-')}-${report.type.toLowerCase()}-${report.periodKey}.csv`;
+  link.download = `${(report.clientCompanyName || 'client').toLowerCase().replace(/\s+/g, '-')}-${report.type.toLowerCase()}-${report.periodKey || 'period'}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

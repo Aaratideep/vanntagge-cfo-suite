@@ -579,7 +579,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ setCurrentTab }) => {
     }));
 
     exportToCSV(exportData, `Invoices_Register_${new Date().toISOString().split('T')[0]}.csv`);
-    useDashboardStore.getState().setGlobalSuccessMsg(`Exported ${invoices.length} invoice(s) to Excel CSV!`);
+    useDashboardStore.getState().setGlobalSuccessMsg(`Exported ${displayedInvoices.length} invoice(s) to Excel CSV!`);
   };
 
   // Export Collections

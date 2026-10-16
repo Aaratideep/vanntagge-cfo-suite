@@ -73,7 +73,7 @@ export const AICfoAssistantModal: React.FC<AICfoAssistantModalProps> = ({
     }
   };
 
-  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || currentUser?.role === 'CFO' || pageContext === 'ADMIN';
+  const isSuperAdmin = currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' || (currentUser?.role as string) === 'CFO' || pageContext === 'ADMIN';
   const isClient = currentUser?.role === 'CLIENT';
   const isEmployee = currentUser?.role === 'EMPLOYEE';
 

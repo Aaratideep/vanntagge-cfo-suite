@@ -33,6 +33,7 @@ import {
   Lock,
   EyeOff,
   Sparkles,
+  Copy,
 } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { Lead, LeadStatus, Priority, FollowUpMode } from '../../types';
@@ -896,7 +897,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                           <span className="text-[10px] text-slate-400">v{q.version || 1}</span>
                         </td>
                         <td className="p-3 max-w-[200px]">
-                          {q.services.map((s, i) => (
+                          {(q.services || []).map((s, i) => (
                             <span key={i} className="block text-[10px] text-slate-500 truncate">• {s.name} ({formatINR(s.price)})</span>
                           ))}
                         </td>
@@ -904,7 +905,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                         <td className="p-3 text-slate-500">{formatINR(q.gst)}</td>
                         <td className="p-3 font-bold text-slate-800">{formatINR(q.finalAmount)}</td>
                         <td className="p-3 text-slate-500">
-                          {new Date(q.validity).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {q.validity ? new Date(q.validity).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                         </td>
                         <td className="p-3">
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${

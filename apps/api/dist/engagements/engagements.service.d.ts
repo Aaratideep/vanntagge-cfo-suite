@@ -5,21 +5,21 @@ export declare class EngagementsService {
     getClientServices(engagementId: string): Promise<({
         serviceMaster: {
             id: string;
-            isActive: boolean;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
-            categoryId: string;
             description: string | null;
+            isActive: boolean;
+            categoryId: string;
             frequency: string | null;
             priority: import(".prisma/client").$Enums.Priority;
         };
         clientParameters: ({
             serviceParameter: {
                 id: string;
+                name: string;
                 createdAt: Date;
                 updatedAt: Date;
-                name: string;
                 description: string | null;
                 serviceId: string;
                 dataType: string;
@@ -36,19 +36,19 @@ export declare class EngagementsService {
         })[];
     } & {
         id: string;
-        engagementId: string;
-        serviceMasterId: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
+        engagementId: string;
+        serviceMasterId: string;
     })[]>;
     toggleClientService(engagementId: string, serviceMasterId: string, isActive: boolean): Promise<{
         id: string;
-        engagementId: string;
-        serviceMasterId: string;
-        isActive: boolean;
         createdAt: Date;
         updatedAt: Date;
+        isActive: boolean;
+        engagementId: string;
+        serviceMasterId: string;
     }>;
     configureParameter(clientServiceId: string, serviceParameterId: string, value: string): Promise<{
         id: string;

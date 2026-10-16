@@ -56,9 +56,9 @@ export const ReportsView: React.FC = () => {
   // Apply filters
   const filteredReports = allReports.filter((rep) => {
     const matchesSearch =
-      rep.clientCompanyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (rep.clientCompanyName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       rep.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      rep.periodKey.toLowerCase().includes(searchQuery.toLowerCase());
+      (rep.periodKey || '').toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'ALL' || rep.status === statusFilter;
     const matchesClient = clientFilter === 'ALL' || rep.clientId === clientFilter;
@@ -340,7 +340,7 @@ export const ReportsView: React.FC = () => {
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center font-bold text-blue-600 text-xs shrink-0 font-outfit">
-                          {rep.clientCompanyName.substring(0, 2).toUpperCase()}
+                          {(rep.clientCompanyName || 'CL').substring(0, 2).toUpperCase()}
                         </div>
                         <div>
                           <span className="font-bold text-slate-900 block text-sm font-outfit">

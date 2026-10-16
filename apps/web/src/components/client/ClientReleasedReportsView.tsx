@@ -188,7 +188,7 @@ export const ClientReleasedReportsView: React.FC = () => {
 
               {/* Sections Narrative */}
               <div className="space-y-4">
-                {activeReport.sections.map((sec, idx) => (
+                {(activeReport?.sections || []).map((sec, idx) => (
                   <div key={sec.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                     <div className="flex items-center gap-2">
                       <span className="w-6 h-6 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center font-outfit">

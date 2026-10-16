@@ -120,7 +120,7 @@ export const ReportReviewModal: React.FC<ReportReviewModalProps> = ({
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            Draft Sections & Commentary ({report.sections.length})
+            Draft Sections & Commentary ({(report.sections || []).length})
           </button>
           <button
             onClick={() => setActiveTab('LINEAGE')}
@@ -161,7 +161,7 @@ export const ReportReviewModal: React.FC<ReportReviewModalProps> = ({
                 <div>
                   <span className="text-slate-500 block">Snapshot Date:</span>
                   <span className="font-mono text-slate-700 font-semibold">
-                    {new Date(report.dataSnapshot.snapshotAt).toLocaleDateString()}
+                    {report.dataSnapshot ? new Date(report.dataSnapshot.snapshotAt).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
               </div>
@@ -173,7 +173,7 @@ export const ReportReviewModal: React.FC<ReportReviewModalProps> = ({
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {report.dataSnapshot?.kpiResults &&
-                    Object.entries(report.dataSnapshot.kpiResults).map(([key, item]) => (
+                    Object.entries(report?.dataSnapshot?.kpiResults || {}).map(([key, item]) => (
                       <div key={key} className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl">
                         <span className="text-[10px] text-slate-500 uppercase block font-semibold font-outfit">
                           {key.replace(/_/g, ' ')}
@@ -204,7 +204,7 @@ export const ReportReviewModal: React.FC<ReportReviewModalProps> = ({
 
           {activeTab === 'SECTIONS' && (
             <div className="space-y-4">
-              {report.sections.map((sec, idx) => (
+              {(report?.sections || []).map((sec, idx) => (
                 <div key={sec.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="w-6 h-6 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center justify-center font-outfit">
@@ -225,7 +225,7 @@ export const ReportReviewModal: React.FC<ReportReviewModalProps> = ({
               <div className="p-3 bg-slate-50 text-slate-800 border border-slate-200 rounded-xl flex items-center justify-between font-outfit">
                 <span className="text-slate-500 font-semibold">Verified Source Tasks Count:</span>
                 <span className="font-mono font-bold text-emerald-600">
-                  {report.dataSnapshot.sourceTasks?.length || 0} Approved Tasks
+                  {report.dataSnapshot?.sourceTasks?.length || 0} Approved Tasks
                 </span>
               </div>
 

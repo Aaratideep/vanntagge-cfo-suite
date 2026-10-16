@@ -27,6 +27,8 @@ import {
   EngagementService,
   Task,
   ReviewPoint,
+  ReviewPointComment,
+  ReviewPointStatus,
   Document,
   Compliance,
   Invoice,
@@ -71,6 +73,31 @@ import {
   ServiceMasterService,
   ServiceMasterParameter,
   TimeLog,
+  ClientDocument,
+  ReportTemplate,
+  ReportDataSnapshot,
+  ReportDataLineageItem,
+  ReportSectionConfig,
+  TaskTemplate,
+  ClientTaskPreview,
+  TaskGenerationResult,
+  TaskAssignmentRecord,
+  TaskWorkingData,
+  TaskAttachment,
+  TaskSubmission,
+  ClientServiceConfigSnapshot,
+  ClientService,
+  AutomationRule,
+  AutomationTrigger,
+  AutomationLog,
+  ReminderRecord,
+  AIFeatureFlags,
+  AIAuditLog,
+  AICallContext,
+  AIResponse,
+  AISourceCitation,
+  PaymentRecord,
+  LegacyClientDraft,
   CommunicationLog
 } from '../types';
 import { computePeriodKey, computeNextPeriods, computeDueDate } from '../lib/taskRecurrence';
@@ -97,6 +124,90 @@ export interface AdminSettings {
 }
 
 interface DashboardState {
+  reportTemplates: ReportTemplate[];
+  paymentRecords: PaymentRecord[];
+  automationRules: AutomationRule[];
+  automationLogs: AutomationLog[];
+  reminderRecords: ReminderRecord[];
+  aiFeatureFlags: AIFeatureFlags;
+  aiAuditLogs: AIAuditLog[];
+  legacyClientDrafts: LegacyClientDraft[];
+
+  setServiceCategories: (categories: ServiceMasterCategory[]) => void;
+  updateEngagementClientServices: (engagementId: string, clientServices: ClientService[]) => void;
+  addClientDocument: (doc: any) => void;
+  addMasterDataBankDocument: (clientId: string, docData: any) => void;
+  updateMasterDataBankDocument: (clientId: string, docId: string, updates: any) => void;
+  deleteMasterDataBankDocument: (clientId: string, docId: string) => void;
+  populateInitialDataBankTemplate: (clientId: string, companyName: string) => void;
+  updateClientCompanyProfile: (clientId: string, updates: any) => { success: boolean; error?: string };
+  updateClientDocument: (id: string, updates: any) => void;
+  removeClientDocument: (id: string) => void;
+  updateClientDocumentProcessingStatus: (id: string, processingStatus: any, result?: any) => void;
+  startDocumentReview: (id: string, userId: string) => void;
+  approveDocument: (id: string, userId: string) => void;
+  rejectDocument: (id: string, userId: string, reason?: string) => void;
+  requestReuploadDocument: (id: string, userId: string, reason?: string) => void;
+  addDocumentReviewComment: (id: string, userId: string, comment: string) => void;
+  generateWorkload: (engagementId: string) => void;
+  activateClientService: (clientId: string, engagementId: string, serviceMasterId: string, parameters: any, documentIds: string[], startDate: string, frequency: string, userId: string, configSnapshot?: any) => { success: boolean; error?: string; clientServiceId?: string };
+  startTaskExecution: (engagementId: string, taskId: string) => void;
+  updateTaskChecklist: (engagementId: string, taskId: string, checklist: any) => void;
+  updateTaskWorkingData: (engagementId: string, taskId: string, workingData: any) => void;
+  addTaskAttachment: (engagementId: string, taskId: string, attachmentData: any) => void;
+  removeTaskAttachment: (engagementId: string, taskId: string, attachmentId: string) => void;
+  submitTaskForReview: (engagementId: string, taskId: string, submissionNotes?: string) => { success: boolean; error?: string };
+  startTaskReview: (engagementId: string, taskId: string) => { success: boolean; error?: string };
+  createReviewPoint: (engagementId: string, taskId: string, pointData: any) => { success: boolean; error?: string };
+  addReviewPointComment: (engagementId: string, taskId: string, pointId: string, text: string) => void;
+  markReviewPointCorrected: (engagementId: string, taskId: string, pointId: string, correctionComment?: string) => void;
+  resolveReviewPoint: (engagementId: string, taskId: string, pointId: string) => void;
+  reopenReviewPoint: (engagementId: string, taskId: string, pointId: string, reason?: string) => void;
+  updateChecklistReviewItemState: (engagementId: string, taskId: string, itemText: string | number, status: string, notes?: string) => void;
+  updateWorkingDataReviewItemState: (engagementId: string, taskId: string, sectionKey: string, status: string, notes?: string) => void;
+  updateAttachmentReviewItemState: (engagementId: string, taskId: string, attachmentId: string, status: string, notes?: string) => void;
+  requestTaskCorrection: (engagementId: string, taskId: string, summary?: string) => { success: boolean; error?: string };
+  resubmitTaskForReview: (engagementId: string, taskId: string, notes?: string) => { success: boolean; error?: string };
+  approveTask: (engagementId: string, taskId: string, notes?: string) => { success: boolean; error?: string };
+  addReportTemplate: (template: any) => void;
+  updateReportTemplate: (id: string, updates: any) => void;
+  duplicateReportTemplate: (id: string) => void;
+  validateReportGeneration: (clientId: string, clientServiceId?: string, templateId?: string, periodKey?: string) => { valid: boolean; blockers: string[] };
+  generateReportDraft: (params: { clientId: string; clientServiceId?: string; templateId: string; periodKey: string }) => any;
+  updateReportDraft: (reportId: string, updates: any) => void;
+  submitReportForReview: (reportId: string) => void;
+  requestReportCorrection: (reportId: string, notes: string) => void;
+  approveReport: (reportId: string) => void;
+  releaseReport: (reportId: string) => { success: boolean; error?: string };
+  createNewReportVersion: (reportId: string) => any;
+  addTaskTemplate: (serviceId: string, parameterId: string, template: any) => void;
+  updateTaskTemplate: (serviceId: string, parameterId: string, templateId: string, updates: any) => void;
+  deleteTaskTemplate: (serviceId: string, parameterId: string, templateId: string) => void;
+  previewClientTaskGeneration: (clientServiceId: string) => ClientTaskPreview[];
+  generateClientTasks: (clientServiceId: string, userId: string, periodKeys?: string[]) => TaskGenerationResult;
+  getEmployeeWorkload: (userId: string) => {
+    userId: string;
+    userName: string;
+    weeklyCapacityHours: number;
+    assignedHoursThisWeek: number;
+    totalOpenTasks: number;
+    overdueTasks: number;
+    completedTasks: number;
+    utilizationPct: number;
+    isOnLeave: boolean;
+  };
+  assignTask: (params: { engagementId: string; taskId: string; employeeId: string; teamId?: string; assignedBy: string; reason?: string; overrideWarning?: boolean }) => any;
+  reassignTask: (params: { engagementId: string; taskId: string; newEmployeeId: string; teamId?: string; assignedBy: string; reason?: string; overrideWarning?: boolean }) => any;
+  updateTaskStatus: (engagementId: string, taskId: string, status: TaskStatus) => void;
+  generateReport: (engagementId: string, reportType: any, notes?: string) => void;
+  addAutomationRule: (rule: any) => void;
+  updateAutomationRule: (id: string, updates: any) => void;
+  deleteAutomationRule: (id: string) => void;
+  checkAndDispatchReminders: () => void;
+  updateAIFeatureFlags: (flags: Partial<AIFeatureFlags>) => void;
+  askAICfoAssistant: (context: AICallContext, prompt: string) => Promise<AIResponse>;
+  deleteLegacyClientDraft: (id: string) => void;
+
   users: User[];
   leads: Lead[];
   followUps: FollowUp[];
@@ -514,6 +625,80 @@ export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
   reportTemplates: DEFAULT_REPORT_TEMPLATES,
+  automationRules: AutomationEngine.getDefaultRules(),
+  automationLogs: [],
+  reminderRecords: [],
+  aiFeatureFlags: {
+    aiCfoAssistant: true,
+    aiReportDrafting: true,
+    financialAnalysis: true,
+    automationEngine: true,
+  },
+  aiAuditLogs: [],
+  paymentRecords: [],
+  legacyClientDrafts: [],
+  addAutomationRule: (rule: any) => {
+    const newRule: AutomationRule = {
+      ...rule,
+      id: `rule-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    set((state) => ({ automationRules: [newRule, ...state.automationRules] }));
+  },
+  updateAutomationRule: (id: string, updates: any) => {
+    set((state) => ({
+      automationRules: state.automationRules.map((r) =>
+        r.id === id ? { ...r, ...updates, updatedAt: new Date().toISOString() } : r
+      ),
+    }));
+  },
+  deleteAutomationRule: (id: string) => {
+    set((state) => ({
+      automationRules: state.automationRules.filter((r) => r.id !== id),
+    }));
+  },
+  checkAndDispatchReminders: () => {
+    const newReminders = AutomationEngine.scanAndDispatchReminders(
+      get(),
+      get().reminderRecords || [],
+      (title: string, message: string) => {
+        get().addNotification(title, message);
+      }
+    );
+    if (newReminders && newReminders.length > 0) {
+      set((state) => ({
+        reminderRecords: [...newReminders, ...(state.reminderRecords || [])],
+      }));
+    }
+  },
+  updateAIFeatureFlags: (flags: any) => {
+    set((state) => ({
+      aiFeatureFlags: { ...state.aiFeatureFlags, ...flags },
+    }));
+  },
+  askAICfoAssistant: async (context: any, prompt: string) => {
+    const res = await AIService.answerCFOQuestion(context, prompt, get());
+    const auditLog: AIAuditLog = {
+      id: `ai-audit-${Date.now()}`,
+      feature: 'CFO_ASSISTANT',
+      userId: context.userId || 'anonymous',
+      userName: context.userName || 'Anonymous User',
+      userRole: context.userRole,
+      prompt,
+      status: 'SUCCESS',
+      timestamp: new Date().toISOString(),
+    };
+    set((state) => ({
+      aiAuditLogs: [auditLog, ...(state.aiAuditLogs || [])],
+    }));
+    return res;
+  },
+  deleteLegacyClientDraft: (id: string) => {
+    set((state) => ({
+      legacyClientDrafts: (state.legacyClientDrafts || []).filter((d) => d.id !== id),
+    }));
+  },
   users: FIXED_USERS,
   leaves: [
     {
@@ -1806,22 +1991,6 @@ export const useDashboardStore = create<DashboardState>()(
 
   // ─── Task Template Engine (Prompt 10) ─────────────────────────────────────
 
-  addAuditLog: (action, details) => {
-    const log: AuditLog = {
-      id: `a-${Date.now()}`,
-      userName: get().currentUser?.name || 'System / Guest',
-      action,
-      details,
-      timestamp: new Date().toISOString(),
-    };
-    set((state) => ({
-      auditLogs: [log, ...state.auditLogs],
-    }));
-    
-    // Sync to Firestore
-    pushRecordToFirebase('auditLogs', log.id, log);
-  },
-
   startTaskExecution: (engagementId, taskId) => {
     const eng = get().engagements.find((e) => e.id === engagementId);
     if (!eng) return;
@@ -1834,7 +2003,7 @@ export const useDashboardStore = create<DashboardState>()(
   },
 
   updateTaskChecklist: (engagementId, taskId, checklist) => {
-    const completedCount = checklist.filter((item) => item.isCompleted).length;
+    const completedCount = checklist.filter((item: any) => item.isCompleted).length;
     const totalCount = checklist.length;
     const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
@@ -2582,7 +2751,7 @@ export const useDashboardStore = create<DashboardState>()(
                 releasedBy: currentUser?.id,
                 releasedByName: currentUser?.name || 'Managing Partner',
                 releasedAt: now,
-                filePath: `/reports/${r.clientCompanyName.toLowerCase().replace(/\s+/g, '-')}-${r.type.toLowerCase()}-${r.periodKey}.pdf`,
+                filePath: `/reports/${(r.clientCompanyName || 'client').toLowerCase().replace(/\s+/g, '-')}-${r.type.toLowerCase()}-${r.periodKey || 'current'}.pdf`,
               }
             : r
         ),
@@ -2592,7 +2761,7 @@ export const useDashboardStore = create<DashboardState>()(
     get().addAuditLog('REPORT_RELEASED', `Report ${targetReport.type} (${targetReport.periodKey}) officially released to client package.`);
     get().addNotification(
       'Report Released',
-      `${targetReport.type} Report for ${targetReport.clientCompanyName} (${targetReport.periodKey}) has been released!`,
+      `${targetReport.type} Report for ${targetReport.clientCompanyName || 'Client'} (${targetReport.periodKey || 'Period'}) has been released!`,
       `/admin?tab=invoicing`,
       ['SUPER_ADMIN', 'ADMIN', 'CLIENT']
     );
@@ -3149,21 +3318,6 @@ export const useDashboardStore = create<DashboardState>()(
     
     return newState;
   }),
-
-  addReviewPoint: (engagementId, taskId, reviewPoint) => set((state) => ({
-    engagements: state.engagements.map(eng => 
-      eng.id === engagementId
-        ? {
-            ...eng,
-            tasks: eng.tasks.map(t => 
-              t.id === taskId 
-                ? { ...t, reviewPoints: [...(t.reviewPoints || []), { id: `rp-${Date.now()}`, createdAt: new Date().toISOString(), ...reviewPoint }] } 
-                : t
-            )
-          }
-        : eng
-    )
-  })),
 
   generateReport: (engagementId, reportType, notes) => set((state) => ({
     engagements: state.engagements.map(eng => 
@@ -3957,7 +4111,7 @@ export const useDashboardStore = create<DashboardState>()(
     const engagementId = `eng-${Date.now()}`;
     
     // Auto-generate Service checklist items based on quotation
-    const servicesMapped: EngagementService[] = quotation.services.map((s, idx) => ({
+    const servicesMapped: EngagementService[] = (quotation.services || []).map((s, idx) => ({
       id: `es-${Date.now()}-${idx}`,
       engagementId,
       serviceName: s.name,

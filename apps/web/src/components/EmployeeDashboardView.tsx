@@ -403,9 +403,9 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ in
                         </span>
                         <select 
                           className="text-[10px] font-bold bg-slate-50 border border-slate-200 rounded px-1 py-0.5 text-slate-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          value={t.status}
-                          disabled={t.status === 'COMPLETED'}
-                          onChange={(e) => updateTask(t.engagementId, t.id, { status: e.target.value as any })}
+                          value={task.status}
+                          disabled={task.status === 'COMPLETED'}
+                          onChange={(e) => updateTask(task.engagementId, task.id, { status: e.target.value as any })}
                         >
                           <option value="PENDING">Pending</option>
                           <option value="IN_PROGRESS">In Progress</option>
@@ -413,7 +413,7 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ in
                           <option value="COMPLETED">Completed</option>
                         </select>
                         <button 
-                          onClick={() => setTaskNoteModal({ isOpen: true, taskId: t.id, engagementId: t.engagementId, currentNote: t.notes || '' })}
+                          onClick={() => setTaskNoteModal({ isOpen: true, taskId: task.id, engagementId: task.engagementId, currentNote: task.notes || '' })}
                           className="text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-100 transition-colors"
                         >
                           Note

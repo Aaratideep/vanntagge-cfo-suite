@@ -37,6 +37,7 @@ interface TaskReviewModalProps {
   taskId: string;
   engagementId: string;
   onClose: () => void;
+  isOpen?: boolean;
 }
 
 export const TaskReviewModal: React.FC<TaskReviewModalProps> = ({

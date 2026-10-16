@@ -18,7 +18,7 @@ import { SettingsView } from '../../components/admin/SettingsView';
 
 export default function EmployeePage() {
   const router = useRouter();
-  const { currentUser } = useDashboardStore();
+  const { currentUser, globalSuccessMsg } = useDashboardStore();
   const [currentTab, setCurrentTab] = useState<string>('employee_portal');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

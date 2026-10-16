@@ -10,18 +10,18 @@ export declare class ServicesController {
     }): Promise<{
         id: string;
         organizationId: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         description: string | null;
         isActive: boolean;
     }>;
     getCategories(orgId: string): Promise<({
         services: {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             description: string | null;
             isActive: boolean;
             categoryId: string;
@@ -31,9 +31,9 @@ export declare class ServicesController {
     } & {
         id: string;
         organizationId: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         description: string | null;
         isActive: boolean;
     })[]>;
@@ -44,9 +44,9 @@ export declare class ServicesController {
         priority?: Priority;
     }): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         description: string | null;
         isActive: boolean;
         categoryId: string;
@@ -56,9 +56,9 @@ export declare class ServicesController {
     getServices(categoryId: string): Promise<({
         parameters: {
             id: string;
+            name: string;
             createdAt: Date;
             updatedAt: Date;
-            name: string;
             description: string | null;
             serviceId: string;
             dataType: string;
@@ -79,9 +79,9 @@ export declare class ServicesController {
         }[];
     } & {
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         description: string | null;
         isActive: boolean;
         categoryId: string;
@@ -96,9 +96,9 @@ export declare class ServicesController {
         isRequired?: boolean;
     }): Promise<{
         id: string;
+        name: string;
         createdAt: Date;
         updatedAt: Date;
-        name: string;
         description: string | null;
         serviceId: string;
         dataType: string;

@@ -38,7 +38,7 @@ export default function AdminPage() {
   const [searchTarget, setSearchTarget] = useState('all');
   const [isMounted, setIsMounted] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [crmInitialAction, setCrmInitialAction] = useState<string | null>(null);
+  const [crmInitialAction, setCrmInitialAction] = useState<'quotation' | 'lead' | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -102,7 +102,7 @@ export default function AdminPage() {
       if (
         searchQuery &&
         (inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          inv.milestone.toLowerCase().includes(searchQuery.toLowerCase()))
+          (inv.milestone || '').toLowerCase().includes(searchQuery.toLowerCase()))
       ) {
         filteredSearchInvoices.push(inv);
       }

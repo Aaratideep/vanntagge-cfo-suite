@@ -69,7 +69,7 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
 
   const handleNarrativeChange = (sectionId: string, text: string) => {
     if (!isEditable) return;
-    const updatedSections = report!.sections.map((sec) =>
+    const updatedSections = (report?.sections || []).map((sec) =>
       sec.id === sectionId ? { ...sec, narrative: text } : sec
     );
     updateReportDraft(report!.id, { sections: updatedSections });
@@ -79,7 +79,7 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
 
   const handleMoveSection = (index: number, direction: 'UP' | 'DOWN') => {
     if (!isEditable) return;
-    const newSections = [...report!.sections];
+    const newSections = [...(report?.sections || [])];
     const targetIdx = direction === 'UP' ? index - 1 : index + 1;
     if (targetIdx < 0 || targetIdx >= newSections.length) return;
 
@@ -248,7 +248,7 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
         <div className="text-right shrink-0">
           <span className="text-[11px] font-mono text-slate-400 block">Snapshot Compiled:</span>
           <span className="text-xs font-mono font-semibold text-blue-600">
-            {new Date(report.dataSnapshot.snapshotAt).toLocaleString()}
+            {report.dataSnapshot ? new Date(report.dataSnapshot.snapshotAt).toLocaleString() : 'N/A'}
           </span>
         </div>
       </div>
@@ -282,7 +282,7 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {report.dataSnapshot?.kpiResults &&
             Object.entries(report.dataSnapshot.kpiResults).map(([key, item]) => {
-              const lineage = report!.dataLineage[key];
+              const lineage = report?.dataLineage?.[key];
               return (
                 <div
                   key={key}
@@ -327,11 +327,11 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
             <span>Report Sections Builder</span>
           </h3>
           <span className="text-xs text-slate-500 font-semibold">
-            {report.sections.length} Configured Sections
+            {(report?.sections || []).length} Configured Sections
           </span>
         </div>
 
-        {report.sections.map((section, index) => (
+        {(report?.sections || []).map((section, index) => (
           <div
             key={section.id}
             className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden transition-all"
@@ -360,7 +360,7 @@ export const ReportBuilderView: React.FC<ReportBuilderViewProps> = ({
                     <ChevronUp className="w-4 h-4" />
                   </button>
                   <button
-                    disabled={index === report!.sections.length - 1}
+                    disabled={index === (report?.sections?.length || 0) - 1}
                     onClick={() => handleMoveSection(index, 'DOWN')}
                     className="p-1.5 text-slate-400 hover:text-slate-700 disabled:opacity-30 rounded-lg hover:bg-slate-100 cursor-pointer"
                     title="Move Down"

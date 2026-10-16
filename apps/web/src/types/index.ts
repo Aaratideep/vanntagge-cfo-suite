@@ -32,11 +32,15 @@ export type TaskStatus =
   | 'CORRECTION_REQUIRED'
   | 'RESUBMITTED'
   | 'APPROVED'
-  | 'COMPLETED';
+  | 'COMPLETED'
+  | 'WORK_IN_PROGRESS'
+  | 'TODO'
+  | 'PENDING'
+  | 'REVIEW';
 
 export type ReviewSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 export type ReviewStatus = 'PENDING' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REOPENED' | 'CLOSED' | 'APPROVED';
-export type ReviewPointStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REOPENED' | 'CLOSED';
+export type ReviewPointStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REOPENED' | 'CLOSED' | 'PENDING' | 'APPROVED';
 export type ReviewPointCategory =
   | 'DATA_ERROR'
   | 'DOCUMENT_ERROR'
@@ -57,7 +61,7 @@ export type DocCategory =
   | 'AGREEMENTS_LICENCES'
   | 'HR_OPERATIONS';
 
-export type DocStatus = 'PENDING' | 'RECEIVED' | 'VERIFIED' | 'REJECTED' | 'MISSING';
+export type DocStatus = 'PENDING' | 'RECEIVED' | 'VERIFIED' | 'REJECTED' | 'MISSING' | 'AVAILABLE';
 
 export interface Document {
   id: string;
@@ -125,6 +129,8 @@ export const DEFAULT_BILLING_ENTITIES = [
 export interface BillingConfiguration {
   id: string;
   organizationId: string;
+  ruleId?: string;
+  ruleName?: string;
   clientId: string;
   clientServiceId: string;
   engagementId?: string;
@@ -291,6 +297,8 @@ export interface User {
   clientOnboardingData?: ClientOnboardingData;
   googleCalendarApiKey?: string;
   customCalendars?: { id: string; name: string; color: string; isGoogleSynced: boolean }[];
+  companyName?: string;
+  organizationId?: string;
 }
 
 export interface Lead {
@@ -338,15 +346,17 @@ export interface Quotation {
   quotationNumber: string;
   leadId: string;
   leadCompanyName: string;
-  services: QuotationServiceItem[];
+  services?: QuotationServiceItem[];
   price: number;
   gst: number;
   discount: number;
   finalAmount: number;
-  validity: string;
+  validity?: string;
+  validUntil?: string;
   status: QuotationStatus;
   version: number;
   terms?: string;
+  serviceScope?: string;
   // RBI Compliance Fields
   companyGstin?: string;
   clientGstin?: string;
@@ -374,7 +384,7 @@ export interface EngagementLetter {
   clientGstin?: string;
   clientPan?: string;
   digitalSignatureUrl?: string;
-  agreementType?: 'ENGAGEMENT' | 'VENDOR' | 'MOU' | 'EMPLOYEE';
+  agreementType?: 'ENGAGEMENT' | 'VENDOR' | 'MOU' | 'EMPLOYEE' | 'MRL';
   createdAt: string;
 }
 
@@ -433,6 +443,10 @@ export interface Client {
   deliverableReports?: DeliverableReportDef[];
   featuredGraph?: 'REVENUE_EXPENSE' | 'CASHFLOW' | 'PROFIT_MARGIN' | 'OPEX';
   dashboardConfig?: ClientDashboardConfig;
+  services?: ClientService[];
+  primaryContact?: any;
+  entityType?: string;
+  historicalFinancialRecords?: HistoricalFinancialRecord[];
 }
 
 export interface HistoricalFinancialRecord {
@@ -451,6 +465,7 @@ export interface LegacyClientDraft {
   id: string;
   step: number;
   status: 'DRAFT' | 'IN_PROGRESS' | 'READY_FOR_REVIEW' | 'COMPLETED';
+  companyName?: string;
   basicInfo: {
     clientType: string;
     legalName: string;
@@ -563,6 +578,7 @@ export interface TaskTemplate {
   /** Index field — set to organizationId for multi-tenant isolation */
   organizationId?: string;
   name: string;
+  title?: string;
   description?: string;
   frequency: string;
   priority: Priority;
@@ -657,6 +673,7 @@ export interface ClientService {
   clientId: string;
   engagementId?: string;
   serviceMasterId: string;
+  serviceName?: string;
   isActive: boolean;
   status: ClientServiceStatus;
   startDate?: string;
@@ -880,6 +897,22 @@ export interface Task {
   }[];
   calendarId?: string;
   createdAt: string;
+  currentSubmissionNumber?: number;
+  approvedBy?: string;
+  approvedByName?: string;
+  approvedAt?: string;
+  submittedBy?: string;
+  submittedByName?: string;
+  submittedAt?: string;
+  attachments?: TaskAttachment[];
+  submissionHistory?: TaskSubmission[];
+  submissionNotes?: string;
+  workingData?: TaskWorkingData;
+  checklistReviewState?: Record<string, any>;
+  workingDataReviewState?: Record<string, any>;
+  attachmentReviewState?: Record<string, any>;
+  isReadyForReview?: boolean;
+  completedAt?: string;
 }
 
 
@@ -1106,6 +1139,9 @@ export interface Engagement {
   clientCompanyName: string;
   leadId: string;
   name: string;
+  title?: string;
+  clientContactPhone?: string;
+  clientContactEmail?: string;
   status: ClientStatus;
   startDate: string;
   endDate?: string;
@@ -1310,6 +1346,7 @@ export type ServiceMasterParameter = {
   name: string;
   dataType: string;
   isRequired: boolean;
+  taskTemplates?: TaskTemplate[];
 };
 
 export type ServiceMasterService = {
@@ -1319,6 +1356,7 @@ export type ServiceMasterService = {
   priority: Priority;
   parameters: ServiceMasterParameter[];
   isAutomated?: boolean;
+  requiredDocuments?: any[];
 };
 
 export type ServiceMasterCategory = {
@@ -1480,4 +1518,116 @@ export interface ClientDeliveryCycle {
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── Automation Engine Types ───────────────────────────────────────────────
+export type AutomationTrigger =
+  | 'SERVICE_ACTIVATED'
+  | 'TASK_COMPLETED'
+  | 'REPORT_RELEASED'
+  | 'INVOICE_DUE'
+  | 'COMPLIANCE_DUE';
+
+export type AutomationAction =
+  | 'CREATE_TASK'
+  | 'CREATE_NOTIFICATION'
+  | 'SEND_EMAIL'
+  | 'SEND_WHATSAPP';
+
+export interface AutomationRule {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  trigger: AutomationTrigger;
+  actions: { actionType: AutomationAction; messageTemplate?: string }[];
+  active: boolean;
+  createdBy: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AutomationLog {
+  id: string;
+  organizationId: string;
+  ruleId?: string;
+  ruleName?: string;
+  clientId?: string;
+  trigger: AutomationTrigger;
+  status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  createdTasksCount?: number;
+  skippedDuplicatesCount?: number;
+  failedCount?: number;
+  error?: string;
+  timestamp: string;
+}
+
+export interface ReminderRecord {
+  id: string;
+  organizationId: string;
+  reminderType: '7_DAYS_BEFORE' | '3_DAYS_BEFORE' | '1_DAY_BEFORE' | 'DUE_TODAY' | 'OVERDUE';
+  resourceType: 'TASK' | 'COMPLIANCE' | 'INVOICE';
+  resourceId: string;
+  recipientId: string;
+  sentAt: string;
+}
+
+// ─── AI Engine Types ───────────────────────────────────────────────────────
+export interface AIFeatureFlags {
+  aiCfoAssistant: boolean;
+  aiReportDrafting: boolean;
+  financialAnalysis: boolean;
+  automationEngine: boolean;
+}
+
+export interface AIAuditLog {
+  id: string;
+  feature: string;
+  userId: string;
+  userName: string;
+  userRole: string;
+  prompt?: string;
+  query?: string;
+  responseSummary?: string;
+  sources?: any[];
+  status: 'SUCCESS' | 'FAILED' | 'BLOCKED';
+  timestamp: string;
+}
+
+export interface AICallContext {
+  userId?: string;
+  userName?: string;
+  userRole: Role;
+  organizationId?: string;
+  clientId?: string;
+  pageContext?: string;
+}
+
+export interface AISourceCitation {
+  title: string;
+  entityType: string;
+  entityId?: string;
+  periodKey?: string;
+  date?: string;
+}
+
+export interface AIResponse {
+  answer: string;
+  analysis?: string | string[];
+  sources: AISourceCitation[];
+  limitations?: string;
+  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
+  factVsInference?: {
+    facts: string[];
+    inferences: string[];
+  };
+  validationStatus: string;
+  metrics?: { label: string; value: string }[];
+  keyNumbers?: { label: string; value: string | number }[];
+  actionPoints?: string[];
+  limitationsNote?: string;
+  dataAvailable?: boolean;
+}
+
+// ─── Timesheet / TimeLog Alias ─────────────────────────────────────────────
+export type TimeLog = TimesheetEntry;
 

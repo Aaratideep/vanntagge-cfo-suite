@@ -206,7 +206,7 @@ export const FinancialDocsView: React.FC = () => {
                   <div>
                     <h4 className="font-bold text-slate-800">{q.quotationNumber} - {q.leadCompanyName}</h4>
                     <p className="text-xs text-slate-500 mt-1">
-                      Status: <span className="font-semibold text-blue-600">{q.status}</span> &bull; Valid till: {new Date(q.validity).toLocaleDateString()}
+                      Status: <span className="font-semibold text-blue-600">{q.status}</span> &bull; Valid till: {q.validity ? new Date(q.validity).toLocaleDateString() : '—'}
                     </p>
                     {q.companyGstin && (
                       <div className="flex items-center gap-1 mt-2 text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full w-max font-bold">
