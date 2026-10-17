@@ -4,7 +4,7 @@ const nextConfig = {
   /* config options here */
   allowedDevOrigins: ['vanntagge-cfo.loca.lt'],
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 } as any;
 
