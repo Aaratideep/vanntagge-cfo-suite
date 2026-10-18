@@ -4,6 +4,7 @@ import { Role, User } from '../types';
 import { auth, db, isFirebaseConfigured } from '../lib/firebase';
 import { pullDatabaseFromFirebase } from '../lib/firebaseSync';
 import { SimpleCaptcha } from './SimpleCaptcha';
+import { ShieldCheck, UserCheck, Briefcase, ArrowRight, ArrowLeft } from 'lucide-react';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -685,7 +686,7 @@ export const AuthView: React.FC = () => {
                       : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">admin_panel_settings</span>
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
                     <span>Admin</span>
                   </button>
                   <button
@@ -699,7 +700,7 @@ export const AuthView: React.FC = () => {
                       : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">badge</span>
+                    <UserCheck className="w-4 h-4 shrink-0" />
                     <span>Employee</span>
                   </button>
                   <button
@@ -713,7 +714,7 @@ export const AuthView: React.FC = () => {
                       : 'text-slate-600 hover:text-slate-900'
                       }`}
                   >
-                    <span className="material-symbols-outlined text-[16px]">business_center</span>
+                    <Briefcase className="w-4 h-4 shrink-0" />
                     <span>Client</span>
                   </button>
                 </div>
@@ -726,40 +727,30 @@ export const AuthView: React.FC = () => {
                         <span className="text-primary hover:underline cursor-help" onClick={() => alert('Demo logins: sarah.jenkins@vanntagge.com, priya.sharma@vanntagge.com')}>Demo Users?</span>
                       )}
                     </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline">
-                        <span className="material-symbols-outlined text-[20px]">mail</span>
-                      </div>
-                      <input
-                        type="email"
-                        id="login-email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="name@company.com"
-                        className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-lg border border-outline-variant/60 text-xs text-on-surface outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs"
-                      />
-                    </div>
+                    <input
+                      type="email"
+                      id="login-email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@company.com"
+                      className="w-full px-4 py-2.5 bg-surface rounded-lg border border-outline-variant/60 text-xs text-on-surface outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs"
+                    />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-on-surface-variant" htmlFor="login-password">
                       Password
                     </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline">
-                        <span className="material-symbols-outlined text-[20px]">lock</span>
-                      </div>
-                      <input
-                        type="password"
-                        id="login-password"
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-lg border border-outline-variant/60 text-xs text-on-surface outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs"
-                      />
-                    </div>
+                    <input
+                      type="password"
+                      id="login-password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full px-4 py-2.5 bg-surface rounded-lg border border-outline-variant/60 text-xs text-on-surface outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs"
+                    />
                   </div>
 
                   <div className="pt-2">
@@ -776,7 +767,7 @@ export const AuthView: React.FC = () => {
                     ) : (
                       <>
                         <span>{isFirebaseConfigured ? 'Sign In to Workspace' : 'Verify & Enter Dashboard'}</span>
-                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
@@ -951,7 +942,7 @@ export const AuthView: React.FC = () => {
                     ) : (
                       <>
                         <span>Register & Sign In</span>
-                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
@@ -1003,20 +994,15 @@ export const AuthView: React.FC = () => {
                     <label className="text-[11px] font-bold text-on-surface-variant" htmlFor="forgot-email">
                       Email Address
                     </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-outline">
-                        <span className="material-symbols-outlined text-[20px]">mail</span>
-                      </div>
-                      <input
-                        type="email"
-                        id="forgot-email"
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        placeholder="name@company.com"
-                        className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-lg border border-outline-variant/60 text-xs text-on-surface outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs"
-                      />
-                    </div>
+                    <input
+                      type="email"
+                      id="forgot-email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@company.com"
+                      className="w-full px-4 py-2.5 bg-surface rounded-lg border border-outline-variant/60 text-xs text-on-surface outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-xs"
+                    />
                   </div>
 
                   <button
@@ -1029,7 +1015,7 @@ export const AuthView: React.FC = () => {
                     ) : (
                       <>
                         <span>Send Reset Link</span>
-                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                        <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
@@ -1044,8 +1030,8 @@ export const AuthView: React.FC = () => {
                     }}
                     className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
                   >
-                    <span className="material-symbols-outlined text-sm">arrow_back</span>
-                    Back to Log In
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back to Log In</span>
                   </button>
                 </footer>
               </div>
