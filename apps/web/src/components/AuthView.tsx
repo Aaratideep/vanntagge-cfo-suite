@@ -16,7 +16,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
-const SUPER_ADMIN_EMAILS = ['kashinathgaikwad305@gmail.com', 'aaratimule006@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['kashinathgaikwad305@gmail.com', 'aaratimule006@gmail.com', 'admin@vanntagge.com', 'admin@vantage.com'];
 const CLIENT_EMAILS = ['aaratideepak29@gmail.com'];
 const EMPLOYEE_EMAILS = ['aarati123@gmail.com', 'kiranm@gmail.com'];
 const isOwnerEmail = (email: string) => SUPER_ADMIN_EMAILS.includes((email || '').toLowerCase().trim());
@@ -682,48 +682,36 @@ export const AuthView: React.FC = () => {
                 </header>
 
                 {/* Quick Role Selector */}
-                <div className="mb-6 grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-xl text-[11px] font-semibold">
+                <div className="mb-6 grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl text-[11px] font-semibold">
                   <button
                     type="button"
                     onClick={() => {
                       setEmail('aaratimule006@gmail.com');
-                      setPassword('demo');
+                      setPassword('Vanntagge@Admin2026');
                     }}
-                    className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${email.includes('admin') || email.includes('006')
-                      ? 'bg-white text-blue-600 shadow-xs font-bold'
-                      : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                    className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${
+                      email.toLowerCase().includes('aaratimule006') || email.toLowerCase().includes('admin')
+                        ? 'bg-purple-600 text-white shadow-xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900 bg-white/70'
+                    }`}
                   >
                     <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span>Admin</span>
+                    <span className="truncate">Admin (Aarati Mule)</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => {
-                      setEmail('aarati123@gmail.com');
-                      setPassword('demo');
+                      setEmail('kashinathgaikwad305@gmail.com');
+                      setPassword('Vanntagge@Admin2026');
                     }}
-                    className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${email.includes('aarati123') || email.includes('priya') || email.includes('employee')
-                      ? 'bg-blue-600 text-white shadow-xs font-bold'
-                      : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                    className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${
+                      email.toLowerCase().includes('kashinath')
+                        ? 'bg-purple-600 text-white shadow-xs font-bold'
+                        : 'text-slate-600 hover:text-slate-900 bg-white/70'
+                    }`}
                   >
-                    <UserCheck className="w-4 h-4 shrink-0" />
-                    <span>Employee</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('aaratideepak29@gmail.com');
-                      setPassword('demo');
-                    }}
-                    className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${email.includes('29') || email.includes('client')
-                      ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                      : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                  >
-                    <Briefcase className="w-4 h-4 shrink-0" />
-                    <span>Client</span>
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span className="truncate">Admin (Kashinath G.)</span>
                   </button>
                 </div>
 
@@ -796,75 +784,53 @@ export const AuthView: React.FC = () => {
                   <span>Continue with Google</span>
                 </button>
 
-                {/* Clean Demo Credentials Helper (Fills Form For Verification) */}
+                {/* Clean Real Admin Credentials Helper (Fills Form For Verification) */}
                 <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                      <span>Demo Test Credentials (Auto-fill Form)</span>
+                    <h4 className="text-[11px] font-bold uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                      <span>Real Administrators (Click to populate)</span>
                     </h4>
-                    <span className="text-[10px] text-slate-400 font-medium">Click to populate</span>
+                    <span className="text-[10px] text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                      Super Admin
+                    </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        setEmail('admin@vantage.com');
-                        setPassword('Vantage@Admin2026');
+                        setEmail('aaratimule006@gmail.com');
+                        setPassword('Vanntagge@Admin2026');
                         setErrorMsg('');
                       }}
-                      className="py-2 px-2.5 bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-200 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
+                      className="py-2.5 px-3 bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
                     >
-                      <span className="flex items-center gap-1.5 truncate">
-                        <span>👑</span>
-                        <span className="truncate">Admin (Aarati Mule)</span>
-                      </span>
+                      <div className="flex flex-col truncate">
+                        <span className="flex items-center gap-1.5 font-bold text-slate-900">
+                          <span>👑</span>
+                          <span className="truncate">Aarati Mule</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 truncate">aaratimule006@gmail.com</span>
+                      </div>
                       <span className="text-[10px] text-purple-600 font-bold shrink-0">Fill &rarr;</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setEmail('employee@vantage.com');
-                        setPassword('Vantage@Staff2026');
+                        setEmail('kashinathgaikwad305@gmail.com');
+                        setPassword('Vanntagge@Admin2026');
                         setErrorMsg('');
                       }}
-                      className="py-2 px-2.5 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
+                      className="py-2.5 px-3 bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
                     >
-                      <span className="flex items-center gap-1.5 truncate">
-                        <span>💼</span>
-                        <span className="truncate">Staff (Priya Sharma)</span>
-                      </span>
-                      <span className="text-[10px] text-blue-600 font-bold shrink-0">Fill &rarr;</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('client@vantage.com');
-                        setPassword('Vantage@Client2026');
-                        setErrorMsg('');
-                      }}
-                      className="py-2 px-2.5 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
-                    >
-                      <span className="flex items-center gap-1.5 truncate">
-                        <span>🏢</span>
-                        <span className="truncate">Client (Acme Corp)</span>
-                      </span>
-                      <span className="text-[10px] text-emerald-600 font-bold shrink-0">Fill &rarr;</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('testclient@vantage.com');
-                        setPassword('Vantage@Client2026');
-                        setErrorMsg('');
-                      }}
-                      className="py-2 px-2.5 bg-white hover:bg-cyan-50 border border-slate-200 hover:border-cyan-200 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
-                    >
-                      <span className="flex items-center gap-1.5 truncate">
-                        <span>📊</span>
-                        <span className="truncate">Audit Client (CFO SUITE)</span>
-                      </span>
-                      <span className="text-[10px] text-cyan-600 font-bold shrink-0">Fill &rarr;</span>
+                      <div className="flex flex-col truncate">
+                        <span className="flex items-center gap-1.5 font-bold text-slate-900">
+                          <span>👑</span>
+                          <span className="truncate">Kashinath Gaikwad</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 truncate">kashinathgaikwad305@gmail.com</span>
+                      </div>
+                      <span className="text-[10px] text-purple-600 font-bold shrink-0">Fill &rarr;</span>
                     </button>
                   </div>
                 </div>

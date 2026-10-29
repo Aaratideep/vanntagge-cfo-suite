@@ -299,6 +299,7 @@ export interface User {
   customCalendars?: { id: string; name: string; color: string; isGoogleSynced: boolean }[];
   companyName?: string;
   organizationId?: string;
+  password?: string;
 }
 
 export interface Lead {

@@ -476,9 +476,9 @@ export const STANDARD_TASKS_BY_CATEGORY = {
 
 export const FIXED_USERS: User[] = [
   {
-    id: 'u-admin',
+    id: 'u-admin-1',
     name: 'Aarati Mule',
-    email: 'admin@vantage.com',
+    email: 'aaratimule006@gmail.com',
     role: 'SUPER_ADMIN',
     permissions: ['all'],
     designation: 'Managing Partner & Principal CFO',
@@ -487,44 +487,22 @@ export const FIXED_USERS: User[] = [
     salaryBasic: 150000,
     status: 'ACTIVE',
     isOnboarded: true,
+    password: 'Vanntagge@Admin2026',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
   },
   {
-    id: 'u-employee',
-    name: 'Priya Sharma',
-    email: 'employee@vantage.com',
-    role: 'EMPLOYEE',
-    permissions: ['work'],
-    designation: 'Senior Financial Analyst & Associate',
-    department: 'Virtual CFO Operations',
-    joinDate: '2024-03-01',
-    salaryBasic: 85000,
+    id: 'u-admin-2',
+    name: 'Kashinath Gaikwad',
+    email: 'kashinathgaikwad305@gmail.com',
+    role: 'SUPER_ADMIN',
+    permissions: ['all'],
+    designation: 'Co-Founder & Chief Technology Officer',
+    department: 'Executive Leadership & Technology',
+    joinDate: '2023-01-15',
+    salaryBasic: 150000,
     status: 'ACTIVE',
     isOnboarded: true,
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'u-client',
-    name: 'Rajesh Mehta',
-    email: 'client@vantage.com',
-    role: 'CLIENT',
-    permissions: ['read'],
-    linkedEntity: 'Acme Corp',
-    designation: 'Managing Director, Acme Corp',
-    status: 'ACTIVE',
-    isOnboarded: true,
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'u-cfo-test',
-    name: 'Aditya Kashyap',
-    email: 'testclient@vantage.com',
-    role: 'CLIENT',
-    permissions: ['read'],
-    linkedEntity: 'CFO SUITE TEST PVT LTD',
-    designation: 'CEO & Founder, CFO SUITE TEST PVT LTD',
-    status: 'ACTIVE',
-    isOnboarded: true,
+    password: 'Vanntagge@Admin2026',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   }
 ];
@@ -536,6 +514,10 @@ export const getInitialCurrentUser = (): User | null => {
       if (savedUserStr) {
         const parsed = JSON.parse(savedUserStr);
         if (parsed && parsed.id && parsed.role) {
+          if (parsed.id === 'u-employee' || parsed.id === 'u-client' || parsed.id === 'u-cfo-test') {
+            localStorage.removeItem('cfo_current_user');
+            return FIXED_USERS[0];
+          }
           const matched = FIXED_USERS.find(u => u.id === parsed.id || (u.email && u.email.toLowerCase() === parsed.email?.toLowerCase()));
           return matched ? { ...matched, ...parsed } : parsed;
         }
@@ -781,7 +763,7 @@ export const DEFAULT_FINANCIAL_GOVERNANCE_LOCKS: FinancialGovernanceLock[] = [
     statementId: 'cfs-test-1',
     period: 'FY 2025-26',
     status: 'PARTNER_APPROVED',
-    preparedBy: 'Priya Sharma (Senior Associate)',
+    preparedBy: 'Aarati Mule (Principal CFO)',
     preparedAt: '2026-09-01T10:00:00.000Z',
     reviewedBy: 'Rajesh Kulkarni (Associate Director)',
     reviewedAt: '2026-09-10T14:00:00.000Z',
@@ -789,7 +771,7 @@ export const DEFAULT_FINANCIAL_GOVERNANCE_LOCKS: FinancialGovernanceLock[] = [
     approvedAt: '2026-09-15T18:00:00.000Z',
     digitalSignatureHash: 'SHA256-VANT-89F3A10C9B472DE5881C09',
     immutableChangeLog: [
-      { id: 'ch-1', timestamp: '2026-09-01T10:00:00.000Z', user: 'Priya Sharma', action: 'INITIAL_INGESTION', newValue: 'Created initial statement draft from audited balance sheet' },
+      { id: 'ch-1', timestamp: '2026-09-01T10:00:00.000Z', user: 'Aarati Mule', action: 'INITIAL_INGESTION', newValue: 'Created initial statement draft from audited balance sheet' },
       { id: 'ch-2', timestamp: '2026-09-10T14:00:00.000Z', user: 'Rajesh Kulkarni', action: 'DEFERRED_TAX_RECLASSIFICATION', previousValue: 'Tax: ₹14.5L', newValue: 'Tax: ₹16.0L' },
       { id: 'ch-3', timestamp: '2026-09-15T18:00:00.000Z', user: 'Aarati Mule', action: 'FINAL_PARTNER_SIGN_OFF', newValue: 'Approved statement and locked financial ratios for Board presentation' }
     ]
@@ -995,7 +977,7 @@ export const DEFAULT_FINANCIAL_STATEMENTS: ClientFinancialStatement[] = [
     cfoNotes: 'Stable operational performance. Receivables collection cycle at 58 days is well within the 60-day target. Net margin improved by 1.2% over previous fiscal year.',
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-15T00:00:00.000Z',
-    submittedBy: 'Priya Sharma (Senior Financial Analyst)',
+    submittedBy: 'Aarati Mule (Principal CFO)',
   }
 ];
 
@@ -1085,37 +1067,8 @@ export const useDashboardStore = create<DashboardState>()(
     }));
   },
   users: FIXED_USERS,
-  leaves: [
-    {
-      id: 'lv-1',
-      userId: 'u-employee',
-      userName: 'Priya Sharma',
-      startDate: '2026-10-12',
-      endDate: '2026-10-13',
-      type: 'CASUAL',
-      status: 'APPROVED',
-      reason: 'Family festival celebration & Diwali holidays',
-      days: 2,
-      createdAt: '2026-09-10T10:00:00.000Z',
-    }
-  ],
-  payrolls: [
-    {
-      id: 'pr-1',
-      userId: 'u-employee',
-      userName: 'Priya Sharma',
-      month: 'August',
-      year: 2026,
-      basic: 65000,
-      hra: 15000,
-      statutoryBonus: 5000,
-      deductionsTds: 4500,
-      deductionsPfEsi: 2400,
-      netPay: 78100,
-      status: 'DISBURSED',
-      createdAt: '2026-08-31T10:00:00.000Z',
-    }
-  ],
+  leaves: [],
+  payrolls: [],
   onboardingTasks: [],
   meetings: [],
   availabilityBlocks: [],
@@ -1240,7 +1193,7 @@ export const useDashboardStore = create<DashboardState>()(
   engagements: [
     {
       id: 'eng-1',
-      clientId: 'u-client',
+      clientId: 'client-1',
       clientCompanyName: 'Acme Corp',
       leadId: 'lead-1',
       name: 'Acme Corp - Virtual CFO Advisory & Compliance',
@@ -1264,8 +1217,8 @@ export const useDashboardStore = create<DashboardState>()(
           status: 'IN_PROGRESS',
           notes: 'Prepare P&L, balance sheet, and KPI flash report with departmental burn analysis.',
           dueDate: '2026-09-25T18:30:00.000Z',
-          employeeId: 'u-employee',
-          employeeName: 'Priya Sharma',
+          employeeId: 'u-admin-1',
+          employeeName: 'Aarati Mule',
           reviewPoints: [],
           createdAt: '2026-09-01T10:00:00.000Z',
         },
@@ -1281,8 +1234,8 @@ export const useDashboardStore = create<DashboardState>()(
           status: 'IN_PROGRESS',
           notes: 'Match sales register with e-way bills and GSTR-1 outward invoices.',
           dueDate: '2026-09-20T18:30:00.000Z',
-          employeeId: 'u-employee',
-          employeeName: 'Priya Sharma',
+          employeeId: 'u-admin-1',
+          employeeName: 'Aarati Mule',
           reviewPoints: [],
           createdAt: '2026-09-02T10:00:00.000Z',
         },
@@ -1298,8 +1251,8 @@ export const useDashboardStore = create<DashboardState>()(
           status: 'NOT_STARTED',
           notes: 'Match Form 26AS, AIS, and vendor ledger tax deductions with nil variance.',
           dueDate: '2026-09-30T18:30:00.000Z',
-          employeeId: 'u-employee',
-          employeeName: 'Priya Sharma',
+          employeeId: 'u-admin-1',
+          employeeName: 'Aarati Mule',
           reviewPoints: [],
           createdAt: '2026-09-05T10:00:00.000Z',
         },
@@ -1315,8 +1268,8 @@ export const useDashboardStore = create<DashboardState>()(
           status: 'COMPLETED',
           notes: 'Signed balance sheet and finalized trial balance schedules.',
           dueDate: '2026-09-10T18:30:00.000Z',
-          employeeId: 'u-employee',
-          employeeName: 'Priya Sharma',
+          employeeId: 'u-admin-1',
+          employeeName: 'Aarati Mule',
           reviewPoints: [],
           createdAt: '2026-08-20T10:00:00.000Z',
         }
@@ -1386,8 +1339,8 @@ export const useDashboardStore = create<DashboardState>()(
           type: 'GST',
           dueDate: '2026-09-20',
           status: 'IN_PROGRESS',
-          responsibleEmployeeId: 'u-employee',
-          responsibleEmployeeName: 'Priya Sharma',
+          responsibleEmployeeId: 'u-admin-1',
+          responsibleEmployeeName: 'Aarati Mule',
           createdAt: '2026-09-01T10:00:00.000Z',
         },
         {
@@ -1396,8 +1349,8 @@ export const useDashboardStore = create<DashboardState>()(
           type: 'TDS',
           dueDate: '2026-10-07',
           status: 'PENDING',
-          responsibleEmployeeId: 'u-employee',
-          responsibleEmployeeName: 'Priya Sharma',
+          responsibleEmployeeId: 'u-admin-1',
+          responsibleEmployeeName: 'Aarati Mule',
           createdAt: '2026-09-01T10:00:00.000Z',
         },
         {
@@ -1406,8 +1359,8 @@ export const useDashboardStore = create<DashboardState>()(
           type: 'ROC',
           dueDate: '2026-10-30',
           status: 'PENDING',
-          responsibleEmployeeId: 'u-employee',
-          responsibleEmployeeName: 'Priya Sharma',
+          responsibleEmployeeId: 'u-admin-1',
+          responsibleEmployeeName: 'Aarati Mule',
           createdAt: '2026-09-01T10:00:00.000Z',
         }
       ],
@@ -1516,8 +1469,8 @@ export const useDashboardStore = create<DashboardState>()(
           status: 'IN_PROGRESS',
           notes: 'Consolidated P&L, balance sheet verification, and working capital ratios commentary.',
           dueDate: '2026-10-31T18:30:00.000Z',
-          employeeId: 'u-employee',
-          employeeName: 'Priya Sharma',
+          employeeId: 'u-admin-1',
+          employeeName: 'Aarati Mule',
           reviewPoints: [],
           createdAt: '2026-09-01T10:00:00.000Z',
         }
@@ -1559,9 +1512,9 @@ export const useDashboardStore = create<DashboardState>()(
   timesheets: [
     {
       id: 'ts-1',
-      employeeId: 'u-employee',
-      employeeName: 'Priya Sharma',
-      clientId: 'u-client',
+      employeeId: 'u-admin-1',
+          employeeName: 'Aarati Mule',
+      clientId: 'client-1',
       clientName: 'Acme Corp',
       date: new Date().toISOString().split('T')[0],
       hours: 6.5,
@@ -1571,9 +1524,9 @@ export const useDashboardStore = create<DashboardState>()(
     },
     {
       id: 'ts-2',
-      employeeId: 'u-employee',
-      employeeName: 'Priya Sharma',
-      clientId: 'u-client',
+      employeeId: 'u-admin-1',
+          employeeName: 'Aarati Mule',
+      clientId: 'client-1',
       clientName: 'Acme Corp',
       date: new Date().toISOString().split('T')[0],
       hours: 7,
@@ -3030,7 +2983,7 @@ export const useDashboardStore = create<DashboardState>()(
         periodKey,
         fieldKey: 'revenue',
         approvedBy: primaryTask.approvedBy || 'u-reviewer',
-        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedByName: primaryTask.approvedByName || 'Aarati Mule (Principal CFO)',
         approvedAt: primaryTask.approvedAt || now,
       },
       ebitda: {
@@ -3044,7 +2997,7 @@ export const useDashboardStore = create<DashboardState>()(
         periodKey,
         fieldKey: 'ebitda',
         approvedBy: primaryTask.approvedBy || 'u-reviewer',
-        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedByName: primaryTask.approvedByName || 'Aarati Mule (Principal CFO)',
         approvedAt: primaryTask.approvedAt || now,
       },
       closing_cash: {
@@ -3058,7 +3011,7 @@ export const useDashboardStore = create<DashboardState>()(
         periodKey,
         fieldKey: 'closing_cash',
         approvedBy: primaryTask.approvedBy || 'u-reviewer',
-        approvedByName: primaryTask.approvedByName || 'Priya Sharma (Virtual CFO)',
+        approvedByName: primaryTask.approvedByName || 'Aarati Mule (Principal CFO)',
         approvedAt: primaryTask.approvedAt || now,
       },
     };
@@ -4156,8 +4109,10 @@ export const useDashboardStore = create<DashboardState>()(
     let target = get().users.find((u) => role === 'ADMIN' ? (u.role === 'SUPER_ADMIN' || u.role === 'ADMIN') : u.role === role);
     if (!target) {
       if (role === 'ADMIN') target = FIXED_USERS[0];
-      else if (role === 'EMPLOYEE') target = FIXED_USERS[1];
-      else target = FIXED_USERS[2];
+      else {
+        get().setGlobalSuccessMsg(`No ${role.toLowerCase()} accounts registered yet. You can create one from User Access & Permissions.`);
+        return;
+      }
     }
     if (target) {
       if (typeof window !== 'undefined') {
@@ -4184,13 +4139,13 @@ export const useDashboardStore = create<DashboardState>()(
     let matchedUser = get().users.find((u) => u.email.toLowerCase() === cleanEmail);
 
     if (!matchedUser) {
-      if (cleanEmail === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'aaratimule006@gmail.com') {
-        matchedUser = get().users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
-      } else if (cleanEmail === 'employee' || cleanEmail.includes('employee') || cleanEmail === 'aarati123@gmail.com' || cleanEmail === 'kiranm@gmail.com') {
+      if (cleanEmail === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'aaratimule006@gmail.com' || cleanEmail === 'admin@vantage.com' || cleanEmail === 'admin@vanntagge.com') {
+        matchedUser = get().users.find((u) => u.email.toLowerCase() === 'aaratimule006@gmail.com') || get().users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
+      } else if (cleanEmail === 'kashinath' || cleanEmail.includes('kashinath') || cleanEmail === 'kashinathgaikwad305@gmail.com') {
+        matchedUser = get().users.find((u) => u.email.toLowerCase() === 'kashinathgaikwad305@gmail.com') || get().users[1];
+      } else if (cleanEmail === 'employee' || cleanEmail.includes('employee')) {
         matchedUser = get().users.find((u) => u.role === 'EMPLOYEE');
-      } else if (cleanEmail === 'testclient' || cleanEmail.includes('testclient') || cleanEmail === 'aditya@cfosuitetest.com') {
-        matchedUser = get().users.find((u) => u.email === 'testclient@vantage.com' || u.linkedEntity === 'CFO SUITE TEST PVT LTD');
-      } else if (cleanEmail === 'client' || cleanEmail.includes('client') || cleanEmail === 'aaratideepak29@gmail.com') {
+      } else if (cleanEmail === 'client' || cleanEmail.includes('client')) {
         matchedUser = get().users.find((u) => u.role === 'CLIENT');
       }
     }

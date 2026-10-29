@@ -143,7 +143,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-blue-700 hover:bg-white/80'
                 }`}
-                title="Employee Workspace (Priya Sharma)"
+                title="Employee Workspace"
               >
                 <span className="material-symbols-outlined text-[15px] -mt-0.5">badge</span>
                 <span className="hidden sm:inline">Employee</span>
