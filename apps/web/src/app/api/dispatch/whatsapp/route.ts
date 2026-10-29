@@ -3,10 +3,13 @@ import twilio from 'twilio';
 
 export async function POST(req: Request) {
   try {
-    const { to, text, adminDetails } = await req.json();
+    const body = await req.json();
+    const to = body.to || body.phone;
+    const text = body.text || body.message;
+    const adminDetails = body.adminDetails;
 
     if (!to || !text) {
-      return NextResponse.json({ error: 'Recipient phone number and text are required' }, { status: 400 });
+      return NextResponse.json({ error: 'Recipient phone number (to/phone) and text (text/message) are required' }, { status: 400 });
     }
 
     const accountSid = process.env.TWILIO_ACCOUNT_SID || adminDetails?.twilioAccountSid;
