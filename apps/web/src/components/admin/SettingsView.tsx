@@ -220,11 +220,11 @@ export const SettingsView: React.FC = () => {
                           ✓ Cloud collections successfully seeded with schemas!
                         </div>
                       ) : (
-                        <div className="flex gap-2">
+                        <div className="flex">
                           <button
                             onClick={handleSeedFirebase}
                             disabled={seeding}
-                            className="flex-1 bg-primary text-on-primary py-2.5 rounded-lg font-semibold shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                            className="w-full bg-primary text-on-primary py-2.5 rounded-lg font-semibold shadow-sm hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                           >
                             {seeding ? (
                               <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -234,14 +234,6 @@ export const SettingsView: React.FC = () => {
                                 <span>Sync to Firebase</span>
                               </>
                             )}
-                          </button>
-                          
-                          <button
-                            onClick={() => useDashboardStore.getState().seedDummyData()}
-                            className="flex-1 bg-slate-800 text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-slate-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">magic_button</span>
-                            <span>Seed Dummy Data</span>
                           </button>
                         </div>
                       )}
@@ -256,14 +248,6 @@ export const SettingsView: React.FC = () => {
                       <p className="text-[10px] text-slate-400 leading-normal">
                         To connect a live Firebase instance, enter your credentials in <code>.env.local</code> and restart the Next.js dev server. Follow the guide in <code>firebase_setup.md</code>.
                       </p>
-                      
-                      <button
-                        onClick={() => useDashboardStore.getState().seedDummyData()}
-                        className="w-full bg-slate-800 text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-slate-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">magic_button</span>
-                        <span>Populate Local Dummy Data</span>
-                      </button>
                     </div>
                   )}
                 </div>

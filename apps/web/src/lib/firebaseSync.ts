@@ -85,7 +85,7 @@ export const nukeFirebaseAndSeed = async () => {
     console.log('✅ All business data wiped. Triggering fresh seed...');
     
     // Seed new data
-    useDashboardStore.getState().seedDummyData();
+    // Dummy data seeding removed
   } catch (err) {
     console.error('❌ Failed to nuke data:', err);
   }

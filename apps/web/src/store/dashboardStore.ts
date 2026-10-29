@@ -5519,36 +5519,8 @@ export const useDashboardStore = create<DashboardState>()(
   },
 
   seedDummyData: () => {
-    import('../lib/dummyData').then((dummy) => {
-      const currentUser = get().currentUser;
-      
-      let engagementsToSeed = dummy.DUMMY_ENGAGEMENTS;
-      
-      // If user is Employee, assign a few tasks to them so they have data
-      if (currentUser && currentUser.role === 'EMPLOYEE') {
-        engagementsToSeed = engagementsToSeed.map(eng => ({
-          ...eng,
-          tasks: eng.tasks.map((t, idx) => 
-            idx % 2 === 0 ? { ...t, employeeId: currentUser.id, employeeName: currentUser.name } : t
-          )
-        }));
-      }
-
-      set({
-        leads: dummy.DUMMY_LEADS,
-        clients: dummy.DUMMY_CLIENTS,
-        engagements: engagementsToSeed,
-        notifications: dummy.DUMMY_NOTIFICATIONS,
-      });
-
-      // Push to Firebase so it persists
-      dummy.DUMMY_LEADS.forEach(l => pushRecordToFirebase('leads', l.id, l));
-      dummy.DUMMY_CLIENTS.forEach(c => pushRecordToFirebase('clients', c.id, c));
-      engagementsToSeed.forEach(e => pushRecordToFirebase('engagements', e.id, e));
-      dummy.DUMMY_NOTIFICATIONS.forEach(n => pushRecordToFirebase('notifications', n.id, n));
-
-      get().setGlobalSuccessMsg('Data wiped and Dashboard populated with fresh realistic dummy data!');
-    }).catch(console.error);
+    // Feature removed: Dummy data injection is disabled to safeguard real operational records
+    console.info('[Data Protection] Dummy data population feature has been removed.');
   },
   
   serviceCategories: Object.entries(STANDARD_TASKS_BY_CATEGORY).map(([catName, tasks], i) => ({

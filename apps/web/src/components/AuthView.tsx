@@ -45,19 +45,7 @@ export const AuthView: React.FC = () => {
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
-  // Clear cache hook
-  useEffect(() => {
-    const cacheVersion = localStorage.getItem('app-cache-version');
-    if (cacheVersion !== 'v3') {
-      console.log('Nuking old Firebase collections and local cache...');
-      import('../lib/firebaseSync').then(({ nukeFirebaseAndSeed }) => {
-        nukeFirebaseAndSeed().then(() => {
-          localStorage.setItem('app-cache-version', 'v3');
-          setTimeout(() => window.location.reload(), 1000); // Give it a second to finish
-        });
-      });
-    }
-  }, []);
+// Legacy cache nuke hook removed
 
   // Handle Firebase fallback redirect if popup was blocked or browser reloaded
   useEffect(() => {
