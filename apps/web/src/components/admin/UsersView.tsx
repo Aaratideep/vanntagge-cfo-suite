@@ -373,7 +373,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
                   <div className="text-[11px] text-purple-700 font-semibold">Co-Founder & Chief Technology Officer</div>
                 </div>
                 <p className="text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700">Email:</span> kashinathgaikwad305@gmail.com
+                  <span className="font-semibold text-slate-700">Email:</span> kashinathgaikwad844@gmail.com
                 </p>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Full control over technology infrastructure, security protocols, API pipelines, automated workflows, and AI engines.

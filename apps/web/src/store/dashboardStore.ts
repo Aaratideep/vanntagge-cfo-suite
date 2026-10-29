@@ -493,7 +493,7 @@ export const FIXED_USERS: User[] = [
   {
     id: 'u-admin-2',
     name: 'Kashinath Gaikwad',
-    email: 'kashinathgaikwad305@gmail.com',
+    email: 'kashinathgaikwad844@gmail.com',
     role: 'SUPER_ADMIN',
     permissions: ['all'],
     designation: 'Co-Founder & Chief Technology Officer',
@@ -4141,8 +4141,8 @@ export const useDashboardStore = create<DashboardState>()(
     if (!matchedUser) {
       if (cleanEmail === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'aaratimule006@gmail.com' || cleanEmail === 'admin@vantage.com' || cleanEmail === 'admin@vanntagge.com') {
         matchedUser = get().users.find((u) => u.email.toLowerCase() === 'aaratimule006@gmail.com') || get().users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
-      } else if (cleanEmail === 'kashinath' || cleanEmail.includes('kashinath') || cleanEmail === 'kashinathgaikwad305@gmail.com') {
-        matchedUser = get().users.find((u) => u.email.toLowerCase() === 'kashinathgaikwad305@gmail.com') || get().users[1];
+      } else if (cleanEmail === 'kashinath' || cleanEmail.includes('kashinath') || cleanEmail === 'kashinathgaikwad844@gmail.com' || cleanEmail === 'kashinathgaikwad305@gmail.com') {
+        matchedUser = get().users.find((u) => (u.email.toLowerCase() === 'kashinathgaikwad844@gmail.com' || u.email.toLowerCase() === 'kashinathgaikwad305@gmail.com')) || get().users[1];
       } else if (cleanEmail === 'employee' || cleanEmail.includes('employee')) {
         matchedUser = get().users.find((u) => u.role === 'EMPLOYEE');
       } else if (cleanEmail === 'client' || cleanEmail.includes('client')) {

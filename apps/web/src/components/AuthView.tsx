@@ -16,7 +16,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
-const SUPER_ADMIN_EMAILS = ['kashinathgaikwad305@gmail.com', 'aaratimule006@gmail.com', 'admin@vanntagge.com', 'admin@vantage.com'];
+const SUPER_ADMIN_EMAILS = ['kashinathgaikwad844@gmail.com', 'kashinathgaikwad305@gmail.com', 'aaratimule006@gmail.com', 'admin@vanntagge.com', 'admin@vantage.com'];
 const CLIENT_EMAILS = ['aaratideepak29@gmail.com'];
 const EMPLOYEE_EMAILS = ['aarati123@gmail.com', 'kiranm@gmail.com'];
 const isOwnerEmail = (email: string) => SUPER_ADMIN_EMAILS.includes((email || '').toLowerCase().trim());
@@ -701,7 +701,7 @@ export const AuthView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      setEmail('kashinathgaikwad305@gmail.com');
+                      setEmail('kashinathgaikwad844@gmail.com');
                       setPassword('Vanntagge@Admin2026');
                     }}
                     className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${
@@ -817,7 +817,7 @@ export const AuthView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setEmail('kashinathgaikwad305@gmail.com');
+                        setEmail('kashinathgaikwad844@gmail.com');
                         setPassword('Vanntagge@Admin2026');
                         setErrorMsg('');
                       }}
@@ -828,7 +828,7 @@ export const AuthView: React.FC = () => {
                           <span>👑</span>
                           <span className="truncate">Kashinath Gaikwad</span>
                         </span>
-                        <span className="text-[10px] text-slate-500 truncate">kashinathgaikwad305@gmail.com</span>
+                        <span className="text-[10px] text-slate-500 truncate">kashinathgaikwad844@gmail.com</span>
                       </div>
                       <span className="text-[10px] text-purple-600 font-bold shrink-0">Fill &rarr;</span>
                     </button>
