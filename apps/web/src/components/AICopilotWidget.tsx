@@ -61,7 +61,7 @@ export const AICopilotWidget: React.FC = () => {
         },
         signal: controller.signal,
         body: JSON.stringify({
-          model: "qwen/qwen3.6-27b",
+          model: "openai/gpt-oss-120b",
           userId: currentUser.id,
           userRole: currentUser.role,
           messages: [

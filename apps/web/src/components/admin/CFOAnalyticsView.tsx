@@ -214,10 +214,10 @@ export const CFOAnalyticsView: React.FC = () => {
     ? generateThirteenWeekCashFlow(
         selectedClientId,
         selectedClient?.companyName || 'Client',
-        currentStatement.balanceSheet.currentAssets.cashAndBank || 2500000,
+        (currentStatement.balanceSheet?.currentAssets?.cashAndBank || 2500000),
         currentStatement.pnl.totalRevenue,
         currentStatement.pnl.costOfGoodsSold,
-        currentStatement.pnl.operatingExpenses.totalOpex
+        (currentStatement.pnl?.operatingExpenses?.totalOpex || 0)
       )
     : null;
 
@@ -247,7 +247,7 @@ export const CFOAnalyticsView: React.FC = () => {
         { name: 'Revenue', Amount: currentStatement.pnl.totalRevenue / 100000 },
         { name: 'COGS', Amount: currentStatement.pnl.costOfGoodsSold / 100000 },
         { name: 'Gross Profit', Amount: currentStatement.pnl.grossProfit / 100000 },
-        { name: 'Total Opex', Amount: currentStatement.pnl.operatingExpenses.totalOpex / 100000 },
+        { name: 'Total Opex', Amount: (currentStatement.pnl?.operatingExpenses?.totalOpex || 0) / 100000 },
         { name: 'EBITDA', Amount: currentStatement.pnl.ebitda / 100000 },
         { name: 'Net Profit', Amount: currentStatement.pnl.netProfit / 100000 },
       ]
@@ -519,7 +519,7 @@ export const CFOAnalyticsView: React.FC = () => {
                 {currentStatement.cashFlow.cashRunwayMonths} Months
               </div>
               <span className="text-[10px] text-slate-500 font-semibold mt-1">
-                ₹{(currentStatement.balanceSheet.currentAssets.cashAndBank / 100000).toFixed(1)}L Bank Reserve
+                ₹{((currentStatement.balanceSheet?.currentAssets?.cashAndBank || 0) / 100000).toFixed(1)}L Bank Reserve
               </span>
             </div>
           </div>
@@ -2295,25 +2295,25 @@ export const CFOAnalyticsView: React.FC = () => {
                   <div className="p-3 flex justify-between pl-8 text-slate-500">
                     <span>- Employee Benefit Expenses</span>
                     <span className="font-mono">
-                      ₹{currentStatement.pnl.operatingExpenses.employeeCost.toLocaleString('en-IN')}
+                      ₹{(currentStatement.pnl?.operatingExpenses?.employeeCost || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-3 flex justify-between pl-8 text-slate-500">
                     <span>- Rent, Power & Utilities</span>
                     <span className="font-mono">
-                      ₹{currentStatement.pnl.operatingExpenses.rentUtilities.toLocaleString('en-IN')}
+                      ₹{(currentStatement.pnl?.operatingExpenses?.rentUtilities || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-3 flex justify-between pl-8 text-slate-500">
                     <span>- Sales & Marketing</span>
                     <span className="font-mono">
-                      ₹{currentStatement.pnl.operatingExpenses.salesMarketing.toLocaleString('en-IN')}
+                      ₹{(currentStatement.pnl?.operatingExpenses?.salesMarketing || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-3 flex justify-between pl-8 text-slate-500">
                     <span>- Administrative & General Expenses</span>
                     <span className="font-mono">
-                      ₹{currentStatement.pnl.operatingExpenses.adminGeneral.toLocaleString('en-IN')}
+                      ₹{(currentStatement.pnl?.operatingExpenses?.adminGeneral || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-3 flex justify-between bg-indigo-50 font-bold text-indigo-900">
@@ -2325,7 +2325,7 @@ export const CFOAnalyticsView: React.FC = () => {
                   <div className="p-3 flex justify-between pl-6 text-slate-600">
                     <span>Finance Costs & Interest</span>
                     <span className="font-mono">
-                      ₹{currentStatement.pnl.operatingExpenses.financeCosts.toLocaleString('en-IN')}
+                      ₹{(currentStatement.pnl?.operatingExpenses?.financeCosts || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-3.5 flex justify-between bg-purple-50 font-black text-purple-900 text-sm">
@@ -2353,19 +2353,19 @@ export const CFOAnalyticsView: React.FC = () => {
                   <div className="p-2 flex justify-between pl-6 text-slate-600">
                     <span>Cash & Bank Balances</span>
                     <span className="font-mono font-bold">
-                      ₹{currentStatement.balanceSheet.currentAssets.cashAndBank.toLocaleString('en-IN')}
+                      ₹{(currentStatement.balanceSheet?.currentAssets?.cashAndBank || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-2 flex justify-between pl-6 text-slate-600">
                     <span>Trade Receivables</span>
                     <span className="font-mono font-bold">
-                      ₹{currentStatement.balanceSheet.currentAssets.accountsReceivable.toLocaleString('en-IN')}
+                      ₹{(currentStatement.balanceSheet?.currentAssets?.accountsReceivable || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-2 flex justify-between pl-6 text-slate-600">
                     <span>Inventories</span>
                     <span className="font-mono font-bold">
-                      ₹{currentStatement.balanceSheet.currentAssets.inventory.toLocaleString('en-IN')}
+                      ₹{(currentStatement.balanceSheet?.currentAssets?.inventory || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-2.5 bg-slate-50 font-bold text-slate-700">Non-Current Assets</div>

@@ -81,10 +81,10 @@ export const ClientFinancialInsightsView: React.FC = () => {
     ? generateThirteenWeekCashFlow(
         myStatement.clientId,
         myStatement.clientCompanyName,
-        myStatement.balanceSheet.currentAssets.cashAndBank || 2500000,
+        (myStatement.balanceSheet?.currentAssets?.cashAndBank || 2500000),
         myStatement.pnl.totalRevenue,
         myStatement.pnl.costOfGoodsSold,
-        myStatement.pnl.operatingExpenses.totalOpex
+        (myStatement.pnl?.operatingExpenses?.totalOpex || 0)
       )
     : null;
 
@@ -103,7 +103,7 @@ export const ClientFinancialInsightsView: React.FC = () => {
         { name: 'Revenue', Amount: myStatement.pnl.totalRevenue / 100000 },
         { name: 'COGS', Amount: myStatement.pnl.costOfGoodsSold / 100000 },
         { name: 'Gross Profit', Amount: myStatement.pnl.grossProfit / 100000 },
-        { name: 'Total Opex', Amount: myStatement.pnl.operatingExpenses.totalOpex / 100000 },
+        { name: 'Total Opex', Amount: (myStatement.pnl?.operatingExpenses?.totalOpex || 0) / 100000 },
         { name: 'EBITDA', Amount: myStatement.pnl.ebitda / 100000 },
         { name: 'Net Profit', Amount: myStatement.pnl.netProfit / 100000 },
       ]
@@ -369,7 +369,7 @@ export const ClientFinancialInsightsView: React.FC = () => {
                 {myStatement.cashFlow.cashRunwayMonths} Months
               </div>
               <span className="text-[10px] text-slate-500 font-semibold mt-1">
-                ₹{(myStatement.balanceSheet.currentAssets.cashAndBank / 100000).toFixed(1)}L Bank Reserve
+                ₹{((myStatement.balanceSheet?.currentAssets?.cashAndBank || 0) / 100000).toFixed(1)}L Bank Reserve
               </span>
             </div>
           </div>
@@ -932,13 +932,13 @@ export const ClientFinancialInsightsView: React.FC = () => {
                 <div className="p-3 flex justify-between pl-8 text-slate-500">
                   <span>Employee Benefit Expenses</span>
                   <span className="font-mono">
-                    ₹{myStatement.pnl.operatingExpenses.employeeCost.toLocaleString('en-IN')}
+                    ₹{(myStatement.pnl?.operatingExpenses?.employeeCost || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div className="p-3 flex justify-between pl-8 text-slate-500">
                   <span>Rent & Facilities</span>
                   <span className="font-mono">
-                    ₹{myStatement.pnl.operatingExpenses.rentUtilities.toLocaleString('en-IN')}
+                    ₹{(myStatement.pnl?.operatingExpenses?.rentUtilities || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
                 <div className="p-3 flex justify-between bg-indigo-50 font-bold text-indigo-900">
@@ -973,19 +973,19 @@ export const ClientFinancialInsightsView: React.FC = () => {
                   <div className="p-2.5 flex justify-between pl-6 text-slate-600">
                     <span>Cash and Bank Reserves</span>
                     <span className="font-mono font-bold">
-                      ₹{myStatement.balanceSheet.currentAssets.cashAndBank.toLocaleString('en-IN')}
+                      ₹{(myStatement.balanceSheet?.currentAssets?.cashAndBank || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-2.5 flex justify-between pl-6 text-slate-600">
                     <span>Trade Receivables</span>
                     <span className="font-mono font-bold">
-                      ₹{myStatement.balanceSheet.currentAssets.accountsReceivable.toLocaleString('en-IN')}
+                      ₹{(myStatement.balanceSheet?.currentAssets?.accountsReceivable || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-2.5 flex justify-between pl-6 text-slate-600">
                     <span>Inventories</span>
                     <span className="font-mono font-bold">
-                      ₹{myStatement.balanceSheet.currentAssets.inventory.toLocaleString('en-IN')}
+                      ₹{(myStatement.balanceSheet?.currentAssets?.inventory || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="p-2.5 flex justify-between pl-6 text-slate-600">

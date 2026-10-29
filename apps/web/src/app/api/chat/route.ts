@@ -16,8 +16,12 @@ export async function POST(request: Request) {
       return new Response(stream, { headers: { 'Content-Type': 'text/event-stream' } });
     }
 
-    const { userId, userRole, ...restBody } = body;
-    const messages = restBody.messages || [];
+    const { userId, userRole, message, ...restBody } = body;
+    let messages = restBody.messages || [];
+    if (messages.length === 0 && message) {
+      messages = [{ role: 'user', content: String(message) }];
+    }
+    const model = restBody.model || 'openai/gpt-oss-120b';
 
     if (messages.length > 0 && messages[0].role === 'system') {
       let boundaryPrompt = '';
@@ -31,6 +35,7 @@ export async function POST(request: Request) {
 
     const groqPayload = {
       ...restBody,
+      model,
       messages,
       tools: [
         {
