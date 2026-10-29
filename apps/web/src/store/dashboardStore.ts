@@ -98,11 +98,19 @@ import {
   AISourceCitation,
   PaymentRecord,
   LegacyClientDraft,
-  CommunicationLog
+  CommunicationLog,
+  ClientFinancialStatement,
+  ClientFinancialRatios,
+  ClientBudget,
+  WorkingCapitalAgeing,
+  FinancialAlert,
+  AccountingConnector,
+  FinancialGovernanceLock,
 } from '../types';
 import { computePeriodKey, computeNextPeriods, computeDueDate } from '../lib/taskRecurrence';
 import { AutomationEngine } from '../lib/automationEngine';
 import { AIService } from '../lib/aiService';
+import { calculateFinancialRatios, validateBalanceSheet } from '../lib/cfoAnalyticsEngine';
 
 export interface AdminSettings {
   adminName: string;
@@ -234,6 +242,29 @@ interface DashboardState {
   assets: CompanyAsset[];
   performanceReviews: PerformanceReview[];
   communicationLogs: CommunicationLog[];
+  clientFinancialStatements: ClientFinancialStatement[];
+  addClientFinancialStatement: (statement: ClientFinancialStatement) => void;
+  updateClientFinancialStatement: (id: string, updates: Partial<ClientFinancialStatement>) => void;
+  deleteClientFinancialStatement: (id: string) => void;
+
+  // Report 3 Extended VCFO Suite Actions & State
+  clientBudgets: ClientBudget[];
+  addClientBudget: (budget: ClientBudget) => void;
+  updateClientBudget: (id: string, updates: Partial<ClientBudget>) => void;
+
+  workingCapitalAgeings: WorkingCapitalAgeing[];
+  updateWorkingCapitalAgeing: (clientId: string, updates: Partial<WorkingCapitalAgeing>) => void;
+
+  financialAlerts: FinancialAlert[];
+  dismissFinancialAlert: (id: string) => void;
+  addFinancialAlert: (alert: FinancialAlert) => void;
+
+  accountingConnectors: AccountingConnector[];
+  syncAccountingConnector: (id: string) => void;
+  rollbackAccountingImport: (connectorId: string, historyId: string) => void;
+
+  financialGovernanceLocks: FinancialGovernanceLock[];
+  updateFinancialGovernanceLock: (statementId: string, status: FinancialGovernanceLock['status'], user: string, actionNote: string) => void;
   currentUser: User | null;
   adminSettings: AdminSettings;
   setAdminSettings: (settings: Partial<AdminSettings>) => void;
@@ -483,36 +514,37 @@ export const FIXED_USERS: User[] = [
     status: 'ACTIVE',
     isOnboarded: true,
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  },
+  {
+    id: 'u-cfo-test',
+    name: 'Aditya Kashyap',
+    email: 'testclient@vantage.com',
+    role: 'CLIENT',
+    permissions: ['read'],
+    linkedEntity: 'CFO SUITE TEST PVT LTD',
+    designation: 'CEO & Founder, CFO SUITE TEST PVT LTD',
+    status: 'ACTIVE',
+    isOnboarded: true,
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
   }
 ];
 
-export const getInitialCurrentUser = (): User => {
+export const getInitialCurrentUser = (): User | null => {
   if (typeof window !== 'undefined') {
     try {
       const savedUserStr = localStorage.getItem('cfo_current_user');
       if (savedUserStr) {
         const parsed = JSON.parse(savedUserStr);
         if (parsed && parsed.id && parsed.role) {
-          const matched = FIXED_USERS.find(u => u.id === parsed.id || u.role === parsed.role);
+          const matched = FIXED_USERS.find(u => u.id === parsed.id || (u.email && u.email.toLowerCase() === parsed.email?.toLowerCase()));
           return matched ? { ...matched, ...parsed } : parsed;
         }
-      }
-
-      const path = window.location.pathname;
-      if (path.startsWith('/employee')) {
-        return FIXED_USERS[1];
-      }
-      if (path.startsWith('/client')) {
-        return FIXED_USERS[2];
-      }
-      if (path.startsWith('/admin')) {
-        return FIXED_USERS[0];
       }
     } catch (e) {
       console.error('Error resolving initial user:', e);
     }
   }
-  return FIXED_USERS[0];
+  return null;
 };
 
 const DEFAULT_REPORT_TEMPLATES: ReportTemplate[] = [
@@ -621,9 +653,362 @@ export const DEFAULT_BILLING_ENTITIES: BillingEntity[] = [
   }
 ];
 
+
+export const DEFAULT_CLIENT_BUDGETS: ClientBudget[] = [
+  {
+    id: 'bgt-test-1',
+    clientId: 'client-test-cfo',
+    clientCompanyName: 'CFO SUITE TEST PVT LTD',
+    fiscalYear: 'FY 2025-26',
+    period: 'Annual FY 2025-26',
+    totalBudgetedRevenue: 50000000,
+    totalActualRevenue: 48000000,
+    totalBudgetedOpex: 18000000,
+    totalActualOpex: 17400000,
+    budgetedEbitda: 10000000,
+    actualEbitda: 9000000,
+    budgetedNetProfit: 5500000,
+    actualNetProfit: 4800000,
+    items: [
+      { id: 'bli-1', category: 'REVENUE', name: 'Product & SaaS Licensing Revenue', budgeted: 42000000, actual: 41000000, variance: -1000000, variancePct: -2.38, isFavorable: false },
+      { id: 'bli-2', category: 'REVENUE', name: 'Professional Services & Consulting', budgeted: 8000000, actual: 7000000, variance: -1000000, variancePct: -12.5, isFavorable: false },
+      { id: 'bli-3', category: 'COGS', name: 'Direct Hosting & AWS Cloud Infrastructure', budgeted: 8500000, actual: 8200000, variance: -300000, variancePct: 3.53, isFavorable: true },
+      { id: 'bli-4', category: 'COGS', name: 'Third-party APIs & Vendor Licenses', budgeted: 13500000, actual: 13400000, variance: -100000, variancePct: 0.74, isFavorable: true },
+      { id: 'bli-5', category: 'OPEX', name: 'Engineering & Product Payroll', budgeted: 8000000, actual: 7800000, variance: -200000, variancePct: 2.5, isFavorable: true },
+      { id: 'bli-6', category: 'OPEX', name: 'Sales, Marketing & Advertising Burn', budgeted: 3000000, actual: 2400000, variance: -600000, variancePct: 20.0, isFavorable: true },
+      { id: 'bli-7', category: 'OPEX', name: 'Corporate Office Leases & Utilities', budgeted: 2000000, actual: 1800000, variance: -200000, variancePct: 10.0, isFavorable: true },
+      { id: 'bli-8', category: 'OPEX', name: 'General & Administrative Overheads', budgeted: 1500000, actual: 1200000, variance: -300000, variancePct: 20.0, isFavorable: true },
+      { id: 'bli-9', category: 'FINANCE', name: 'Term Loan Interest & Bank Charges', budgeted: 1000000, actual: 1200000, variance: 200000, variancePct: -20.0, isFavorable: false },
+    ],
+    cfoNotes: 'Revenue was slightly below target due to enterprise sales cycle delays in Q2; however, operating expenses were disciplined with favorable variance of ₹6L across marketing and admin.',
+    updatedAt: '2026-09-15T00:00:00.000Z',
+  }
+];
+
+export const DEFAULT_WORKING_CAPITAL_AGEINGS: WorkingCapitalAgeing[] = [
+  {
+    clientId: 'client-test-cfo',
+    totalReceivables: 7800000,
+    totalPayables: 4800000,
+    receivablesAgeing: [
+      { bucket: '0-30 Days', amount: 4600000, percentage: 58.97, invoiceCount: 14 },
+      { bucket: '31-60 Days', amount: 2100000, percentage: 26.92, invoiceCount: 7 },
+      { bucket: '61-90 Days', amount: 800000, percentage: 10.26, invoiceCount: 3 },
+      { bucket: '>90 Days', amount: 300000, percentage: 3.85, invoiceCount: 1 },
+    ],
+    payablesAgeing: [
+      { bucket: '0-30 Days', amount: 3200000, percentage: 66.67, invoiceCount: 9 },
+      { bucket: '31-60 Days', amount: 1100000, percentage: 22.92, invoiceCount: 4 },
+      { bucket: '61-90 Days', amount: 500000, percentage: 10.42, invoiceCount: 2 },
+      { bucket: '>90 Days', amount: 0, percentage: 0, invoiceCount: 0 },
+    ],
+    overdueReceivablesAmount: 1100000,
+    highRiskDebtorsList: [
+      { customerName: 'Apex Logistics Pvt Ltd', amount: 300000, daysOverdue: 104 },
+      { customerName: 'Zenith Global Solutions', amount: 500000, daysOverdue: 72 },
+      { customerName: 'Horizon Retail Ventures', amount: 300000, daysOverdue: 65 },
+    ]
+  }
+];
+
+export const DEFAULT_FINANCIAL_ALERTS: FinancialAlert[] = [
+  {
+    id: 'fa-1',
+    clientId: 'client-test-cfo',
+    type: 'RECEIVABLE_OVERDUE',
+    severity: 'WARNING',
+    title: 'Receivables Overdue >60 Days Exceeds Threshold',
+    message: '₹11.00 Lakhs in customer receivables are past 60 days overdue (Threshold limit: ₹10.00 Lakhs). High-priority follow-up needed for Apex Logistics.',
+    currentMetric: '₹11.00 L (>60 Days)',
+    thresholdLimit: '₹10.00 L',
+    triggeredAt: '2026-10-25T10:00:00.000Z',
+  },
+  {
+    id: 'fa-2',
+    clientId: 'client-test-cfo',
+    type: 'BUDGET_OVERRUN',
+    severity: 'INFO',
+    title: 'Finance & Bank Interest Exceeded Budget Target',
+    message: 'Finance interest costs were ₹12.00 Lakhs vs budgeted ₹10.00 Lakhs (+20% variance) due to working capital overdraft utilization.',
+    currentMetric: '₹12.00 L',
+    thresholdLimit: '₹10.00 L',
+    triggeredAt: '2026-10-20T10:00:00.000Z',
+  }
+];
+
+export const DEFAULT_ACCOUNTING_CONNECTORS: AccountingConnector[] = [
+  {
+    id: 'conn-1',
+    provider: 'TALLY_PRIME',
+    name: 'Tally Prime Gold Edition (Server XML Sync)',
+    status: 'CONNECTED',
+    lastSyncTime: '2026-10-28T09:30:00.000Z',
+    recordsSynced: 1420,
+    autoSyncEnabled: true,
+    history: [
+      { id: 'sync-h-1', syncedAt: '2026-10-28T09:30:00.000Z', recordsCount: 1420, status: 'SUCCESS', summary: 'Imported P&L, balance sheet schedules, and debtor ledgers for FY 25-26.' },
+      { id: 'sync-h-2', syncedAt: '2026-09-30T18:00:00.000Z', recordsCount: 1290, status: 'SUCCESS', summary: 'Q2 ledger balance reconciliation and trial balance lock.' },
+    ]
+  },
+  {
+    id: 'conn-2',
+    provider: 'ZOHO_BOOKS',
+    name: 'Zoho Books Enterprise REST API Connector',
+    status: 'CONNECTED',
+    lastSyncTime: '2026-10-26T14:15:00.000Z',
+    recordsSynced: 840,
+    autoSyncEnabled: true,
+    history: [
+      { id: 'sync-h-3', syncedAt: '2026-10-26T14:15:00.000Z', recordsCount: 840, status: 'SUCCESS', summary: 'Synced sales register and vendor payment receipts.' }
+    ]
+  },
+  {
+    id: 'conn-3',
+    provider: 'BANK_STATEMENT',
+    name: 'HDFC / ICICI Bank Automated CSV Reconciliation Engine',
+    status: 'CONNECTED',
+    lastSyncTime: '2026-10-27T11:00:00.000Z',
+    recordsSynced: 412,
+    autoSyncEnabled: false,
+    history: [
+      { id: 'sync-h-4', syncedAt: '2026-10-27T11:00:00.000Z', recordsCount: 412, status: 'SUCCESS', summary: 'Cleared operational bank statement line items with 0 unallocated variance.' }
+    ]
+  }
+];
+
+export const DEFAULT_FINANCIAL_GOVERNANCE_LOCKS: FinancialGovernanceLock[] = [
+  {
+    statementId: 'cfs-test-1',
+    period: 'FY 2025-26',
+    status: 'PARTNER_APPROVED',
+    preparedBy: 'Priya Sharma (Senior Associate)',
+    preparedAt: '2026-09-01T10:00:00.000Z',
+    reviewedBy: 'Rajesh Kulkarni (Associate Director)',
+    reviewedAt: '2026-09-10T14:00:00.000Z',
+    approvedBy: 'Aarati Mule (Managing Partner)',
+    approvedAt: '2026-09-15T18:00:00.000Z',
+    digitalSignatureHash: 'SHA256-VANT-89F3A10C9B472DE5881C09',
+    immutableChangeLog: [
+      { id: 'ch-1', timestamp: '2026-09-01T10:00:00.000Z', user: 'Priya Sharma', action: 'INITIAL_INGESTION', newValue: 'Created initial statement draft from audited balance sheet' },
+      { id: 'ch-2', timestamp: '2026-09-10T14:00:00.000Z', user: 'Rajesh Kulkarni', action: 'DEFERRED_TAX_RECLASSIFICATION', previousValue: 'Tax: ₹14.5L', newValue: 'Tax: ₹16.0L' },
+      { id: 'ch-3', timestamp: '2026-09-15T18:00:00.000Z', user: 'Aarati Mule', action: 'FINAL_PARTNER_SIGN_OFF', newValue: 'Approved statement and locked financial ratios for Board presentation' }
+    ]
+  }
+];
+
+export const DEFAULT_FINANCIAL_STATEMENTS: ClientFinancialStatement[] = [
+  {
+    id: 'cfs-test-1',
+    clientId: 'client-test-cfo',
+    clientCompanyName: 'CFO SUITE TEST PVT LTD',
+    fiscalYear: 'FY 2025-26',
+    period: 'Annual FY 2025-26',
+    periodType: 'ANNUAL',
+    currency: 'INR',
+    pnl: {
+      grossRevenue: 46500000,
+      operatingRevenue: 46500000,
+      otherIncome: 1500000,
+      totalRevenue: 48000000,
+      costOfGoodsSold: 21600000,
+      grossProfit: 26400000,
+      operatingExpenses: {
+        employeeCost: 12000000,
+        rentUtilities: 1800000,
+        salesMarketing: 2400000,
+        adminGeneral: 1200000,
+        depreciationAmortization: 1400000,
+        financeCosts: 1200000,
+        totalOpex: 17400000,
+      },
+      ebitda: 9000000,
+      ebit: 7600000,
+      ebt: 6400000,
+      taxExpense: 1600000,
+      netProfit: 4800000,
+    },
+    balanceSheet: {
+      currentAssets: {
+        cashAndBank: 8200000,
+        accountsReceivable: 7800000,
+        inventory: 4500000,
+        shortTermInvestments: 0,
+        otherCurrentAssets: 1500000,
+        totalCurrentAssets: 22000000,
+      },
+      nonCurrentAssets: {
+        propertyPlantEquipment: 14000000,
+        intangibleAssets: 2000000,
+        longTermInvestments: 0,
+        otherNonCurrentAssets: 0,
+        totalNonCurrentAssets: 16000000,
+      },
+      totalAssets: 38000000,
+      currentLiabilities: {
+        accountsPayable: 4800000,
+        shortTermBorrowings: 2200000,
+        statutoryDues: 1500000,
+        otherCurrentLiabilities: 500000,
+        totalCurrentLiabilities: 9000000,
+      },
+      nonCurrentLiabilities: {
+        longTermDebt: 8000000,
+        otherNonCurrentLiabilities: 0,
+        totalNonCurrentLiabilities: 8000000,
+      },
+      equity: {
+        shareCapital: 5000000,
+        retainedEarningsAndReserves: 16000000,
+        totalEquity: 21000000,
+      },
+      totalLiabilitiesAndEquity: 38000000,
+      isBalanced: true,
+      variance: 0,
+    },
+    cashFlow: {
+      operatingCashFlow: 7200000,
+      investingCashFlow: -2500000,
+      financingCashFlow: -1500000,
+      netCashFlow: 3200000,
+      monthlyBurnRate: 1450000,
+      cashRunwayMonths: 24,
+    },
+    ratios: {
+      currentRatio: 2.44,
+      quickRatio: 1.78,
+      cashRatio: 0.91,
+      grossMarginPct: 55.0,
+      ebitdaMarginPct: 18.75,
+      netMarginPct: 10.0,
+      returnOnEquityPct: 22.86,
+      returnOnCapitalEmployedPct: 26.21,
+      netWorkingCapital: 13000000,
+      dso: 59,
+      dpo: 81,
+      dio: 76,
+      cashConversionCycle: 54,
+      debtToEquityRatio: 0.49,
+      interestCoverageRatio: 6.33,
+    },
+    status: 'PUBLISHED',
+    sourceType: 'AUDITED_REPORT',
+    cfoNotes: 'Solid balance sheet with healthy 2.44 Current Ratio and strong 55% gross margin. Working capital cycle is stabilized at 54 days with low reliance on external debt.',
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-15T00:00:00.000Z',
+    submittedBy: 'Aarati Mule (Managing Partner)',
+  },
+  {
+    id: 'cfs-acme-1',
+    clientId: 'client-1',
+    clientCompanyName: 'Acme Corp',
+    fiscalYear: 'FY 2025-26',
+    period: 'Annual FY 2025-26',
+    periodType: 'ANNUAL',
+    currency: 'INR',
+    pnl: {
+      grossRevenue: 32000000,
+      operatingRevenue: 32000000,
+      otherIncome: 500000,
+      totalRevenue: 32500000,
+      costOfGoodsSold: 16250000,
+      grossProfit: 16250000,
+      operatingExpenses: {
+        employeeCost: 7200000,
+        rentUtilities: 1200000,
+        salesMarketing: 1800000,
+        adminGeneral: 850000,
+        depreciationAmortization: 950000,
+        financeCosts: 700000,
+        totalOpex: 11050000,
+      },
+      ebitda: 5200000,
+      ebit: 4250000,
+      ebt: 3550000,
+      taxExpense: 887500,
+      netProfit: 2662500,
+    },
+    balanceSheet: {
+      currentAssets: {
+        cashAndBank: 4200000,
+        accountsReceivable: 5200000,
+        inventory: 3100000,
+        shortTermInvestments: 0,
+        otherCurrentAssets: 800000,
+        totalCurrentAssets: 13300000,
+      },
+      nonCurrentAssets: {
+        propertyPlantEquipment: 9500000,
+        intangibleAssets: 1200000,
+        longTermInvestments: 0,
+        otherNonCurrentAssets: 0,
+        totalNonCurrentAssets: 10700000,
+      },
+      totalAssets: 24000000,
+      currentLiabilities: {
+        accountsPayable: 3400000,
+        shortTermBorrowings: 1500000,
+        statutoryDues: 800000,
+        otherCurrentLiabilities: 300000,
+        totalCurrentLiabilities: 6000000,
+      },
+      nonCurrentLiabilities: {
+        longTermDebt: 5000000,
+        otherNonCurrentLiabilities: 0,
+        totalNonCurrentLiabilities: 5000000,
+      },
+      equity: {
+        shareCapital: 4000000,
+        retainedEarningsAndReserves: 9000000,
+        totalEquity: 13000000,
+      },
+      totalLiabilitiesAndEquity: 24000000,
+      isBalanced: true,
+      variance: 0,
+    },
+    cashFlow: {
+      operatingCashFlow: 3800000,
+      investingCashFlow: -1200000,
+      financingCashFlow: -900000,
+      netCashFlow: 1700000,
+      monthlyBurnRate: 920000,
+      cashRunwayMonths: 18,
+    },
+    ratios: {
+      currentRatio: 2.22,
+      quickRatio: 1.57,
+      cashRatio: 0.70,
+      grossMarginPct: 50.0,
+      ebitdaMarginPct: 16.0,
+      netMarginPct: 8.19,
+      returnOnEquityPct: 20.48,
+      returnOnCapitalEmployedPct: 23.61,
+      netWorkingCapital: 7300000,
+      dso: 58,
+      dpo: 76,
+      dio: 70,
+      cashConversionCycle: 52,
+      debtToEquityRatio: 0.50,
+      interestCoverageRatio: 6.07,
+    },
+    status: 'PUBLISHED',
+    sourceType: 'AUDITED_REPORT',
+    cfoNotes: 'Stable operational performance. Receivables collection cycle at 58 days is well within the 60-day target. Net margin improved by 1.2% over previous fiscal year.',
+    createdAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-15T00:00:00.000Z',
+    submittedBy: 'Priya Sharma (Senior Financial Analyst)',
+  }
+];
+
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
+  clientFinancialStatements: DEFAULT_FINANCIAL_STATEMENTS,
+  clientBudgets: DEFAULT_CLIENT_BUDGETS,
+  workingCapitalAgeings: DEFAULT_WORKING_CAPITAL_AGEINGS,
+  financialAlerts: DEFAULT_FINANCIAL_ALERTS,
+  accountingConnectors: DEFAULT_ACCOUNTING_CONNECTORS,
+  financialGovernanceLocks: DEFAULT_FINANCIAL_GOVERNANCE_LOCKS,
+
   reportTemplates: DEFAULT_REPORT_TEMPLATES,
   automationRules: AutomationEngine.getDefaultRules(),
   automationLogs: [],
@@ -830,6 +1215,26 @@ export const useDashboardStore = create<DashboardState>()(
       onboardingDate: '2026-02-15',
       status: 'ACTIVE',
       createdAt: '2026-02-15T11:00:00.000Z',
+    },
+    {
+      id: 'client-test-cfo',
+      companyName: 'CFO SUITE TEST PVT LTD',
+      contactPerson: 'Aditya Kashyap',
+      email: 'aditya@cfosuitetest.com',
+      phone: '+91-9876543210',
+      ownerName: 'Aditya Kashyap',
+      ownerContact: '+91-9876543210',
+      industry: 'Technology & Enterprise Solutions',
+      businessType: 'Private Limited Company',
+      gstin: '27AABCC8899D1Z8',
+      pan: 'AABCC8899D',
+      address: 'Level 4, Tech Park, Baner, Pune 411045',
+      billingEntity: 'Vanntagge CFO Services LLP',
+      spaceConsumedMB: 2100,
+      costEstimateINR: 6500,
+      onboardingDate: '2026-04-01',
+      status: 'ACTIVE',
+      createdAt: '2026-04-01T10:00:00.000Z',
     }
   ],
   engagements: [
@@ -1084,6 +1489,62 @@ export const useDashboardStore = create<DashboardState>()(
           createdAt: '2026-09-05T10:00:00.000Z',
         }
       ]
+    },
+    {
+      id: 'eng-test-cfo',
+      clientId: 'client-test-cfo',
+      clientCompanyName: 'CFO SUITE TEST PVT LTD',
+      leadId: 'lead-test-1',
+      name: 'CFO SUITE TEST PVT LTD - Strategic Virtual CFO & Advisory',
+      status: 'ACTIVE',
+      startDate: '2026-04-01',
+      createdAt: '2026-04-01T10:00:00.000Z',
+      services: [
+        { id: 's-test-1', engagementId: 'eng-test-cfo', serviceName: 'Virtual CFO Leadership & Board MIS', price: 75000, billingCycle: 'Monthly' },
+        { id: 's-test-2', engagementId: 'eng-test-cfo', serviceName: 'Working Capital & Treasury Advisory', price: 35000, billingCycle: 'Monthly' },
+      ],
+      tasks: [
+        {
+          id: 't-test-1',
+          engagementId: 'eng-test-cfo',
+          title: 'Quarterly Board MIS & Financial Statements Pack',
+          milestone: 'Quarterly Strategic Board Review',
+          estimatedHours: 12,
+          timeSpent: 8,
+          progress: 80,
+          priority: 'HIGH',
+          status: 'IN_PROGRESS',
+          notes: 'Consolidated P&L, balance sheet verification, and working capital ratios commentary.',
+          dueDate: '2026-10-31T18:30:00.000Z',
+          employeeId: 'u-employee',
+          employeeName: 'Priya Sharma',
+          reviewPoints: [],
+          createdAt: '2026-09-01T10:00:00.000Z',
+        }
+      ],
+      invoices: [
+        {
+          id: 'inv-test-1',
+          engagementId: 'eng-test-cfo',
+          clientId: 'client-test-cfo',
+          clientCompanyName: 'CFO SUITE TEST PVT LTD',
+          invoiceNumber: 'VAN/26-27/0210',
+          amount: 110000,
+          gst: 19800,
+          total: 129800,
+          finalAmount: 129800,
+          amountPaid: 129800,
+          amountDue: 0,
+          status: 'PAID',
+          dueDate: '2026-09-30',
+          createdAt: '2026-09-15T10:00:00.000Z',
+          billingEntity: 'Vanntagge CFO Services LLP',
+        }
+      ],
+      documents: [],
+      compliances: [],
+      collections: [],
+      reports: []
     }
   ],
   assets: [],
@@ -3555,7 +4016,143 @@ export const useDashboardStore = create<DashboardState>()(
     get().setGlobalSuccessMsg(`Applied "${template.name || template.title}"! Added ${template.tasks.length} tasks to engagement.`);
   },
 
+  addClientFinancialStatement: (statement) => {
+    set((state) => ({
+      clientFinancialStatements: [statement, ...(state.clientFinancialStatements || [])],
+    }));
+    get().addAuditLog('FINANCIAL_STATEMENT_ADDED', `Added ${statement.period} financial statement for ${statement.clientCompanyName}.`);
+    pushRecordToFirebase('clientFinancialStatements', statement.id, statement);
+  },
+
+  updateClientFinancialStatement: (id, updates) => {
+    set((state) => ({
+      clientFinancialStatements: (state.clientFinancialStatements || []).map((s) =>
+        s.id === id ? { ...s, ...updates, updatedAt: new Date().toISOString() } : s
+      ),
+    }));
+    get().addAuditLog('FINANCIAL_STATEMENT_UPDATED', `Updated financial statement ID ${id}.`);
+    const updated = get().clientFinancialStatements?.find((s) => s.id === id);
+    if (updated) {
+      pushRecordToFirebase('clientFinancialStatements', id, updated);
+    }
+  },
+
+  deleteClientFinancialStatement: (id) => {
+    set((state) => ({
+      clientFinancialStatements: (state.clientFinancialStatements || []).filter((s) => s.id !== id),
+    }));
+    get().addAuditLog('FINANCIAL_STATEMENT_DELETED', `Deleted financial statement ID ${id}.`);
+    deleteRecordFromFirebase('clientFinancialStatements', id);
+  },
+
+  addClientBudget: (budget) => {
+    set((state) => ({
+      clientBudgets: [budget, ...(state.clientBudgets || [])],
+    }));
+    get().addAuditLog('BUDGET_CREATED', `Created budget for ${budget.clientCompanyName} (${budget.fiscalYear}).`);
+  },
+
+  updateClientBudget: (id, updates) => {
+    set((state) => ({
+      clientBudgets: (state.clientBudgets || []).map((b) => (b.id === id ? { ...b, ...updates, updatedAt: new Date().toISOString() } : b)),
+    }));
+    get().addAuditLog('BUDGET_UPDATED', `Updated budget ID ${id}.`);
+  },
+
+  updateWorkingCapitalAgeing: (clientId, updates) => {
+    set((state) => ({
+      workingCapitalAgeings: (state.workingCapitalAgeings || []).map((w) => (w.clientId === clientId ? { ...w, ...updates } : w)),
+    }));
+    get().addAuditLog('WORKING_CAPITAL_AGEING_UPDATED', `Updated debtor/creditor ageing schedules for client ${clientId}.`);
+  },
+
+  dismissFinancialAlert: (id) => {
+    set((state) => ({
+      financialAlerts: (state.financialAlerts || []).filter((a) => a.id !== id),
+    }));
+  },
+
+  addFinancialAlert: (alert) => {
+    set((state) => ({
+      financialAlerts: [alert, ...(state.financialAlerts || [])],
+    }));
+  },
+
+  syncAccountingConnector: (id) => {
+    set((state) => ({
+      accountingConnectors: (state.accountingConnectors || []).map((c) => {
+        if (c.id === id) {
+          const nowStr = new Date().toISOString();
+          const newHistory = {
+            id: `sync-${Date.now()}`,
+            syncedAt: nowStr,
+            recordsCount: c.recordsSynced + 45,
+            status: 'SUCCESS' as const,
+            summary: `Automated periodic sync with ${c.name}. Ingested updated trial balance and sales registers.`,
+          };
+          return {
+            ...c,
+            status: 'CONNECTED' as const,
+            lastSyncTime: nowStr,
+            recordsSynced: c.recordsSynced + 45,
+            history: [newHistory, ...c.history],
+          };
+        }
+        return c;
+      }),
+    }));
+    get().addAuditLog('ACCOUNTING_SYNC', `Completed accounting synchronization for connector ID ${id}.`);
+    get().setGlobalSuccessMsg('Accounting synchronization completed successfully! Trial balance and ledgers refreshed.');
+  },
+
+  rollbackAccountingImport: (connectorId, historyId) => {
+    set((state) => ({
+      accountingConnectors: (state.accountingConnectors || []).map((c) => {
+        if (c.id === connectorId) {
+          return {
+            ...c,
+            history: c.history.map((h: any) => (h.id === historyId ? { ...h, status: 'ROLLED_BACK' as const, summary: h.summary + ' [Rolled back by Admin]' } : h)),
+          };
+        }
+        return c;
+      }),
+    }));
+    get().addAuditLog('ACCOUNTING_ROLLBACK', `Rolled back import batch ${historyId} for connector ${connectorId}.`);
+    get().setGlobalSuccessMsg('Successfully rolled back accounting import batch.');
+  },
+
+  updateFinancialGovernanceLock: (statementId, status, user, actionNote) => {
+    set((state) => ({
+      financialGovernanceLocks: (state.financialGovernanceLocks || []).map((l) => {
+        if (l.statementId === statementId) {
+          const newEntry = {
+            id: `ch-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            user,
+            action: status,
+            newValue: actionNote,
+          };
+          return {
+            ...l,
+            status,
+            immutableChangeLog: [...l.immutableChangeLog, newEntry],
+          };
+        }
+        return l;
+      }),
+    }));
+    get().addAuditLog('FINANCIAL_GOVERNANCE_LOCK', `Updated governance status for statement ${statementId} to ${status}.`);
+    get().setGlobalSuccessMsg(`Financial statement governance status updated to ${status}.`);
+  },
+
   switchPersona: (role) => {
+    const current = get().currentUser;
+    // Security Guard: Persona switching is strictly restricted to SUPER_ADMIN
+    if (current && current.role !== 'SUPER_ADMIN') {
+      console.warn('[Security] Unauthorized persona switch blocked for non-super-admin user:', current.id);
+      return;
+    }
+
     let target = get().users.find((u) => role === 'ADMIN' ? (u.role === 'SUPER_ADMIN' || u.role === 'ADMIN') : u.role === role);
     if (!target) {
       if (role === 'ADMIN') target = FIXED_USERS[0];
@@ -3573,8 +4170,8 @@ export const useDashboardStore = create<DashboardState>()(
         }
       }
       set({ currentUser: target });
-      get().addAuditLog('PERSONA_SWITCH', `Switched active dashboard to ${target.name} (${target.role})`);
-      get().setGlobalSuccessMsg(`Switched to ${target.name} (${target.role})`);
+      get().addAuditLog('PERSONA_SWITCH', `Super Admin switched active view to ${target.name} (${target.role})`);
+      get().setGlobalSuccessMsg(`Emulating view: ${target.name} (${target.role})`);
       if (typeof window !== 'undefined') {
         const dest = (target.role === 'SUPER_ADMIN' || target.role === 'ADMIN') ? '/admin' : target.role === 'EMPLOYEE' ? '/employee' : '/client';
         window.location.href = dest;
@@ -3591,6 +4188,8 @@ export const useDashboardStore = create<DashboardState>()(
         matchedUser = get().users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
       } else if (cleanEmail === 'employee' || cleanEmail.includes('employee') || cleanEmail === 'aarati123@gmail.com' || cleanEmail === 'kiranm@gmail.com') {
         matchedUser = get().users.find((u) => u.role === 'EMPLOYEE');
+      } else if (cleanEmail === 'testclient' || cleanEmail.includes('testclient') || cleanEmail === 'aditya@cfosuitetest.com') {
+        matchedUser = get().users.find((u) => u.email === 'testclient@vantage.com' || u.linkedEntity === 'CFO SUITE TEST PVT LTD');
       } else if (cleanEmail === 'client' || cleanEmail.includes('client') || cleanEmail === 'aaratideepak29@gmail.com') {
         matchedUser = get().users.find((u) => u.role === 'CLIENT');
       }

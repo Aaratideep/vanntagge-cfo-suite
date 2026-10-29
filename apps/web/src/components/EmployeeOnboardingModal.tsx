@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useDashboardStore } from '../store/dashboardStore';
 import { EmployeeOnboardingData } from '../types';
-import { User, FileText, Briefcase, Camera, ShieldCheck, Phone, MapPin, CheckCircle2 } from 'lucide-react';
+import { User, FileText, Briefcase, Camera, ShieldCheck, Phone, MapPin, CheckCircle2, ArrowLeft } from 'lucide-react';
 
 export const EmployeeOnboardingModal: React.FC = () => {
+  const router = useRouter();
   const { currentUser, submitEmployeeOnboarding, logoutUser } = useDashboardStore();
   const [loading, setLoading] = useState(false);
 
@@ -65,11 +67,18 @@ export const EmployeeOnboardingModal: React.FC = () => {
             </h1>
             <p className="text-slate-500 text-sm mt-1 font-medium tracking-wide uppercase">Employee Profile & Documentation Form</p>
           </div>
-          <div className="flex items-center gap-3 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <button
+              type="button"
+              onClick={() => router.push(currentUser?.role === 'SUPER_ADMIN' || currentUser?.role === 'ADMIN' ? '/admin' : '/')}
+              className="px-4 py-2 text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 w-full sm:w-auto text-center"
+            >
+              <ArrowLeft size={14} /> Back to Dashboard
+            </button>
             <button
               type="button"
               onClick={logoutUser}
-              className="px-5 py-2 text-slate-600 border border-slate-300 hover:bg-slate-50 rounded font-bold text-xs uppercase tracking-wider transition-colors w-full md:w-auto text-center"
+              className="px-4 py-2 text-slate-600 border border-slate-300 hover:bg-slate-50 rounded font-bold text-xs uppercase tracking-wider transition-colors w-full sm:w-auto text-center"
             >
               Sign Out
             </button>
@@ -77,7 +86,7 @@ export const EmployeeOnboardingModal: React.FC = () => {
               type="submit" 
               form="onboardingForm" 
               disabled={loading}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded font-bold text-xs uppercase tracking-wider transition-colors disabled:opacity-50 flex items-center justify-center gap-2 w-full md:w-auto"
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white border border-blue-700 rounded font-bold text-xs uppercase tracking-wider transition-colors disabled:opacity-50 flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               {loading ? 'Submitting...' : 'Submit Form'}
             </button>

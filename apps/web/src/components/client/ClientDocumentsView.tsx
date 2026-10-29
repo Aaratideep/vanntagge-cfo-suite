@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export const ClientDocumentsView: React.FC = () => {
-  const { clientDocuments, currentUser, addClientDocument, addAuditLog } = useDashboardStore();
+  const { clientDocuments, currentUser, addClientDocument, addAuditLog, clients } = useDashboardStore();
 
   const [activeTab, setActiveTab] = useState<'REQUIRED' | 'UPLOADED' | 'APPROVED' | 'REJECTED'>('UPLOADED');
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
@@ -26,8 +26,14 @@ export const ClientDocumentsView: React.FC = () => {
 
   if (!currentUser) return null;
 
+  const myClient = clients.find(
+    (c) => c.id === currentUser.id || (currentUser.linkedEntity && c.companyName?.toLowerCase() === currentUser.linkedEntity.toLowerCase())
+  );
+
   // Filter docs for logged-in client strictly by clientId
-  const myDocs = clientDocuments.filter((d) => d.clientId === currentUser.id);
+  const myDocs = clientDocuments.filter(
+    (d) => d.clientId === currentUser.id || (myClient && d.clientId === myClient.id)
+  );
 
   // Status lists
   const uploadedDocs = myDocs.filter((d) => d.status === 'UPLOADED' || !d.reviewStatus || d.reviewStatus === 'PENDING');

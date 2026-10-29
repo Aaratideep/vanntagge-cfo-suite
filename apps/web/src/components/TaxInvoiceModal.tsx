@@ -167,7 +167,7 @@ export const TaxInvoiceModal: React.FC = () => {
             <CreditCard size={16} /> Log Payment
           </button>
           <div className="w-px h-6 bg-slate-200 mx-2"></div>
-          <button onClick={() => setActiveInvoiceForModal(null)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+          <button onClick={() => setActiveInvoiceForModal(null)} aria-label="Close invoice preview modal" className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
             <X size={20} />
           </button>
         </div>

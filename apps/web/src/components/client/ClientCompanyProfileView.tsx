@@ -5,7 +5,11 @@ import { Building, Mail, Phone, MapPin, ShieldCheck, CheckCircle2, Lock, Save } 
 export const ClientCompanyProfileView: React.FC = () => {
   const { currentUser, clients, updateClientCompanyProfile } = useDashboardStore();
 
-  const client = clients.find((c) => c.id === currentUser?.id);
+  const client = clients.find(
+    (c) =>
+      c.id === currentUser?.id ||
+      (currentUser?.linkedEntity && c.companyName?.toLowerCase() === currentUser.linkedEntity.toLowerCase())
+  );
 
   const [contactPerson, setContactPerson] = useState(client?.contactPerson || currentUser?.name || '');
   const [email, setEmail] = useState(client?.email || currentUser?.email || '');

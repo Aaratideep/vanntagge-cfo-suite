@@ -68,18 +68,29 @@ export const ClientDashboardView: React.FC = () => {
   const clientEngagements = engagements.filter(
     (e) =>
       e.clientId === currentUser?.id ||
-      e.clientId === 'client-1' ||
-      e.clientCompanyName?.toLowerCase() === currentUser?.linkedEntity?.toLowerCase() ||
-      (currentUser?.role === 'CLIENT' && engagements.length > 0)
+      (currentUser?.linkedEntity && e.clientCompanyName?.toLowerCase() === currentUser.linkedEntity.toLowerCase()) ||
+      (myClient && (e.clientId === myClient.id || e.clientCompanyName?.toLowerCase() === myClient.companyName.toLowerCase()))
   );
   const myTasks = clientEngagements.flatMap(e => (e.tasks || []).map(t => ({ ...t, engagementName: e.name })));
   
-  const engagementInvoices = clientEngagements.flatMap(e => (e.invoices || []).map(i => ({ ...i, engagementName: e.name })));
-  const myStandaloneInvoices = (standaloneInvoices || []).filter((i: any) => i.clientId === currentUser?.id).map((i: any) => ({ ...i, engagementName: 'Standalone' }));
+  // Strictly filter out DRAFT invoices from client view
+  const engagementInvoices = clientEngagements.flatMap(e =>
+    (e.invoices || [])
+      .filter(i => i.status !== 'DRAFT')
+      .map(i => ({ ...i, engagementName: e.name }))
+  );
+  const myStandaloneInvoices = (standaloneInvoices || [])
+    .filter((i: any) =>
+      ((i.clientId === currentUser?.id) ||
+       (myClient && i.clientId === myClient.id) ||
+       (currentUser?.linkedEntity && i.clientCompanyName?.toLowerCase() === currentUser.linkedEntity.toLowerCase())) &&
+      i.status !== 'DRAFT'
+    )
+    .map((i: any) => ({ ...i, engagementName: 'Standalone' }));
   const allInvoices = [...engagementInvoices, ...myStandaloneInvoices].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  // Filter client data strictly by logged-in client ID
-  const myEngagements = engagements.filter((e) => e.clientId === currentUser?.id);
+  // Filter client data strictly by logged-in client
+  const myEngagements = clientEngagements;
 
   // Active Services count
   let activeServicesCount = 0;

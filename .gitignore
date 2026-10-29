@@ -1,12 +1,16 @@
-
 .env
 .env.local
 .next
 node_modules
+**/node_modules/
 *.tsbuildinfo
 .vercel
+*.log
+eslint-output.json
 
 venv/
 */venv/
+venv-win/
+*/venv-win/
 __pycache__/
 *.pyc

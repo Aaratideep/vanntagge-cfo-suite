@@ -13,8 +13,8 @@ import { WorkView } from '../../components/WorkView';
 import { ComplianceView } from '../../components/admin/ComplianceView';
 import { CalendarView } from '../../components/CalendarView';
 import { TimesheetView } from '../../components/TimesheetView';
-import { DashboardView } from '../../components/DashboardView';
-import { SettingsView } from '../../components/admin/SettingsView';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
+import { EmployeeOnboardingModal } from '../../components/EmployeeOnboardingModal';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -33,23 +33,24 @@ export default function EmployeePage() {
   useEffect(() => {
     if (!currentUser) {
       router.push('/');
-    } else if (currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN') {
-      router.push('/admin');
     } else if (currentUser.role === 'CLIENT') {
       router.push('/client');
-    } else if (currentUser.role !== 'EMPLOYEE') {
-      router.push('/');
     }
   }, [currentUser, router]);
 
   if (!isMounted) return null;
-  if (!currentUser || currentUser.role !== 'EMPLOYEE') return null;
+  if (!currentUser || currentUser.role === 'CLIENT') return null;
+
+  if (currentUser.role === 'EMPLOYEE' && !currentUser.isOnboarded) {
+    return <EmployeeOnboardingModal />;
+  }
 
   const tabTitles: { [key: string]: string } = {
     dashboard: 'ClientPulse',
     employee_portal: 'Employee Operations Portal',
     engagements: 'Client Engagements',
     work: 'Task Management',
+    timesheet: 'Timesheet & Billable Hours',
     compliance: 'Compliance & Audit Program',
     calendar: 'Schedule Hub',
     notifications: 'Alert Hub',
@@ -58,7 +59,6 @@ export default function EmployeePage() {
   const renderActiveSubView = () => {
     switch (currentTab) {
       case 'dashboard':
-        return <EmployeeDashboardView />;
       case 'employee_portal':
         return <EmployeeDashboardView />;
       case 'engagements':
@@ -73,7 +73,15 @@ export default function EmployeePage() {
       case 'calendar':
         return <CalendarView />;
       case 'settings':
-        return <SettingsView />;
+        return (
+          <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 max-w-md mx-auto my-12 shadow-sm">
+            <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-2xl">lock</span>
+            </div>
+            <h2 className="text-lg font-bold text-slate-800 font-outfit">Access Restricted</h2>
+            <p className="text-xs text-slate-500 mt-2">Firm Config Hub and system secrets are strictly restricted to Super Administrators.</p>
+          </div>
+        );
       default:
         return <EmployeeDashboardView />;
     }
@@ -93,7 +101,8 @@ export default function EmployeePage() {
         setMobileOpen={setMobileMenuOpen}
       />
       <div className={`flex-1 flex flex-col min-w-0 ${spacingClass} transition-all duration-300`}>
-        <Header onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        <Header
+          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           setCurrentTab={setCurrentTab}
@@ -102,7 +111,9 @@ export default function EmployeePage() {
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
         <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-[1440px] w-full mx-auto font-outfit">
-          {renderActiveSubView()}
+          <ErrorBoundary fallbackTitle="Employee Workspace Component">
+            {renderActiveSubView()}
+          </ErrorBoundary>
         </main>
       </div>
 

@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { ComplianceStatus, ComplianceType } from '../../types';
+import { getClientTenantScope, filterClientEngagements } from '../../lib/clientAuthScope';
+import { StartupIndia80IacView } from '../admin/StartupIndia80IacView';
+import { Video } from 'lucide-react';
 import {
   Calendar,
   CheckCircle2,
@@ -12,15 +15,17 @@ import {
 } from 'lucide-react';
 
 export const ClientComplianceView: React.FC = () => {
-  const { engagements, currentUser } = useDashboardStore();
+  const { engagements, clients, currentUser } = useDashboardStore();
 
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
+  const [activeSubView, setActiveSubView] = useState<'tracker' | '80iac'>('tracker');
 
   if (!currentUser) return null;
 
-  // Flatten compliance items from client engagements
-  const myEngagements = engagements.filter((e) => e.clientId === currentUser.id);
+  // STRICT TENANT SCOPING: Scope strictly to the authenticated client's company
+  const scope = getClientTenantScope(currentUser, clients);
+  const myEngagements = filterClientEngagements(engagements, scope);
 
   const complianceList: {
     id: string;
@@ -46,39 +51,6 @@ export const ClientComplianceView: React.FC = () => {
     });
   });
 
-  // Seed default compliance items if array empty for demo client
-  if (complianceList.length === 0) {
-    complianceList.push(
-      {
-        id: 'comp-1',
-        title: 'GST GSTR-3B Monthly Return Filing',
-        type: 'GST',
-        periodKey: '2026-09',
-        dueDate: '2026-10-20',
-        status: 'UPCOMING',
-        engagementName: 'Tax & Compliance Management',
-      },
-      {
-        id: 'comp-2',
-        title: 'TDS Payment Deposit (Section 194C/194J)',
-        type: 'TDS',
-        periodKey: '2026-09',
-        dueDate: '2026-10-07',
-        status: 'DUE_SOON',
-        engagementName: 'Tax & Compliance Management',
-      },
-      {
-        id: 'comp-3',
-        title: 'Advance Tax Q3 Payment Installment',
-        type: 'INCOME_TAX',
-        periodKey: '2026-Q3',
-        dueDate: '2026-09-15',
-        status: 'COMPLETED',
-        engagementName: 'Financial Planning & Analysis',
-      }
-    );
-  }
-
   const filteredCompliance = complianceList.filter((item) => {
     const matchesType = selectedType === 'ALL' || item.type === selectedType;
     const matchesStatus = selectedStatus === 'ALL' || item.status === selectedStatus;
@@ -89,131 +61,173 @@ export const ClientComplianceView: React.FC = () => {
     switch (status) {
       case 'UPCOMING':
         return (
-          <span className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 font-bold text-xs rounded-full font-outfit">
-            UPCOMING
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            <Clock className="w-3 h-3 text-blue-600" />
+            Upcoming
           </span>
         );
       case 'DUE_SOON':
         return (
-          <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 font-bold text-xs rounded-full flex items-center gap-1 font-outfit">
-            <Clock className="w-3 h-3 text-amber-600" /> DUE SOON
-          </span>
-        );
-      case 'COMPLETED':
-      case 'SUBMITTED':
-        return (
-          <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-xs rounded-full flex items-center gap-1 font-outfit">
-            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> COMPLETED
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+            <AlertTriangle className="w-3 h-3 text-amber-600" />
+            Due Soon (&lt; 7 Days)
           </span>
         );
       case 'OVERDUE':
         return (
-          <span className="px-2.5 py-1 bg-rose-50 text-rose-800 border border-rose-200 font-bold text-xs rounded-full flex items-center gap-1 font-outfit">
-            <AlertTriangle className="w-3 h-3 text-rose-600" /> OVERDUE
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+            <AlertTriangle className="w-3 h-3 text-rose-600" />
+            Overdue
+          </span>
+        );
+      case 'COMPLETED':
+        return (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            Filed / Completed
           </span>
         );
       default:
-        return <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold text-xs rounded-full">{status}</span>;
+        return (
+          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-700 border border-slate-200">
+            {status}
+          </span>
+        );
     }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* View Switcher: Deadlines vs Startup India 80-IAC */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+        <button
+          onClick={() => setActiveSubView('tracker')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeSubView === 'tracker'
+              ? 'bg-primary text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200'
+          }`}
+        >
+          <ShieldCheck size={14} />
+          Statutory Deadlines Tracker
+        </button>
+        <button
+          onClick={() => setActiveSubView('80iac')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+            activeSubView === '80iac'
+              ? 'bg-orange-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200'
+          }`}
+        >
+          <Video size={14} />
+          Startup India 80-IAC Tax Exemption & Pitch Video
+          <span className="text-[10px] font-mono bg-white/20 px-1.5 py-0.2 rounded">100% Tax Holiday</span>
+        </button>
+      </div>
+
+      {activeSubView === '80iac' ? (
+        <StartupIndia80IacView />
+      ) : (
+        <>
       {/* Header */}
-      <div className="border-b border-slate-200/80 pb-4">
-        <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit flex items-center gap-2">
-          <Calendar className="w-6 h-6 text-blue-600" />
-          Statutory Compliance Schedule
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Track upcoming GST filings, TDS payments, Advance Tax deadlines, and statutory compliance status.
-        </p>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-          <Filter className="w-4 h-4 text-blue-600" />
-          <span>Filter Compliance Items:</span>
+      <div className="border-b border-slate-200/80 pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-800 font-outfit flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-emerald-600" />
+            Statutory & Tax Compliance Tracker
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            Tracking periodic GST, TDS, PF/ESIC, Advance Tax, and ROC filing deadlines for{' '}
+            <span className="font-semibold text-slate-700">{scope.companyName || 'your company'}</span>.
+          </p>
         </div>
 
-        <div className="flex items-center gap-3 text-xs w-full md:w-auto">
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="p-2 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-700"
-          >
-            <option value="ALL">All Compliance Types</option>
-            <option value="GST">GST Return</option>
-            <option value="TDS">TDS Payment</option>
-            <option value="INCOME_TAX">Income Tax / Advance Tax</option>
-            <option value="ROC">ROC Filing</option>
-          </select>
-
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="p-2 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-700"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="UPCOMING">Upcoming</option>
-            <option value="DUE_SOON">Due Soon</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="OVERDUE">Overdue</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Compliance List */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200/80 bg-slate-50 flex items-center justify-between">
-          <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider font-outfit">
-            Statutory Compliance Items ({filteredCompliance.length})
-          </h3>
-          <span className="text-xs text-slate-500 font-semibold">Updated Real-Time</span>
-        </div>
-
-        {filteredCompliance.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 text-xs italic">
-            No compliance items match selected filters.
+        {/* Filter Controls */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs">
+            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="text-xs font-semibold text-slate-700 bg-transparent outline-none cursor-pointer"
+            >
+              <option value="ALL">All Types</option>
+              <option value="GST">GST Returns</option>
+              <option value="TDS">TDS Deductions</option>
+              <option value="INCOME_TAX">Income Tax</option>
+              <option value="ROC">ROC Filings</option>
+              <option value="PAYROLL">PF &amp; ESIC</option>
+            </select>
           </div>
-        ) : (
+
+          <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-2xs">
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="text-xs font-semibold text-slate-700 bg-transparent outline-none cursor-pointer"
+            >
+              <option value="ALL">All Statuses</option>
+              <option value="DUE_SOON">Due Soon</option>
+              <option value="UPCOMING">Upcoming</option>
+              <option value="OVERDUE">Overdue</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Compliance Table */}
+      {filteredCompliance.length === 0 ? (
+        <div className="bg-white p-12 rounded-2xl border border-slate-200/80 shadow-sm text-center space-y-3">
+          <ShieldCheck className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="text-base font-bold text-slate-700 font-outfit">No Active Compliance Deadlines</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            All statutory compliance returns for your company are currently up to date.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead className="bg-slate-100/70 text-slate-700 font-semibold border-b border-slate-200 font-outfit">
-                <tr>
-                  <th className="p-3.5">Compliance Title</th>
-                  <th className="p-3.5">Category</th>
-                  <th className="p-3.5">Reporting Period</th>
-                  <th className="p-3.5">Due Date</th>
-                  <th className="p-3.5">Status</th>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 font-outfit">
+                  <th className="py-3.5 px-6">Compliance Filing</th>
+                  <th className="py-3.5 px-6">Category</th>
+                  <th className="py-3.5 px-6">Due Date</th>
+                  <th className="py-3.5 px-6">Status</th>
+                  <th className="py-3.5 px-6">Associated Engagement</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200/80">
-                {filteredCompliance.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="p-3.5 font-bold text-slate-900 font-outfit">{item.title}</td>
-                    <td className="p-3.5">
-                      <span className="px-2.5 py-0.5 bg-blue-50 border border-blue-150 text-blue-700 font-bold rounded text-[11px]">
-                        {item.type}
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {filteredCompliance.map((comp) => (
+                  <tr key={comp.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-4 px-6 font-semibold text-slate-800 flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                      {comp.title}
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="font-mono text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        {comp.type}
                       </span>
                     </td>
-                    <td className="p-3.5 font-mono text-slate-700">{item.periodKey}</td>
-                    <td className="p-3.5 font-semibold text-slate-800">
-                      {new Date(item.dueDate).toLocaleDateString('en-IN', {
-                        day: '2-digit',
+                    <td className="py-4 px-6 font-medium text-slate-600">
+                      {new Date(comp.dueDate).toLocaleDateString('en-IN', {
+                        day: 'numeric',
                         month: 'short',
                         year: 'numeric',
                       })}
                     </td>
-                    <td className="p-3.5">{getStatusBadge(item.status)}</td>
+                    <td className="py-4 px-6">{getStatusBadge(comp.status)}</td>
+                    <td className="py-4 px-6 text-slate-500 text-xs">{comp.engagementName}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+        </>
+      )}
     </div>
   );
 };

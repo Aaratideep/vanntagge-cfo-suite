@@ -42,6 +42,8 @@ export const AuthView: React.FC = () => {
   const [captchaValid, setCaptchaValid] = useState(false);
   const [showGoogleMock, setShowGoogleMock] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
 
   // Clear cache hook
   useEffect(() => {
@@ -206,6 +208,12 @@ export const AuthView: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
+
+    if (lockoutUntil && Date.now() < lockoutUntil) {
+      const remainingSec = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      setErrorMsg(`Rate limit exceeded: Too many failed login attempts. Please wait ${remainingSec}s before retrying.`);
+      return;
+    }
 
     if (!captchaValid) {
       setErrorMsg('Please complete the security check (CAPTCHA) correctly.');
@@ -788,53 +796,75 @@ export const AuthView: React.FC = () => {
                   <span>Continue with Google</span>
                 </button>
 
-                {/* Clean 3 Personas Instant Test Logins */}
+                {/* Clean Demo Credentials Helper (Fills Form For Verification) */}
                 <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5">
-                  <h4 className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">
-                    Quick 1-Click Test Logins (3 Personas)
-                  </h4>
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[11px] font-bold uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                      <span>Demo Test Credentials (Auto-fill Form)</span>
+                    </h4>
+                    <span className="text-[10px] text-slate-400 font-medium">Click to populate</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        loginUser('admin@vantage.com');
-                        window.location.href = '/admin';
+                        setEmail('admin@vantage.com');
+                        setPassword('Vantage@Admin2026');
+                        setErrorMsg('');
                       }}
-                      className="w-full py-2 px-3 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer"
+                      className="py-2 px-2.5 bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-200 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
                     >
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 truncate">
                         <span>👑</span>
-                        <span>Admin (Aarati Mule)</span>
+                        <span className="truncate">Admin (Aarati Mule)</span>
                       </span>
-                      <span className="text-[10px] text-purple-600 underline">Open Dashboard &rarr;</span>
+                      <span className="text-[10px] text-purple-600 font-bold shrink-0">Fill &rarr;</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        loginUser('employee@vantage.com');
-                        window.location.href = '/employee';
+                        setEmail('employee@vantage.com');
+                        setPassword('Vantage@Staff2026');
+                        setErrorMsg('');
                       }}
-                      className="w-full py-2 px-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer"
+                      className="py-2 px-2.5 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
                     >
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 truncate">
                         <span>💼</span>
-                        <span>Employee (Priya Sharma)</span>
+                        <span className="truncate">Staff (Priya Sharma)</span>
                       </span>
-                      <span className="text-[10px] text-blue-600 underline">Open Workspace &rarr;</span>
+                      <span className="text-[10px] text-blue-600 font-bold shrink-0">Fill &rarr;</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        loginUser('client@vantage.com');
-                        window.location.href = '/client';
+                        setEmail('client@vantage.com');
+                        setPassword('Vantage@Client2026');
+                        setErrorMsg('');
                       }}
-                      className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-bold transition-all flex items-center justify-between cursor-pointer"
+                      className="py-2 px-2.5 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-200 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
                     >
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 truncate">
                         <span>🏢</span>
-                        <span>Client (Acme Corp - Rajesh)</span>
+                        <span className="truncate">Client (Acme Corp)</span>
                       </span>
-                      <span className="text-[10px] text-emerald-600 underline">Open Portal &rarr;</span>
+                      <span className="text-[10px] text-emerald-600 font-bold shrink-0">Fill &rarr;</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail('testclient@vantage.com');
+                        setPassword('Vantage@Client2026');
+                        setErrorMsg('');
+                      }}
+                      className="py-2 px-2.5 bg-white hover:bg-cyan-50 border border-slate-200 hover:border-cyan-200 text-slate-800 rounded-lg text-xs font-semibold transition-all flex items-center justify-between text-left cursor-pointer shadow-2xs"
+                    >
+                      <span className="flex items-center gap-1.5 truncate">
+                        <span>📊</span>
+                        <span className="truncate">Audit Client (CFO SUITE)</span>
+                      </span>
+                      <span className="text-[10px] text-cyan-600 font-bold shrink-0">Fill &rarr;</span>
                     </button>
                   </div>
                 </div>

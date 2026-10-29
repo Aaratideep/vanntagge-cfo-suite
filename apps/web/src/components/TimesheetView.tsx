@@ -2,11 +2,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { useDashboardStore } from '../store/dashboardStore';
-import { Clock, Send, Calendar, CheckCircle2, User, Building2, Briefcase, ChevronRight, Activity, Users } from 'lucide-react';
-import { Task } from '../types';
+import { Clock, Send, Calendar, CheckCircle2, Building2, Briefcase, ChevronRight, Activity, Users } from 'lucide-react';
+import { Task, User } from '../types';
 
-export const TimesheetView: React.FC = () => {
-  const { engagements, updateTask, addTaskFollowUp, currentUser, timesheets, submitTimesheet, users } = useDashboardStore();
+const TimesheetContent: React.FC<{ currentUser: User }> = ({ currentUser }) => {
+  const { engagements, updateTask, addTaskFollowUp, timesheets, submitTimesheet, users } = useDashboardStore();
 
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
@@ -15,7 +15,6 @@ export const TimesheetView: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'my_timesheet' | 'firm_overview'>('my_timesheet');
 
-  if (!currentUser) return null;
   const isAdmin = currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN';
 
   // Gather tasks for the current user
@@ -424,4 +423,10 @@ export const TimesheetView: React.FC = () => {
 
     </div>
   );
+};
+
+export const TimesheetView: React.FC = () => {
+  const { currentUser } = useDashboardStore();
+  if (!currentUser) return null;
+  return <TimesheetContent currentUser={currentUser} />;
 };

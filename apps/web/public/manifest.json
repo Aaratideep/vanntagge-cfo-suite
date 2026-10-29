@@ -1,0 +1,22 @@
+{
+  "name": "VANNTAGE CFO Suite",
+  "short_name": "VANNTAGE",
+  "description": "Enterprise Operations Control Center and Virtual CFO Analytics Suite",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/vanntagge-logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/vanntagge-logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+

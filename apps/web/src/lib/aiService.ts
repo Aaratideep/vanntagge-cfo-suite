@@ -7,7 +7,7 @@ import { currentAIProvider } from './aiProvider';
  */
 export function sanitizeInputData(rawInput: string): string {
   if (!rawInput) return '';
-  let cleaned = rawInput
+  const cleaned = rawInput
     .replace(/ignore\s+previous\s+instructions/gi, '[REDACTED_INSTRUCTION_ATTEMPT]')
     .replace(/reveal\s+all\s+client\s+data/gi, '[REDACTED_INSTRUCTION_ATTEMPT]')
     .replace(/system\s+prompt/gi, '[REDACTED]')
@@ -129,7 +129,7 @@ export class AIService {
     let authorizedInvoices = storeState.standaloneInvoices || [];
     let authorizedUsers = storeState.users || [];
     let authorizedDocuments = storeState.clientDocuments || [];
-    let authorizedReports: any[] = [];
+    const authorizedReports: any[] = [];
 
     const userRole = context.userRole || 'SUPER_ADMIN';
     const isSuperAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || context.pageContext === 'ADMIN';
@@ -288,9 +288,9 @@ export class AIService {
         }
       };
 
-      let matchedKey = Object.keys(DEFINITIONS_MAP).find(k => queryLower.includes(k));
+      const matchedKey = Object.keys(DEFINITIONS_MAP).find(k => queryLower.includes(k));
       let explanation = matchedKey ? DEFINITIONS_MAP[matchedKey].definition : null;
-      let category = matchedKey ? DEFINITIONS_MAP[matchedKey].category : "General Information";
+      const category = matchedKey ? DEFINITIONS_MAP[matchedKey].category : "General Information";
 
       if (!explanation) {
         const topicMatch = queryClean.replace(/meaning of|definition of|explain|define|concept of|tell me about|what is|what does|what means/gi, '').replace(/[\?\!]/g, '').trim();
@@ -446,7 +446,7 @@ export class AIService {
 
     // 5. Tasks, Workload, Overdue & Reviews Handler
     if (queryLower.includes('task') || queryLower.includes('work') || queryLower.includes('overdue') || queryLower.includes('review') || queryLower.includes('correction') || queryLower.includes('workload')) {
-      let allTasks: any[] = [];
+      const allTasks: any[] = [];
       authorizedEngagements.forEach((e: any) => {
         (e.tasks || []).forEach((t: any) => {
           allTasks.push({ ...t, clientName: e.clientCompanyName });

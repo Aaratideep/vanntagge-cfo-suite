@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useDashboardStore } from '../store/dashboardStore';
 import { History, X, Shield, Clock, Menu } from 'lucide-react';
 
@@ -20,8 +20,10 @@ export const Header: React.FC<HeaderProps> = ({
   setSearchTarget,
   currentTabTitle,
   onMenuToggle,
+  onToggleMobileMenu,
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const {
     notifications,
     markNotificationRead,
@@ -68,7 +70,8 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3 md:gap-4 shrink min-w-0">
           {onMenuToggle && (
             <button
-              onClick={onMenuToggle}
+              onClick={onToggleMobileMenu || onMenuToggle}
+              aria-label="Toggle navigation menu"
               className="md:hidden p-1.5 -ml-1 text-on-surface-variant hover:text-primary rounded-lg hover:bg-surface-variant transition-colors"
               title="Toggle Menu"
             >
@@ -76,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
           <div className="flex flex-col min-w-0 pr-2 md:pr-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-outline truncate">Vantage CFO Suite</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-outline truncate">VANNTAGE CFO Suite</span>
             <h2 className="text-base md:text-lg font-extrabold text-on-surface font-outfit tracking-tight leading-tight truncate">
               {currentTabTitle}
             </h2>
@@ -91,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
             <input
               type="text"
-              placeholder="Search data (Press /)..."
+              placeholder="Search data (Press /)..." aria-label="Global system search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-8 py-1.5 bg-surface-container-low/60 rounded-full border border-slate-300 text-xs text-on-surface placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
@@ -109,72 +112,88 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Section: Persona Switcher, Audit Trail & Profile */}
         <div className="flex items-center gap-2 md:gap-3 shrink-0">
-          {/* 3 Personas Quick Switcher: Admin, Employee, Client */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-xs">
-            <button
-              onClick={() => {
-                switchPersona('ADMIN');
-                router.push('/admin');
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN'
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-purple-700 hover:bg-white/80'
-              }`}
-              title="Switch to Admin Dashboard (Aarati Mule)"
-            >
-              <span className="material-symbols-outlined text-[16px] -mt-0.5">admin_panel_settings</span>
-              <span className="hidden sm:inline">Admin</span>
-            </button>
-            <button
-              onClick={() => {
-                switchPersona('EMPLOYEE');
-                router.push('/employee');
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                currentUser.role === 'EMPLOYEE'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-blue-700 hover:bg-white/80'
-              }`}
-              title="Switch to Employee Workspace (Priya Sharma)"
-            >
-              <span className="material-symbols-outlined text-[16px] -mt-0.5">badge</span>
-              <span className="hidden sm:inline">Employee</span>
-            </button>
-            <button
-              onClick={() => {
-                switchPersona('CLIENT');
-                router.push('/client');
-              }}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                currentUser.role === 'CLIENT'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-600 hover:text-emerald-700 hover:bg-white/80'
-              }`}
-              title="Switch to Client Portal (Acme Corp)"
-            >
-              <span className="material-symbols-outlined text-[16px] -mt-0.5">business_center</span>
-              <span className="hidden sm:inline">Client</span>
-            </button>
-          </div>
+          {/* Persona Emulation Switcher: Strictly restricted to SUPER_ADMIN */}
+          {currentUser.role === 'SUPER_ADMIN' ? (
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-xs">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded mr-0.5 hidden lg:inline">
+                Emulate:
+              </span>
+              <button
+                onClick={() => {
+                  switchPersona('ADMIN');
+                  router.push('/admin');
+                }}
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  pathname.startsWith('/admin') || pathname === '/'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-purple-700 hover:bg-white/80'
+                }`}
+                title="Admin Dashboard (Aarati Mule)"
+              >
+                <span className="material-symbols-outlined text-[15px] -mt-0.5">admin_panel_settings</span>
+                <span className="hidden sm:inline">Admin</span>
+              </button>
+              <button
+                onClick={() => {
+                  switchPersona('EMPLOYEE');
+                  router.push('/employee');
+                }}
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  pathname.startsWith('/employee')
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-blue-700 hover:bg-white/80'
+                }`}
+                title="Employee Workspace (Priya Sharma)"
+              >
+                <span className="material-symbols-outlined text-[15px] -mt-0.5">badge</span>
+                <span className="hidden sm:inline">Employee</span>
+              </button>
+              <button
+                onClick={() => {
+                  switchPersona('CLIENT');
+                  router.push('/client');
+                }}
+                className={`px-2 py-0.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                  pathname.startsWith('/client')
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-emerald-700 hover:bg-white/80'
+                }`}
+                title="Client Portal (Acme Corp)"
+              >
+                <span className="material-symbols-outlined text-[15px] -mt-0.5">business_center</span>
+                <span className="hidden sm:inline">Client</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs">
+              <span className="material-symbols-outlined text-[16px] text-primary">
+                {currentUser.role === 'CLIENT' ? 'domain' : 'badge'}
+              </span>
+              <span className="font-bold text-slate-900">
+                {currentUser.linkedEntity || (currentUser.role === 'CLIENT' ? 'Client Portal' : 'Employee Workspace')}
+              </span>
+            </div>
+          )}
 
           <div className="h-6 w-px bg-outline-variant/55" />
 
-          {/* Audit Logs Widget */}
-          <button
-            onClick={() => setAuditDrawerOpen(true)}
-            className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
-            title="View Security Audit Trail"
-          >
-            <History size={16} />
-            <span className="hidden xl:inline">Audit Trail</span>
-          </button>
+          {/* Audit Logs Widget (Restricted to Admins) */}
+          {(currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN') && (
+            <button
+              onClick={() => setAuditDrawerOpen(true)}
+              className="text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
+              title="View Security Audit Trail" aria-label="View firm audit logs"
+            >
+              <History size={16} />
+              <span className="hidden xl:inline">Audit Trail</span>
+            </button>
+          )}
 
           {/* Notifications Widget */}
           <div className="relative">
             <button
               onClick={() => setNotifDropdownOpen(!notifDropdownOpen)}
-              className="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors relative cursor-pointer"
+              aria-label="View notifications" className="w-9 h-9 flex items-center justify-center text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors relative cursor-pointer"
             >
               <span className="material-symbols-outlined text-2xl">notifications</span>
               {unreadCount > 0 && (
@@ -238,7 +257,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="text-xs font-bold text-slate-800">{currentUser.name}</div>
               <button
                 onClick={() => logoutUser()}
-                className="text-[10px] text-red-600 hover:underline font-semibold cursor-pointer"
+                aria-label="Log out of session" className="text-[10px] text-red-600 hover:underline font-semibold cursor-pointer"
               >
                 Log Out
               </button>

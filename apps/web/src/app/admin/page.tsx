@@ -1,5 +1,7 @@
 'use client';
 
+import { ErrorBoundary } from '../../components/ErrorBoundary';
+
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '../../components/Sidebar';
@@ -25,10 +27,10 @@ const CalendarView = dynamic(() => import('../../components/CalendarView').then(
 const EmployeesView = dynamic(() => import('../../components/admin/EmployeesView').then(m => m.EmployeesView), { ssr: false });
 const SettingsView = dynamic(() => import('../../components/admin/SettingsView').then(m => m.SettingsView), { ssr: false });
 const FinancialDocsView = dynamic(() => import('../../components/admin/FinancialDocsView').then(m => m.FinancialDocsView), { ssr: false });
-const UsersManagementView = dynamic(() => import('../../components/admin/UsersManagementView').then(m => m.UsersManagementView), { ssr: false });
 const UsersView = dynamic(() => import('../../components/admin/UsersView').then(m => m.UsersView), { ssr: false });
 const ServiceMasterView = dynamic(() => import('../../components/admin/ServiceMasterView').then(m => m.ServiceMasterView), { ssr: false });
 const CommunicationHistoryView = dynamic(() => import('../../components/admin/CommunicationHistoryView').then(m => m.CommunicationHistoryView), { ssr: false });
+const CFOAnalyticsView = dynamic(() => import('../../components/admin/CFOAnalyticsView').then(m => m.CFOAnalyticsView), { ssr: false });
 
 export default function AdminPage() {
   const router = useRouter();
@@ -73,6 +75,8 @@ export default function AdminPage() {
     client_management: 'Client Hub',
     invoicing: 'Revenue Hub',
     outbox: 'Communication Hub',
+    financial_docs: 'Financial Documents',
+    cfo_analytics: 'CFO Analytics & MIS',
     compliance: 'Audit & Compliance Hub',
     settings: 'Config Hub',
     user_management: 'Secure Hub',
@@ -115,10 +119,10 @@ export default function AdminPage() {
       return (
         <div className="space-y-6">
           <div className="border-b border-outline-variant/30 pb-2">
-            <h1 className="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2 font-outfit">
+            <h2 className="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2 font-outfit">
               <Search className="text-primary" size={20} />
               Global Search Results for &ldquo;{searchQuery}&rdquo;
-            </h1>
+            </h2>
             <p className="text-xs text-outline">Searched across registered leads, tasks, and invoice milestones.</p>
           </div>
 
@@ -248,6 +252,8 @@ export default function AdminPage() {
         return <ComplianceView setCurrentTab={setCurrentTab} />;
       case 'financial_docs':
         return <FinancialDocsView />;
+      case 'cfo_analytics':
+        return <CFOAnalyticsView />;
       case 'reports':
         return <ReportsView />;
       case 'notifications':
@@ -344,7 +350,7 @@ export default function AdminPage() {
         />
 
         <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-[1440px] w-full mx-auto font-outfit">
-          {renderActiveSubView()}
+          <ErrorBoundary fallbackTitle="Admin Workspace Component">{renderActiveSubView()}</ErrorBoundary>
         </main>
       </div>
 

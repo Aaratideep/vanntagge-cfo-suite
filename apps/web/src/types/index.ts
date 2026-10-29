@@ -317,6 +317,11 @@ export interface Lead {
   status: LeadStatus;
   nextFollowUp?: string;
   remarks?: string;
+  locationCity?: string;
+  serviceRequested?: string;
+  leadTemperature?: 'HOT' | 'WARM' | 'COLD';
+  panNumber?: string;
+  aadhaarNumber?: string;
   assignedExecutiveId?: string;
   assignedExecutive?: User;
   createdAt: string;
@@ -1631,3 +1636,442 @@ export interface AIResponse {
 // ─── Timesheet / TimeLog Alias ─────────────────────────────────────────────
 export type TimeLog = TimesheetEntry;
 
+// ─── Client Financial Analytics & Statements Engine ──────────────────────────
+export interface ProfitAndLossStatement {
+  grossRevenue: number;
+  operatingRevenue: number;
+  otherIncome: number;
+  totalRevenue: number;
+  costOfGoodsSold: number;
+  grossProfit: number;
+  operatingExpenses: {
+    employeeCost: number;
+    rentUtilities: number;
+    salesMarketing: number;
+    adminGeneral: number;
+    depreciationAmortization: number;
+    financeCosts: number;
+    totalOpex: number;
+  };
+  ebitda: number;
+  ebit: number;
+  ebt: number;
+  taxExpense: number;
+  netProfit: number;
+}
+
+export interface BalanceSheetStatement {
+  currentAssets: {
+    cashAndBank: number;
+    accountsReceivable: number;
+    inventory: number;
+    shortTermInvestments: number;
+    otherCurrentAssets: number;
+    totalCurrentAssets: number;
+  };
+  nonCurrentAssets: {
+    propertyPlantEquipment: number;
+    intangibleAssets: number;
+    longTermInvestments: number;
+    otherNonCurrentAssets: number;
+    totalNonCurrentAssets: number;
+  };
+  totalAssets: number;
+
+  currentLiabilities: {
+    accountsPayable: number;
+    shortTermBorrowings: number;
+    statutoryDues: number;
+    otherCurrentLiabilities: number;
+    totalCurrentLiabilities: number;
+  };
+  nonCurrentLiabilities: {
+    longTermDebt: number;
+    otherNonCurrentLiabilities: number;
+    totalNonCurrentLiabilities: number;
+  };
+  equity: {
+    shareCapital: number;
+    retainedEarningsAndReserves: number;
+    totalEquity: number;
+  };
+  totalLiabilitiesAndEquity: number;
+  isBalanced: boolean;
+  variance: number;
+}
+
+export interface CashFlowStatement {
+  operatingCashFlow: number;
+  investingCashFlow: number;
+  financingCashFlow: number;
+  netCashFlow: number;
+  monthlyBurnRate: number;
+  cashRunwayMonths: number;
+}
+
+export interface ClientFinancialRatios {
+  // Liquidity
+  currentRatio: number;
+  quickRatio: number;
+  cashRatio: number;
+  // Margins
+  grossMarginPct: number;
+  ebitdaMarginPct: number;
+  netMarginPct: number;
+  returnOnEquityPct: number;
+  returnOnCapitalEmployedPct: number;
+  // Working Capital Cycle
+  netWorkingCapital: number;
+  dso: number; // Days Sales Outstanding
+  dpo: number; // Days Payable Outstanding
+  dio: number; // Days Inventory Outstanding
+  cashConversionCycle: number; // DIO + DSO - DPO
+  // Leverage & Solvency
+  debtToEquityRatio: number;
+  interestCoverageRatio: number;
+}
+
+export interface ClientFinancialStatement {
+  id: string;
+  clientId: string;
+  clientCompanyName: string;
+  fiscalYear: string;
+  period: string;
+  periodType: 'ANNUAL' | 'QUARTERLY' | 'MONTHLY';
+  currency: string;
+  pnl: ProfitAndLossStatement;
+  balanceSheet: BalanceSheetStatement;
+  cashFlow: CashFlowStatement;
+  ratios: ClientFinancialRatios;
+  status: 'DRAFT' | 'REVIEWED' | 'AUDITED' | 'PUBLISHED';
+  cfoNotes?: string;
+  sourceType: 'MANUAL_ENTRY' | 'TALLY_SYNC' | 'EXCEL_IMPORT' | 'AUDITED_REPORT';
+  createdAt: string;
+  updatedAt: string;
+  submittedBy?: string;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REPORT 3 — PROFESSIONAL VIRTUAL CFO SUITE MODELS
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface BudgetLineItem {
+  id: string;
+  category: 'REVENUE' | 'COGS' | 'OPEX' | 'FINANCE' | 'TAX';
+  name: string;
+  budgeted: number;
+  actual: number;
+  variance: number;
+  variancePct: number;
+  isFavorable: boolean;
+}
+
+export interface ClientBudget {
+  id: string;
+  clientId: string;
+  clientCompanyName: string;
+  fiscalYear: string;
+  period: string;
+  totalBudgetedRevenue: number;
+  totalActualRevenue: number;
+  totalBudgetedOpex: number;
+  totalActualOpex: number;
+  budgetedEbitda: number;
+  actualEbitda: number;
+  budgetedNetProfit: number;
+  actualNetProfit: number;
+  items: BudgetLineItem[];
+  cfoNotes?: string;
+  updatedAt: string;
+}
+
+export interface WeeklyCashFlowItem {
+  weekNumber: number;
+  weekLabel: string;
+  startDate: string;
+  openingCash: number;
+  customerCollections: number;
+  vendorPayments: number;
+  payrollAndSalaries: number;
+  statutoryDuesAndGst: number;
+  financeEmiAndInterest: number;
+  capexAndOther: number;
+  totalCashInflows: number;
+  totalCashOutflows: number;
+  netCashFlow: number;
+  closingCash: number;
+  isLowBalanceAlert: boolean;
+}
+
+export interface ThirteenWeekCashFlow {
+  id: string;
+  clientId: string;
+  clientCompanyName: string;
+  asOfDate: string;
+  minimumBalanceThreshold: number;
+  estimatedCashRunwayWeeks: number;
+  averageWeeklyBurn: number;
+  weeks: WeeklyCashFlowItem[];
+}
+
+export interface CostBreakdownAndBreakEven {
+  totalRevenue: number;
+  fixedCosts: number;
+  variableCosts: number;
+  contributionMargin: number;
+  contributionMarginRatioPct: number;
+  breakEvenRevenue: number;
+  marginOfSafetyAmount: number;
+  marginOfSafetyPct: number;
+  fixedCostsRatioPct: number;
+  variableCostsRatioPct: number;
+}
+
+export interface AgeingBucket {
+  bucket: '0-30 Days' | '31-60 Days' | '61-90 Days' | '>90 Days';
+  amount: number;
+  percentage: number;
+  invoiceCount: number;
+}
+
+export interface WorkingCapitalAgeing {
+  clientId: string;
+  totalReceivables: number;
+  totalPayables: number;
+  receivablesAgeing: AgeingBucket[];
+  payablesAgeing: AgeingBucket[];
+  overdueReceivablesAmount: number; // >60 and >90 days
+  highRiskDebtorsList: { customerName: string; amount: number; daysOverdue: number }[];
+}
+
+export interface FinancialHealthScore {
+  compositeScore: number; // 0 - 100
+  grade: 'A+' | 'A' | 'B' | 'C' | 'D';
+  ratingLabel: 'Institutional Grade' | 'Financially Healthy' | 'Moderate Risk' | 'Distressed / Critical';
+  pillarScores: {
+    solvency: number; // 0 - 25
+    liquidity: number; // 0 - 25
+    profitability: number; // 0 - 25
+    operatingEfficiency: number; // 0 - 25
+  };
+  executiveDiagnosis: string;
+  recommendations: string[];
+}
+
+export interface ScenarioAssumptions {
+  revenueGrowthPct: number;
+  grossMarginDeltaPct: number;
+  opexChangePct: number;
+  capexBudget: number;
+}
+
+export interface ScenarioSimulationResult {
+  scenarioName: 'Best Case' | 'Base Case' | 'Worst Case' | 'Custom';
+  projectedRevenue: number;
+  projectedGrossProfit: number;
+  projectedEbitda: number;
+  projectedNetProfit: number;
+  cashRunwayWeeks: number;
+  projectedCashBalance: number;
+}
+
+export interface StrategicCalculatorsResult {
+  fundingEligibility: {
+    dscr: number;
+    maxLoanCapacity: number;
+    estimatedMonthlyEmi: number;
+    isEligible: boolean;
+    cfoAssessment: string;
+  };
+  valuation: {
+    ebitdaMultipleValue: number;
+    dcfValue: number;
+    blendedEnterpriseValue: number;
+    multipleUsed: number;
+  };
+  capexRoi: {
+    paybackPeriodYears: number;
+    roiPct: number;
+    netPresentValue: number;
+    verdict: string;
+  };
+}
+
+export type IndustryType =
+  | 'MANUFACTURING'
+  | 'HOSPITALS'
+  | 'HOSPITALITY'
+  | 'LOGISTICS'
+  | 'SAAS'
+  | 'CONSTRUCTION'
+  | 'HEALTHCARE'
+  | 'CONSULTING'
+  | 'RETAIL';
+
+export interface ManufacturingInputs {
+  unitsProduced: number;
+  rawMaterialCost: number;
+  wastageScrapCost: number;
+  machineUptimeHours: number;
+  totalCapacityHours: number;
+  slowMovingInventoryVal: number;
+  totalInventoryVal: number;
+}
+
+export interface HospitalInputs {
+  opdRevenue: number;
+  ipdRevenue: number;
+  totalBeds: number;
+  occupiedBedDaysYear: number;
+  pharmacySales: number;
+  pharmacyCogs: number;
+  totalBilledAmount: number;
+  totalCollectedAmount: number;
+}
+
+export interface HospitalityInputs {
+  foodRevenue: number;
+  beverageRevenue: number;
+  ingredientCost: number;
+  kitchenStaffLabour: number;
+  availableTables: number;
+  dailyCoversOrders: number;
+  kitchenWastageCost: number;
+  breakEvenDailyTarget: number;
+}
+
+export interface LogisticsInputs {
+  activeVehicles: number;
+  totalKmTravelled: number;
+  totalFuelExpense: number;
+  totalWarehouseSqft: number;
+  occupiedWarehouseSqft: number;
+  fleetCapacityUtilizedPct: number;
+  maintenanceExpense: number;
+}
+
+export interface SaasInputs {
+  mrr: number;
+  arr: number;
+  salesMarketingSpend: number;
+  newCustomersAcquired: number;
+  totalActiveCustomers: number;
+  churnedCustomers: number;
+  averageCustomerLifespanMonths: number;
+  expansionRevenue: number;
+  grossChurnRevenue: number;
+  monthlyNetBurn: number;
+  cashBalance: number;
+}
+
+export interface ConstructionInputs {
+  contractValue: number;
+  budgetedProjectCost: number;
+  incurredCostToDate: number;
+  certifiedWorkValue: number;
+  totalBilledInvoices: number;
+  cashCollected: number;
+  retentionMoneyHeld: number;
+  physicalCompletionPct: number;
+}
+
+export interface IndustryOperationalInputs {
+  manufacturing?: ManufacturingInputs;
+  hospitals?: HospitalInputs;
+  hospitality?: HospitalityInputs;
+  logistics?: LogisticsInputs;
+  saas?: SaasInputs;
+  construction?: ConstructionInputs;
+}
+
+export interface IndustryKpiMetric {
+  key: string;
+  name: string;
+  value: string;
+  benchmark: string;
+  status: 'EXCELLENT' | 'GOOD' | 'NEEDS_ATTENTION' | 'CRITICAL';
+  insight: string;
+}
+
+export interface IndustryKpiProfile {
+  industry: IndustryType;
+  industryName: string;
+  templateCategory: string;
+  metrics: IndustryKpiMetric[];
+  benchmarkSummary: string;
+  actionableAdvisory: string[];
+}
+
+export interface ProfitLeakageAlert {
+  id: string;
+  title: string;
+  category: 'MARGIN_LEAKAGE' | 'OPEX_SPIKE' | 'WORKING_CAPITAL_DRAG' | 'TAX_EXPOSURE';
+  estimatedAnnualSavings: number;
+  severity: 'HIGH' | 'MEDIUM' | 'LOW';
+  detectionRule: string;
+  recommendedAction: string;
+}
+
+export interface FinancialAlert {
+  id: string;
+  clientId: string;
+  type: 'CASH_SHORTAGE' | 'RECEIVABLE_OVERDUE' | 'BUDGET_OVERRUN' | 'RATIO_DETERIORATION';
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  title: string;
+  message: string;
+  currentMetric: string;
+  thresholdLimit: string;
+  triggeredAt: string;
+}
+
+export interface AccountingConnector {
+  id: string;
+  provider: 'TALLY_PRIME' | 'ZOHO_BOOKS' | 'QUICKBOOKS' | 'BUSY' | 'BANK_STATEMENT';
+  name: string;
+  status: 'CONNECTED' | 'DISCONNECTED' | 'SYNCING';
+  lastSyncTime?: string;
+  recordsSynced: number;
+  autoSyncEnabled: boolean;
+  history: {
+    id: string;
+    syncedAt: string;
+    recordsCount: number;
+    status: 'SUCCESS' | 'FAILED' | 'ROLLED_BACK';
+    summary: string;
+  }[];
+}
+
+export interface ConsolidatedEntityReport {
+  parentClientId: string;
+  parentCompanyName: string;
+  entities: { clientId: string; companyName: string; revenue: number; ebitda: number; netProfit: number }[];
+  intercompanyEliminations: number;
+  consolidatedRevenue: number;
+  consolidatedGrossProfit: number;
+  consolidatedEbitda: number;
+  consolidatedNetProfit: number;
+  consolidatedAssets: number;
+  consolidatedLiabilities: number;
+}
+
+export interface FinancialGovernanceLock {
+  statementId: string;
+  period: string;
+  status: 'DRAFT' | 'PREPARED_BY_ASSOCIATE' | 'CFO_REVIEWED' | 'PARTNER_APPROVED' | 'PERIOD_LOCKED';
+  preparedBy: string;
+  preparedAt: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  digitalSignatureHash?: string;
+  immutableChangeLog: {
+    id: string;
+    timestamp: string;
+    user: string;
+    action: string;
+    previousValue?: string;
+    newValue?: string;
+  }[];
+}

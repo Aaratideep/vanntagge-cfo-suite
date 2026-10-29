@@ -35,6 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'calendar', label: 'Schedule Hub', icon: 'calendar_month' },
     { id: 'outbox', label: 'Communication Hub', icon: 'forward_to_inbox' },
     { id: 'financial_docs', label: 'Financial Documents', icon: 'description' },
+    { id: 'cfo_analytics', label: 'CFO Analytics & MIS', icon: 'analytics' },
     { id: 'compliance', label: 'Audit & Compliance', icon: 'verified_user' },
     { id: 'reports', label: 'MIS Reporting', icon: 'monitoring' },
   ];
@@ -45,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     
     if (currentUser.role === 'EMPLOYEE') {
-      return ['dashboard', 'work', 'compliance', 'timesheet', 'calendar', 'client_management', 'outbox'].includes(item.id);
+      return ['dashboard', 'work', 'compliance', 'timesheet', 'calendar'].includes(item.id);
     }
     
     if (currentUser.role === 'CLIENT') {
@@ -59,12 +60,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <>
       {/* Mobile Overlay Backdrop */}
       <div 
-        className={`md:hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 transition-opacity duration-300 ${!collapsed ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onClick={() => setCollapsed(true)}
+        className={`md:hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 transition-opacity duration-300 ${(mobileOpen || !collapsed) ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => {
+          setCollapsed(true);
+          if (setMobileOpen) setMobileOpen(false);
+        }}
+        aria-hidden="true"
       />
 
       <aside
-        className={`fixed left-0 top-0 h-full glass-sidebar text-foreground flex flex-col items-center py-4 overflow-y-auto overflow-x-hidden z-50 transition-all duration-300 w-60 md:w-16 group md:hover:w-60 shadow-xl peer ${!collapsed ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
+        className={`fixed left-0 top-0 h-full glass-sidebar text-foreground flex flex-col items-center py-4 overflow-y-auto overflow-x-hidden z-50 transition-all duration-300 w-60 md:w-16 group md:hover:w-60 shadow-xl peer ${(mobileOpen || !collapsed) ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}
       >
       {/* Branding Header */}
       <div className="mb-6 flex flex-col items-center w-full px-2">
@@ -76,7 +81,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           />
         </div>
         <div className="mt-3 text-center transition-all duration-300 overflow-hidden max-h-[100px] opacity-100 md:max-h-0 md:opacity-0 md:group-hover:max-h-[100px] md:group-hover:opacity-100">
-          <h1 className="text-sm font-extrabold text-slate-900 tracking-tight font-outfit leading-tight">VANNTAGGE</h1>
+          <span className="text-sm font-extrabold text-slate-900 tracking-tight font-outfit leading-tight block">VANNTAGGE</span>
           <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold -mt-0.5">CFO SERVICES LLP</p>
         </div>
       </div>
@@ -92,7 +97,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => setCurrentTab(item.id)}
+              aria-label={item.label}
+              onClick={() => {
+                setCurrentTab(item.id);
+                if (setMobileOpen) setMobileOpen(false);
+              }}
               className={`w-full flex items-center p-2.5 rounded-xl transition-all duration-200 ${
                 isActive
                   ? 'bg-primary text-white font-bold shadow-md'
@@ -132,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <span className="text-sm whitespace-nowrap overflow-hidden transition-all duration-300 max-w-[200px] ml-3 opacity-100 md:max-w-0 md:ml-0 md:opacity-0 md:group-hover:max-w-[200px] md:group-hover:ml-3 md:group-hover:opacity-100 block">Alert Hub</span>
         </button>
-        {(currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'EMPLOYEE') && (
+        {currentUser.role === 'SUPER_ADMIN' && (
           <button
             onClick={() => setCurrentTab('settings')}
             className={`w-full flex items-center p-2.5 rounded-xl transition-all duration-200 ${

@@ -35,11 +35,10 @@ export const ClientInvoicesView: React.FC = () => {
 
     // 1. Standalone invoices for client
     standaloneInvoices.forEach((inv) => {
-      if (
-        (inv.clientId === clientId || (currentUser?.email && inv.clientCompanyName?.toLowerCase().includes(currentUser.name.toLowerCase()))) &&
-        inv.status !== 'DRAFT' &&
-        !seenIds.has(inv.id)
-      ) {
+      const isMyInv =
+        inv.clientId === currentUser?.id ||
+        (currentUser?.linkedEntity && inv.clientCompanyName?.toLowerCase() === currentUser.linkedEntity.toLowerCase());
+      if (isMyInv && inv.status !== 'DRAFT' && !seenIds.has(inv.id)) {
         list.push(inv);
         seenIds.add(inv.id);
       }
@@ -47,7 +46,10 @@ export const ClientInvoicesView: React.FC = () => {
 
     // 2. Engagement invoices for client
     engagements.forEach((eng) => {
-      if (eng.clientId === clientId) {
+      const isMyEng =
+        eng.clientId === currentUser?.id ||
+        (currentUser?.linkedEntity && eng.clientCompanyName?.toLowerCase() === currentUser.linkedEntity.toLowerCase());
+      if (isMyEng) {
         (eng.invoices || []).forEach((inv) => {
           if (inv.status !== 'DRAFT' && !seenIds.has(inv.id)) {
             list.push({
@@ -233,6 +235,7 @@ export const ClientInvoicesView: React.FC = () => {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setSelectedInvoicePreview(inv)}
+                            aria-label={`View official invoice ${inv.invoiceNumber}`}
                             className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs rounded border border-slate-300 transition flex items-center gap-1"
                             title="View Official Invoice"
                           >
@@ -240,6 +243,7 @@ export const ClientInvoicesView: React.FC = () => {
                           </button>
                           <button
                             onClick={() => exportInvoicePdf(inv, adminSettings)}
+                            aria-label={`Download PDF for invoice ${inv.invoiceNumber}`}
                             className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs rounded border border-blue-200 transition flex items-center gap-1"
                             title="Download PDF"
                           >

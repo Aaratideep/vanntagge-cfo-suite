@@ -206,6 +206,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   openCreateLeadModal,
   openCreateQuotationModal,
 }) => {
+  const [isChartMounted, setIsChartMounted] = React.useState(false);
+  React.useEffect(() => {
+    setIsChartMounted(true);
+  }, []);
   const { leads, followUps, engagements, currentUser } = useDashboardStore();
   const { setPageContext } = usePageContextStore();
 
@@ -217,11 +221,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
   }, [leads, engagements, followUps, setPageContext]);
 
-  if (!currentUser) return null;
-
   const [periodFilter, setPeriodFilter] = React.useState<'ALL' | 'THIS_MONTH' | 'LAST_QUARTER' | 'YTD'>('ALL');
   const [showInvoicesModal, setShowInvoicesModal] = React.useState(false);
   const [showCollectionsModal, setShowCollectionsModal] = React.useState(false);
+
+  if (!currentUser) return null;
 
   // Filter based on period
   const filterDateByPeriod = (dateStr?: string) => {
@@ -372,15 +376,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <button
+            onClick={() => setCurrentTab('cfo_analytics')}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/10 transition-all hover:scale-[1.02] cursor-pointer"
+          >
+            <TrendingUp size={14} />
+            CFO Analytics & Ingestion
+          </button>
+          <button
             onClick={openCreateLeadModal}
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-600/10 transition-all hover:scale-[1.02]"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
           >
             <Plus size={14} />
             New Lead
           </button>
           <button
             onClick={openCreateQuotationModal}
-            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold shadow-xs transition-all"
+            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
           >
             <Plus size={14} />
             Create Quotation
@@ -501,6 +512,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-[10px] text-slate-400">Pipeline distribution across business stages</p>
           </div>
           <div className="flex-1 w-full relative">
+            {!isChartMounted ? (
+              <div className="w-full h-full flex flex-col justify-end p-4 gap-2 animate-pulse bg-slate-50/50 rounded-xl">
+                <div className="h-3 bg-slate-200 rounded w-1/3 mb-auto"></div>
+                <div className="flex items-end gap-2 h-44">
+                  <div className="bg-blue-100 rounded-t w-full h-16"></div>
+                  <div className="bg-indigo-100 rounded-t w-full h-24"></div>
+                  <div className="bg-amber-100 rounded-t w-full h-32"></div>
+                  <div className="bg-purple-100 rounded-t w-full h-40"></div>
+                </div>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
@@ -526,6 +548,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -539,6 +562,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="text-[10px] font-semibold text-slate-500">Currency in INR (₹)</span>
           </div>
           <div className="flex-1 w-full">
+            {!isChartMounted ? (
+              <div className="w-full h-full flex flex-col justify-end p-4 gap-2 animate-pulse bg-slate-50/50 rounded-xl">
+                <div className="h-3 bg-slate-200 rounded w-1/4 mb-auto"></div>
+                <div className="flex items-end gap-3 h-44">
+                  <div className="bg-slate-200 rounded-t w-full h-20"></div>
+                  <div className="bg-slate-200 rounded-t w-full h-32"></div>
+                  <div className="bg-slate-200 rounded-t w-full h-40"></div>
+                  <div className="bg-slate-200 rounded-t w-full h-28"></div>
+                </div>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartDataArray} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -579,6 +613,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
               </BarChart>
             </ResponsiveContainer>
+            )}
           </div>
         </div>
 

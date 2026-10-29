@@ -35,16 +35,15 @@ import { EmployeeOnboardingModal } from './EmployeeOnboardingModal';
 import { LeaveApplicationModal } from './LeaveApplicationModal';
 import { TaskExecutionModal } from './TaskExecutionModal';
 import { usePageContextStore } from '../store/pageContextStore';
-import { Task, ReviewPoint, LeaveRequest } from '../types';
+import { Task, ReviewPoint, LeaveRequest, User } from '../types';
 
 interface EmployeeDashboardViewProps {
   initialTab?: string;
 }
 
-export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ initialTab = 'dashboard' }) => {
+const EmployeeDashboardContent: React.FC<{ initialTab: string; currentUser: User }> = ({ initialTab, currentUser }) => {
   const { 
     engagements, 
-    currentUser, 
     leaves, 
     updateTask, 
     getEmployeeWorkload, 
@@ -113,42 +112,56 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ in
     });
   }, [engagements.length, leaves.length, activeTab, setPageContext]);
 
-  if (!currentUser) return null;
-
-  if (currentUser.role === 'EMPLOYEE' && !currentUser.isOnboarded) {
-    return <EmployeeOnboardingModal />;
-  }
-
   const now = new Date();
 
   const allMyTasks = useMemo(() => {
     const list: any[] = [];
     engagements.forEach((e) => {
       (e.tasks || []).forEach((t) => {
-        if (t.employeeId === currentUser.id || !t.employeeId || t.employeeName?.includes('Priya') || currentUser.role === 'EMPLOYEE') {
+        const isAssigned =
+          t.employeeId === currentUser.id ||
+          (t.employeeName && currentUser.name && t.employeeName.toLowerCase().includes(currentUser.name.toLowerCase())) ||
+          (e as any).assignedEmployeeId === currentUser.id ||
+          ((e as any).teamMembers && (e as any).teamMembers.includes(currentUser.id));
+
+        if (isAssigned) {
           list.push({ ...t, clientName: e.clientCompanyName, engagementId: e.id });
         }
       });
     });
     return list;
-  }, [engagements, currentUser.id]);
+  }, [engagements, currentUser.id, currentUser.name]);
 
   const allMyCompliances = useMemo(() => {
     const list: any[] = [];
-    engagements.forEach((e) => {
+    (engagements || []).forEach((e) => {
       (e.compliances || []).forEach((c) => {
-        if (c.responsibleEmployeeId === currentUser.id || !c.responsibleEmployeeId || currentUser.role === 'EMPLOYEE') {
-          if (c.status !== 'COMPLETED') {
-            list.push({ ...c, clientName: e.clientCompanyName, engagementId: e.id });
-          }
+        const isAssigned =
+          c.responsibleEmployeeId === currentUser?.id ||
+          (c.responsibleEmployeeName && currentUser?.name && c.responsibleEmployeeName.toLowerCase().includes(currentUser.name.toLowerCase())) ||
+          (e as any).assignedEmployeeId === currentUser?.id ||
+          ((e as any).teamMembers && (e as any).teamMembers.includes(currentUser?.id));
+
+        if (isAssigned && c.status !== 'COMPLETED') {
+          list.push({ ...c, clientName: e.clientCompanyName || 'General Operations', engagementId: e.id });
         }
       });
     });
     return list;
-  }, [engagements, currentUser.id]);
+  }, [engagements, currentUser?.id, currentUser?.name]);
 
   // Employee workload from Prompt 11 store function
-  const workloadSummary = getEmployeeWorkload(currentUser.id);
+  const workloadSummary = (getEmployeeWorkload ? getEmployeeWorkload(currentUser.id) : null) || {
+    userId: currentUser.id,
+    userName: currentUser.name,
+    weeklyCapacityHours: 40,
+    assignedHoursThisWeek: 0,
+    totalOpenTasks: 0,
+    overdueTasks: 0,
+    completedTasks: 0,
+    utilizationPct: 0,
+    isOnLeave: false,
+  };
 
   // Compute Metrics
   const openTasks = allMyTasks.filter(t => t.status !== 'COMPLETED');
@@ -162,8 +175,10 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ in
 
   // Filtered Tasks for 'employee_tasks' tab
   const filteredTasks = allMyTasks.filter(t => {
-    const matchesSearch = t.title.toLowerCase().includes(taskSearch.toLowerCase()) || 
-                          t.clientName.toLowerCase().includes(taskSearch.toLowerCase());
+    const title = (t.title || '').toLowerCase();
+    const client = (t.clientName || '').toLowerCase();
+    const query = (taskSearch || '').toLowerCase();
+    const matchesSearch = title.includes(query) || client.includes(query);
     const matchesStatus = taskStatusFilter === 'ALL' || t.status === taskStatusFilter;
     const matchesPriority = taskPriorityFilter === 'ALL' || t.priority === taskPriorityFilter;
     return matchesSearch && matchesStatus && matchesPriority;
@@ -1186,4 +1201,16 @@ export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ in
       )}
     </div>
   );
+};
+
+export const EmployeeDashboardView: React.FC<EmployeeDashboardViewProps> = ({ initialTab = 'dashboard' }) => {
+  const { currentUser } = useDashboardStore();
+
+  if (!currentUser) return null;
+
+  if (currentUser.role === 'EMPLOYEE' && !currentUser.isOnboarded) {
+    return <EmployeeOnboardingModal />;
+  }
+
+  return <EmployeeDashboardContent initialTab={initialTab} currentUser={currentUser} />;
 };

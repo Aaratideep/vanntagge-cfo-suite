@@ -16,6 +16,7 @@ import { useDashboardStore } from '../../store/dashboardStore';
 import { SessionManager } from '../../components/SessionManager';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/Sidebar';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 export default function ClientPage() {
   const router = useRouter();
@@ -34,43 +35,45 @@ export default function ClientPage() {
   useEffect(() => {
     if (!currentUser) {
       router.push('/');
-    } else if (currentUser.role === 'SUPER_ADMIN' || currentUser.role === 'ADMIN') {
-      router.push('/admin');
     } else if (currentUser.role === 'EMPLOYEE') {
       router.push('/employee');
-    } else if (currentUser.role !== 'CLIENT') {
-      router.push('/');
     }
   }, [currentUser, router]);
 
   if (!isMounted) return null;
-  if (!currentUser || currentUser.role !== 'CLIENT') return null;
+  if (!currentUser || currentUser.role === 'EMPLOYEE') return null;
 
   const tabTitles: { [key: string]: string } = {
     dashboard: 'Client Dashboard',
-    financial_docs: 'Financial Documents',
-    reports: 'MIS Reporting',
-    calendar: 'Schedule Hub',
-    notifications: 'Alert Hub',
+    financial_insights: 'Virtual CFO Insights & Ratios',
+    services: 'Active Subscribed Services',
+    tasks: 'Milestones & Action Items',
+    documents: 'Audited Financial Documents',
+    compliance: 'Statutory Compliance Deadlines',
+    reports: 'Executive MIS & Board Packs',
+    invoices: 'Fee Notes & Invoices Vault',
+    company_profile: 'Company Corporate Profile',
   };
 
   const renderActiveSubView = () => {
     switch (currentTab) {
       case 'dashboard':
         return <ClientDashboardView />;
+      case 'financial_insights':
+        return <ClientFinancialInsightsView />;
       case 'services':
         return <ClientServicesView />;
-      case 'client_tasks':
+      case 'tasks':
         return <ClientTasksView />;
       case 'documents':
         return <ClientDocumentsView />;
-      case 'released_reports':
+      case 'compliance':
+        return <ClientComplianceView />;
+      case 'reports':
         return <ClientReleasedReportsView />;
-      case 'client_invoices':
+      case 'invoices':
         return <ClientInvoicesView />;
-      case 'insights':
-        return <ClientFinancialInsightsView />;
-      case 'profile':
+      case 'company_profile':
         return <ClientCompanyProfileView />;
       default:
         return <ClientDashboardView />;
@@ -91,22 +94,25 @@ export default function ClientPage() {
         setMobileOpen={setMobileMenuOpen}
       />
       <div className={`flex-1 flex flex-col min-w-0 ${spacingClass} transition-all duration-300`}>
-        <Header onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        <Header
+          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           setCurrentTab={setCurrentTab}
           setSearchTarget={setSearchTarget}
-          currentTabTitle={tabTitles[currentTab] || 'Client Dashboard'}
+          currentTabTitle={tabTitles[currentTab] || 'Client Portal'}
           onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />
         <main className="flex-1 p-3 sm:p-6 md:p-8 max-w-[1440px] w-full mx-auto font-outfit">
-          {renderActiveSubView()}
+          <ErrorBoundary fallbackTitle="Client Portal Component">
+            {renderActiveSubView()}
+          </ErrorBoundary>
         </main>
       </div>
 
       {globalSuccessMsg && (
-        <div className="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 z-50 font-outfit">
-          <CheckCircle className="text-emerald-400" size={20} />
+        <div className="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 z-50">
+          <CheckCircle className="text-green-400" size={20} />
           {globalSuccessMsg}
         </div>
       )}

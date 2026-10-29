@@ -28,10 +28,12 @@ import {
   Sparkles,
   Filter,
   CheckCheck,
+  Video,
 } from 'lucide-react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { ComplianceStatus } from '../../types';
 import { TaxAudit15StepView } from './TaxAudit15StepView';
+import { StartupIndia80IacView } from './StartupIndia80IacView';
 
 interface ComplianceViewProps {
   setCurrentTab?: (tab: string) => void;
@@ -483,7 +485,7 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
   } = useDashboardStore();
 
   const [activeEngId, setActiveEngId] = useState<string>(engagements[0]?.id || '');
-  const [activeTab, setActiveTab] = useState<'flow_map' | 'tax_audit_15_step' | 'requirements' | 'audit_program' | 'filings' | 'reminders'>('flow_map');
+  const [activeTab, setActiveTab] = useState<'flow_map' | 'tax_audit_15_step' | 'startup_india_80iac' | 'requirements' | 'audit_program' | 'filings' | 'reminders'>('flow_map');
 
   // Search & Filters
   const [flowSearch, setFlowSearch] = useState('');
@@ -679,6 +681,21 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
           <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
             activeTab === 'flow_map' ? 'bg-teal-50 text-teal-700 border border-teal-200' : 'bg-slate-200 text-slate-600'
           }`}>24/24</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('startup_india_80iac')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'startup_india_80iac'
+              ? 'bg-white text-orange-800 border border-slate-200/80 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-semibold'
+          }`}
+        >
+          <Video size={14} className={activeTab === 'startup_india_80iac' ? 'text-orange-600' : 'text-slate-400'} />
+          Startup India & 80-IAC (Tax Holiday)
+          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+            activeTab === 'startup_india_80iac' ? 'bg-orange-50 text-orange-700 border border-orange-200' : 'bg-slate-200 text-slate-600'
+          }`}>Pitch Video Audit</span>
         </button>
 
         <button
@@ -1134,6 +1151,10 @@ export const ComplianceView: React.FC<ComplianceViewProps> = ({ setCurrentTab })
          ═══════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'tax_audit_15_step' && (
         <TaxAudit15StepView />
+      )}
+
+      {activeTab === 'startup_india_80iac' && (
+        <StartupIndia80IacView />
       )}
 
       {/* ═══════════════════════════════════════════════════════════════════════

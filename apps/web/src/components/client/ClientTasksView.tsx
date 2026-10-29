@@ -26,7 +26,11 @@ export const ClientTasksView: React.FC = () => {
   if (!currentUser) return null;
 
   // Flatten tasks belonging to client engagements
-  const myEngagements = engagements.filter((e) => e.clientId === currentUser.id);
+  const myEngagements = engagements.filter(
+    (e) =>
+      e.clientId === currentUser.id ||
+      (currentUser.linkedEntity && e.clientCompanyName?.toLowerCase() === currentUser.linkedEntity.toLowerCase())
+  );
 
   // Client Action Tasks (e.g. document requirements, client confirmation, upload requests)
   const clientActionTasks: { task: Task; engagementName: string }[] = [];

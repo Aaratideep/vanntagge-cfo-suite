@@ -20,14 +20,19 @@ export const SettingsView: React.FC = () => {
   const [seedError, setSeedError] = useState('');
   const [toastMsg, setToastMsg] = useState<{type: 'error' | 'success', text: string} | null>(null);
 
-  // Auto-sync the provided app password into the store if missing
-  React.useEffect(() => {
-    if (adminSettings && !adminSettings.smtpPassword) {
-      setAdminSettings({ smtpPassword: 'whge zcfi iywk ttlc' });
-    }
-  }, [adminSettings, setAdminSettings]);
-
   if (!currentUser) return null;
+
+  if (currentUser.role !== 'SUPER_ADMIN') {
+    return (
+      <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 max-w-md mx-auto my-12 shadow-sm font-outfit">
+        <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+          <span className="material-symbols-outlined text-2xl">lock</span>
+        </div>
+        <h2 className="text-lg font-bold text-slate-800">Access Restricted</h2>
+        <p className="text-xs text-slate-500 mt-2">Firm Config Hub and system secrets are strictly restricted to Super Administrators.</p>
+      </div>
+    );
+  }
 
   const handleSeedFirebase = async () => {
     setSeeding(true);
@@ -175,14 +180,17 @@ export const SettingsView: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-500 mb-1 font-semibold">SMTP App Password (For Email Dispatch)</label>
+                    <label className="block text-slate-500 mb-1 font-semibold">SMTP App Password (Write-Only)</label>
                     <input
                       type="password"
-                      placeholder="16-digit App Password"
-                      value={adminSettings.smtpPassword || ''}
-                      onChange={(e) => setAdminSettings({ smtpPassword: e.target.value })}
+                      placeholder={adminSettings.smtpPassword ? "•••••••••••••••• (Encrypted on Server)" : "Enter 16-digit App Password"}
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) setAdminSettings({ smtpPassword: e.target.value });
+                      }}
                       className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
                     />
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Write-only. Stored securely on server.</span>
                   </div>
                 </div>
               </div>
@@ -398,14 +406,17 @@ export const SettingsView: React.FC = () => {
             {aiEnabled && (
               <div className="p-4 bg-slate-50 rounded-xl space-y-3 border border-slate-100 mb-3 mx-4">
                 <div>
-                  <label className="block text-slate-500 mb-1 font-semibold">Gemini API Key</label>
+                  <label className="block text-slate-500 mb-1 font-semibold">Gemini API Key (Write-Only)</label>
                   <input
                     type="password"
-                    placeholder="AIzaSyB..."
-                    value={adminSettings.geminiApiKey || ''}
-                    onChange={(e) => setAdminSettings({ geminiApiKey: e.target.value })}
+                    placeholder={adminSettings.geminiApiKey ? "•••••••••••••••• (Server Environment)" : "Enter Gemini API Key"}
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) setAdminSettings({ geminiApiKey: e.target.value });
+                    }}
                     className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
                   />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Managed server-side. Leave blank to keep existing server secret.</span>
                 </div>
                 <div>
                   <label className="block text-slate-500 mb-1 font-semibold">Model Selection</label>
@@ -457,14 +468,17 @@ export const SettingsView: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-slate-500 mb-1 font-semibold">Twilio Auth Token</label>
+                    <label className="block text-slate-500 mb-1 font-semibold">Twilio Auth Token (Write-Only)</label>
                     <input
                       type="password"
-                      placeholder="Your Auth Token"
-                      value={adminSettings.twilioAuthToken || ''}
-                      onChange={(e) => setAdminSettings({ twilioAuthToken: e.target.value })}
+                      placeholder={adminSettings.twilioAuthToken ? "•••••••••••••••• (Encrypted on Server)" : "Enter Twilio Auth Token"}
+                      defaultValue=""
+                      onChange={(e) => {
+                        if (e.target.value) setAdminSettings({ twilioAuthToken: e.target.value });
+                      }}
                       className="w-full bg-white border border-slate-200 rounded-lg p-2 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
                     />
+                    <span className="text-[10px] text-slate-400 mt-0.5 block">Write-only secret.</span>
                   </div>
                   <div>
                     <label className="block text-slate-500 mb-1 font-semibold">Twilio WhatsApp Number</label>

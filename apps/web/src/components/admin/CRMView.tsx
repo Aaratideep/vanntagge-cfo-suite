@@ -137,7 +137,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
     quotations, createQuotation, updateQuotationStatus, deleteQuotation, convertQuotationToInvoice,
     engagementLetters, createEngagementLetter, deleteEngagementLetter,
     convertLeadToClient,
-    users, currentUser, addUser, onboardNewClient,
+    users, currentUser, addUser, onboardNewClient, addCommunicationLog,
   } = useDashboardStore();
 
   const handleExportLeads = () => {
@@ -232,6 +232,8 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
     industry: 'Technology', businessType: 'Pvt. Ltd.', leadSource: 'Website',
     expectedRevenue: 0, priority: 'MEDIUM' as Priority, remarks: '',
     ownerName: '', ownerContact: '', assignedExecutiveId: '',
+    locationCity: 'Mumbai', serviceRequested: 'Virtual CFO Advisory Services',
+    leadTemperature: 'WARM' as 'HOT' | 'WARM' | 'COLD', panNumber: '', aadhaarNumber: '',
   };
   const [newLeadForm, setNewLeadForm] = useState({ ...EMPTY_LEAD });
   const [editLeadForm, setEditLeadForm] = useState({ ...EMPTY_LEAD });
@@ -288,7 +290,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
   const [portalEmail, setPortalEmail] = useState('');
   const [portalPassword, setPortalPassword] = useState('');
   const [showPortalPassword, setShowPortalPassword] = useState(false);
-  const [autoDispatchCreds, setAutoDispatchCreds] = useState(true);
+  const [autoDispatchCreds, setAutoDispatchCreds] = useState(false);
   const [createdCredsSummary, setCreatedCredsSummary] = useState<{
     companyName: string;
     contactPerson: string;
@@ -368,12 +370,20 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
 
   const handleCreateLead = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newLeadForm.companyName.trim() && !newLeadForm.contactPerson.trim()) {
-      setLeadFormError('Company Name or Contact Name is required.');
+    if (!newLeadForm.companyName.trim()) {
+      setLeadFormError('Company Name is required.');
       return;
     }
-    if (!newLeadForm.companyName.trim()) {
-      setLeadFormError('Company Name cannot be empty.');
+    if (!newLeadForm.contactPerson.trim()) {
+      setLeadFormError('Contact Person is required.');
+      return;
+    }
+    if (!newLeadForm.email.trim()) {
+      setLeadFormError('Email address is required.');
+      return;
+    }
+    if (!newLeadForm.phone.trim()) {
+      setLeadFormError('Phone number is required.');
       return;
     }
     setLeadFormError('');
@@ -459,12 +469,20 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
   const handleUpdateLead = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedLead) return;
-    if (!editLeadForm.companyName.trim() && !editLeadForm.contactPerson.trim()) {
-      setLeadFormError('Company Name or Contact Name is required.');
+    if (!editLeadForm.companyName.trim()) {
+      setLeadFormError('Company Name is required.');
       return;
     }
-    if (!editLeadForm.companyName.trim()) {
-      setLeadFormError('Company Name cannot be empty.');
+    if (!editLeadForm.contactPerson.trim()) {
+      setLeadFormError('Contact Person is required.');
+      return;
+    }
+    if (!editLeadForm.email.trim()) {
+      setLeadFormError('Email address is required.');
+      return;
+    }
+    if (!editLeadForm.phone.trim()) {
+      setLeadFormError('Phone number is required.');
       return;
     }
     setLeadFormError('');
@@ -493,6 +511,16 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
       validity: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'SENT', terms: quotationTerms,
     });
+    addCommunicationLog({
+      type: 'EMAIL',
+      recipient: selectedLead.email,
+      subject: `Commercial Proposal & Fee Quotation #${quotationNumber} - VANNTAGE CFO`,
+      body: `Quotation #${quotationNumber} for amount ₹${finalAmount.toLocaleString('en-IN')} dispatched to ${selectedLead.contactPerson}. Services: ${quotationServices.map(s => s.name).join(', ')}.`,
+      status: 'SENT',
+      sentBy: currentUser?.name || 'Aarati Mule',
+      relatedEntityId: selectedLead.id,
+      relatedEntityType: 'LEAD',
+    });
     updateLead(selectedLead.id, { status: 'PROPOSAL_SENT' });
     if (selectedLead) {
       setSelectedLead((prev) => (prev ? { ...prev, status: 'PROPOSAL_SENT' } : null));
@@ -501,7 +529,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
     setQuotationServices([{ name: 'Virtual CFO Advisory Services', price: 15000 }]);
     setQuotationDiscount(0);
     setCrmSubTab('quotations');
-    showSuccess('Quotation sent to client!');
+    showSuccess('Quotation sent to client & logged in Communication Hub!');
   };
 
   const handleGenerateLetter = (e: React.FormEvent) => {
@@ -554,6 +582,11 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
       expectedRevenue: lead.expectedRevenue, priority: lead.priority, remarks: lead.remarks || '',
       ownerName: lead.ownerName || '', ownerContact: lead.ownerContact || '',
       assignedExecutiveId: lead.assignedExecutiveId || '',
+      locationCity: lead.locationCity || 'Mumbai',
+      serviceRequested: lead.serviceRequested || 'Virtual CFO Advisory Services',
+      leadTemperature: lead.leadTemperature || 'WARM',
+      panNumber: lead.panNumber || '',
+      aadhaarNumber: lead.aadhaarNumber || '',
     });
     setEditingLead(false);
   };
@@ -1183,11 +1216,11 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                       { label: 'Company Name', key: 'companyName', type: 'text' },
                       { label: 'Contact Person', key: 'contactPerson', type: 'text' },
                       { label: 'Email', key: 'email', type: 'email' },
-                      { label: 'Phone', key: 'phone', type: 'text' },
+                      { label: 'Phone', key: 'phone', type: 'tel' },
                       { label: 'Owner Name', key: 'ownerName', type: 'text' },
-                      { label: 'Owner Contact', key: 'ownerContact', type: 'text' },
+                      { label: 'Owner Contact', key: 'ownerContact', type: 'tel' },
                     ].map(f => {
-                      const isRequired = f.key === 'companyName';
+                      const isRequired = ['companyName', 'contactPerson', 'email', 'phone'].includes(f.key);
                       const isEmpty = isRequired && !(editLeadForm as any)[f.key]?.trim();
                       return (
                         <div key={f.key}>
@@ -1215,9 +1248,56 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                       </select>
                     </div>
                     <div>
+                      <label className="block text-slate-500 mb-1">Business Type</label>
+                      <select value={editLeadForm.businessType}
+                        onChange={e => setEditLeadForm({ ...editLeadForm, businessType: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none">
+                        {BUSINESS_TYPES.map(b => <option key={b}>{b}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 mb-1">Lead Source</label>
+                      <select value={editLeadForm.leadSource}
+                        onChange={e => setEditLeadForm({ ...editLeadForm, leadSource: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none">
+                        {LEAD_SOURCES.map(s => <option key={s}>{s}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 mb-1">Allocate To (Staff)</label>
+                      <select value={editLeadForm.assignedExecutiveId || ''}
+                        onChange={e => setEditLeadForm({ ...editLeadForm, assignedExecutiveId: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none">
+                        <option value="">Unassigned</option>
+                        {users.filter(u => u.role === 'ADMIN' || u.role === 'EMPLOYEE' || u.role === 'SUPER_ADMIN').map((u) => (
+                          <option key={u.id} value={u.id}>{u.name} ({u.role === 'EMPLOYEE' ? 'Staff' : 'Admin'})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 mb-1">Location / City</label>
+                      <input
+                        type="text"
+                        value={editLeadForm.locationCity || ''}
+                        onChange={e => setEditLeadForm({ ...editLeadForm, locationCity: e.target.value })}
+                        placeholder="e.g. Mumbai, Bengaluru"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-500 mb-1">Lead Temperature</label>
+                      <select value={editLeadForm.leadTemperature || 'WARM'}
+                        onChange={e => setEditLeadForm({ ...editLeadForm, leadTemperature: e.target.value as any })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none">
+                        <option value="HOT">HOT (High Intent / Active)</option>
+                        <option value="WARM">WARM (Evaluating Proposal)</option>
+                        <option value="COLD">COLD (Long-Term Pipeline)</option>
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-slate-500 mb-1">Expected Revenue (₹)</label>
-                      <input type="number" value={editLeadForm.expectedRevenue}
-                        onChange={e => setEditLeadForm({ ...editLeadForm, expectedRevenue: Number(e.target.value) })}
+                      <input type="number" min="0" value={editLeadForm.expectedRevenue}
+                        onChange={e => setEditLeadForm({ ...editLeadForm, expectedRevenue: Math.max(0, Number(e.target.value)) })}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 outline-none"
                       />
                     </div>
@@ -1251,12 +1331,16 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                   {/* Lead Info Grid */}
                   <div className="grid grid-cols-2 gap-3 bg-slate-50 rounded-xl p-4 border border-slate-100 text-xs">
                     {[
-                      { label: 'Contact', value: selectedLead.contactPerson },
-                      { label: 'Owner', value: selectedLead.ownerName ? `${selectedLead.ownerName} (${selectedLead.ownerContact})` : 'N/A' },
+                      { label: 'Contact Person', value: selectedLead.contactPerson },
+                      { label: 'Owner', value: selectedLead.ownerName ? (selectedLead.ownerContact ? `${selectedLead.ownerName} (${selectedLead.ownerContact})` : selectedLead.ownerName) : '—' },
                       { label: 'Business Type', value: selectedLead.businessType },
                       { label: 'Email', value: selectedLead.email },
                       { label: 'Phone', value: selectedLead.phone },
+                      { label: 'Location / City', value: selectedLead.locationCity || 'Mumbai, MH' },
+                      { label: 'Service Requested', value: selectedLead.serviceRequested || 'Virtual CFO Advisory' },
+                      { label: 'Lead Temperature', value: selectedLead.leadTemperature || 'WARM' },
                       { label: 'Lead Source', value: selectedLead.leadSource },
+                      { label: 'PAN Card', value: selectedLead.panNumber || '—' },
                       { label: 'Expected Revenue', value: formatINR(selectedLead.expectedRevenue) },
                     ].map(({ label, value }) => (
                       <div key={label}>
@@ -1265,7 +1349,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                       </div>
                     ))}
                     <div className="col-span-2">
-                      <span className="text-[10px] text-slate-400 block">Remarks</span>
+                      <span className="text-[10px] text-slate-400 block">Remarks & Strategy Notes</span>
                       <p className="text-slate-600 mt-0.5">{selectedLead.remarks || 'No remarks.'}</p>
                     </div>
                   </div>
@@ -1516,6 +1600,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                   <label className="block text-slate-600 font-semibold mb-1">Company Name *</label>
                   <input
                     type="text"
+                    required
                     value={newLeadForm.companyName}
                     onChange={e => { setNewLeadForm({ ...newLeadForm, companyName: e.target.value }); if (leadFormError) setLeadFormError(''); }}
                     placeholder="e.g. Acme Pvt. Ltd."
@@ -1531,6 +1616,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                   <label className="block text-slate-600 font-semibold mb-1">Contact Person *</label>
                   <input
                     type="text"
+                    required
                     value={newLeadForm.contactPerson}
                     onChange={e => { setNewLeadForm({ ...newLeadForm, contactPerson: e.target.value }); if (leadFormError) setLeadFormError(''); }}
                     placeholder="e.g. Ramesh Sharma"
@@ -1557,8 +1643,8 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                     onChange={e => setNewLeadForm({ ...newLeadForm, assignedExecutiveId: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 outline-none">
                     <option value="">Unassigned</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.name}</option>
+                    {users.filter(u => u.role === 'ADMIN' || u.role === 'EMPLOYEE' || u.role === 'SUPER_ADMIN').map((u) => (
+                      <option key={u.id} value={u.id}>{u.name} ({u.role === 'EMPLOYEE' ? 'Staff' : 'Admin'})</option>
                     ))}
                   </select>
                 </div>
@@ -1571,7 +1657,8 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
                 </div>
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Phone Number *</label>
-                  <input type="text" required value={newLeadForm.phone}
+                  <input type="tel" required value={newLeadForm.phone}
+                    pattern="[0-9+\-\s]{10,15}"
                     onChange={e => setNewLeadForm({ ...newLeadForm, phone: e.target.value })}
                     placeholder="+91-98765-43210"
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:bg-white focus:border-blue-400 outline-none transition-colors" />

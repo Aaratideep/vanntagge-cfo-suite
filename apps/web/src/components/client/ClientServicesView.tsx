@@ -27,7 +27,11 @@ export const ClientServicesView: React.FC = () => {
   if (!currentUser) return null;
 
   // Get active client engagements & client services
-  const myEngagements = engagements.filter((e) => e.clientId === currentUser.id);
+  const myEngagements = engagements.filter(
+    (e) =>
+      e.clientId === currentUser.id ||
+      (currentUser.linkedEntity && e.clientCompanyName?.toLowerCase() === currentUser.linkedEntity.toLowerCase())
+  );
 
   const activeClientServices: {
     service: ClientService;
