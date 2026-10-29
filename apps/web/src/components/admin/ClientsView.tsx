@@ -867,7 +867,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ initialTab = 'director
                         <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider mb-0.5">Dedicated CFO</span>
                         <span className="font-bold text-slate-800 flex items-center gap-1">
                           <UserCheck size={12} className="text-blue-600" />
-                          {eng[0]?.tasks?.[0]?.employeeName || 'Aarati Mule'}
+                          {eng[0]?.tasks?.[0]?.employeeName || 'Tejashree Pawar'}
                         </span>
                       </div>
                       <div>

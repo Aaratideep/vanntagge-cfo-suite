@@ -987,7 +987,7 @@ export const CalendarView: React.FC = () => {
                     <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">AVAILABLE</span>
                   </div>
                   <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-150">
-                    <span className="font-semibold text-slate-700">Aarati Mule (Partner)</span>
+                    <span className="font-semibold text-slate-700">Tejashree Pawar (Partner)</span>
                     <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">AVAILABLE</span>
                   </div>
                   <div className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-150">

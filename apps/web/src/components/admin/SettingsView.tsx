@@ -19,6 +19,40 @@ export const SettingsView: React.FC = () => {
   const [seedSuccess, setSeedSuccess] = useState(false);
   const [seedError, setSeedError] = useState('');
   const [toastMsg, setToastMsg] = useState<{type: 'error' | 'success', text: string} | null>(null);
+  const [testingSmtp, setTestingSmtp] = useState(false);
+
+  const handleTestSmtp = async () => {
+    setTestingSmtp(true);
+    try {
+      const targetEmail = adminSettings.adminEmail || currentUser?.email || 'kashinathgaikwad844@gmail.com';
+      const res = await fetch('/api/dispatch/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: targetEmail,
+          subject: 'VANNTAGGE CFO Suite - SMTP Verification Test',
+          html: '<div style="font-family: sans-serif; padding: 20px;"><h2 style="color: #4f46e5;">✓ SMTP Dispatch Verified</h2><p>Your Google SMTP connection is active and operational on VANNTAGGE CFO Suite.</p></div>',
+          adminDetails: {
+            adminName: adminSettings.adminName || currentUser?.name || 'Tejashree Pawar',
+            adminEmail: targetEmail,
+            smtpPassword: adminSettings.smtpPassword,
+            companyName: adminSettings.companyName || 'VANNTAGGE CFO SERVICES LLP',
+          }
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        setToastMsg({ type: 'success', text: 'SMTP verified! Test email dispatched to ' + targetEmail });
+      } else {
+        setToastMsg({ type: 'error', text: data.error || 'SMTP test failed. Check credentials.' });
+      }
+    } catch (err: any) {
+      setToastMsg({ type: 'error', text: err.message || 'Network error while testing SMTP' });
+    } finally {
+      setTestingSmtp(false);
+      setTimeout(() => setToastMsg(null), 6000);
+    }
+  };
 
   if (!currentUser) return null;
 
@@ -63,7 +97,7 @@ export const SettingsView: React.FC = () => {
 
       setSeedSuccess(true);
       addAuditLog('FIREBASE_SEED', 'Initialized Firebase Firestore collections with default mock schemas.');
-    } catch (err) {
+    } catch (err: any) {
       setSeedError('Failed to seed Firebase. Ensure Firestore rules allow writes.');
       console.error(err);
     } finally {
@@ -190,7 +224,20 @@ export const SettingsView: React.FC = () => {
                       }}
                       className="w-full bg-white border border-slate-200 rounded-xl p-2.5 font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
                     />
-                    <span className="text-[10px] text-slate-400 mt-0.5 block">Write-only. Stored securely on server.</span>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px] text-slate-400">Write-only. Stored securely on server.</span>
+                      <button
+                        type="button"
+                        onClick={handleTestSmtp}
+                        disabled={testingSmtp}
+                        className="text-[11px] font-bold text-purple-600 hover:text-purple-800 disabled:opacity-50 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        {testingSmtp ? 'Testing SMTP...' : '✉ Send Test Email'}
+                      </button>
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                      <strong>Google Workspace / Gmail Tip:</strong> Generate a 16-character App Password at <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-blue-600 underline font-semibold">myaccount.google.com/apppasswords</a>.
+                    </div>
                   </div>
                 </div>
               </div>

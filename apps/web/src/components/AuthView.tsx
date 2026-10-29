@@ -16,9 +16,9 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
-const SUPER_ADMIN_EMAILS = ['kashinathgaikwad844@gmail.com', 'kashinathgaikwad305@gmail.com', 'aaratimule006@gmail.com', 'admin@vanntagge.com', 'admin@vantage.com'];
-const CLIENT_EMAILS = ['aaratideepak29@gmail.com'];
-const EMPLOYEE_EMAILS = ['aarati123@gmail.com', 'kiranm@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['tejashreepawar@gmail.com', 'kashinathgaikwad844@gmail.com', 'kashinathgaikwad305@gmail.com', 'tejashreepawar@gmail.com', 'admin@vanntagge.com', 'admin@vantage.com'];
+const CLIENT_EMAILS = ['client@vanntagge.com'];
+const EMPLOYEE_EMAILS = ['staff@vanntagge.com', 'kiranm@gmail.com'];
 const isOwnerEmail = (email: string) => SUPER_ADMIN_EMAILS.includes((email || '').toLowerCase().trim());
 const isClientEmail = (email: string) => CLIENT_EMAILS.includes((email || '').toLowerCase().trim());
 const isEmployeeEmail = (email: string) => EMPLOYEE_EMAILS.includes((email || '').toLowerCase().trim());
@@ -674,17 +674,17 @@ export const AuthView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      setEmail('aaratimule006@gmail.com');
+                      setEmail('tejashreepawar@gmail.com');
                       setPassword('Vanntagge@Admin2026');
                     }}
                     className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${
-                      email.toLowerCase().includes('aaratimule006') || email.toLowerCase().includes('admin')
+                      email.toLowerCase().includes('tejashree') || email.toLowerCase().includes('admin')
                         ? 'bg-purple-600 text-white shadow-xs font-bold'
                         : 'text-slate-600 hover:text-slate-900 bg-white/70'
                     }`}
                   >
                     <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Admin (Aarati Mule)</span>
+                    <span className="truncate">Admin (Tejashree Pawar)</span>
                   </button>
                   <button
                     type="button"
@@ -787,7 +787,7 @@ export const AuthView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-                        setEmail('aaratimule006@gmail.com');
+                        setEmail('tejashreepawar@gmail.com');
                         setPassword('Vanntagge@Admin2026');
                         setErrorMsg('');
                       }}
@@ -796,9 +796,9 @@ export const AuthView: React.FC = () => {
                       <div className="flex flex-col truncate">
                         <span className="flex items-center gap-1.5 font-bold text-slate-900">
                           <span>👑</span>
-                          <span className="truncate">Aarati Mule</span>
+                          <span className="truncate">Tejashree Pawar</span>
                         </span>
-                        <span className="text-[10px] text-slate-500 truncate">aaratimule006@gmail.com</span>
+                        <span className="text-[10px] text-slate-500 truncate">tejashreepawar@gmail.com</span>
                       </div>
                       <span className="text-[10px] text-purple-600 font-bold shrink-0">Fill &rarr;</span>
                     </button>
@@ -1042,41 +1042,41 @@ export const AuthView: React.FC = () => {
             
             <div className="py-2">
               <button 
-                onClick={() => handleMockGoogleLogin('aaratimule006@gmail.com', '/admin')}
+                onClick={() => handleMockGoogleLogin('tejashreepawar@gmail.com', '/admin')}
                 className="w-full flex items-center gap-4 px-6 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100"
               >
                 <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
                   A
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-slate-800 text-sm">Aarati Mule</p>
-                  <p className="text-xs text-slate-500">aaratimule006@gmail.com <span className="text-[9px] bg-purple-100 text-purple-700 px-1 py-0.5 rounded ml-1 uppercase">Super Admin</span></p>
+                  <p className="font-semibold text-slate-800 text-sm">Tejashree Pawar</p>
+                  <p className="text-xs text-slate-500">tejashreepawar@gmail.com <span className="text-[9px] bg-purple-100 text-purple-700 px-1 py-0.5 rounded ml-1 uppercase">Super Admin</span></p>
                 </div>
               </button>
 
               <button 
-                onClick={() => handleMockGoogleLogin('aarati123@gmail.com', '/employee')}
+                onClick={() => handleMockGoogleLogin('staff@vanntagge.com', '/employee')}
                 className="w-full flex items-center gap-4 px-6 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100"
               >
                 <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold">
                   A
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-slate-800 text-sm">Aarati (Employee)</p>
-                  <p className="text-xs text-slate-500">aarati123@gmail.com <span className="text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded ml-1 uppercase">Staff</span></p>
+                  <p className="font-semibold text-slate-800 text-sm">Associate Staff</p>
+                  <p className="text-xs text-slate-500">staff@vanntagge.com <span className="text-[9px] bg-blue-100 text-blue-700 px-1 py-0.5 rounded ml-1 uppercase">Staff</span></p>
                 </div>
               </button>
 
               <button 
-                onClick={() => handleMockGoogleLogin('aaratideepak29@gmail.com', '/client')}
+                onClick={() => handleMockGoogleLogin('client@vanntagge.com', '/client')}
                 className="w-full flex items-center gap-4 px-6 py-3 hover:bg-slate-50 transition-colors border-b border-slate-100"
               >
                 <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
                   A
                 </div>
                 <div className="text-left">
-                  <p className="font-semibold text-slate-800 text-sm">Aarati Deepak</p>
-                  <p className="text-xs text-slate-500">aaratideepak29@gmail.com <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded ml-1 uppercase">Client</span></p>
+                  <p className="font-semibold text-slate-800 text-sm">Client Representative</p>
+                  <p className="text-xs text-slate-500">client@vanntagge.com <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded ml-1 uppercase">Client</span></p>
                 </div>
               </button>
             </div>

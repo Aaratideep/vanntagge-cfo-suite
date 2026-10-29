@@ -477,8 +477,8 @@ export const STANDARD_TASKS_BY_CATEGORY = {
 export const FIXED_USERS: User[] = [
   {
     id: 'u-admin-1',
-    name: 'Aarati Mule',
-    email: 'aaratimule006@gmail.com',
+    name: 'Tejashree Pawar',
+    email: 'tejashreepawar@gmail.com',
     role: 'SUPER_ADMIN',
     permissions: ['all'],
     designation: 'Managing Partner & Principal CFO',
@@ -763,17 +763,17 @@ export const DEFAULT_FINANCIAL_GOVERNANCE_LOCKS: FinancialGovernanceLock[] = [
     statementId: 'cfs-test-1',
     period: 'FY 2025-26',
     status: 'PARTNER_APPROVED',
-    preparedBy: 'Aarati Mule (Principal CFO)',
+    preparedBy: 'Tejashree Pawar (Principal CFO)',
     preparedAt: '2026-09-01T10:00:00.000Z',
     reviewedBy: 'Rajesh Kulkarni (Associate Director)',
     reviewedAt: '2026-09-10T14:00:00.000Z',
-    approvedBy: 'Aarati Mule (Managing Partner)',
+    approvedBy: 'Tejashree Pawar (Managing Partner)',
     approvedAt: '2026-09-15T18:00:00.000Z',
     digitalSignatureHash: 'SHA256-VANT-89F3A10C9B472DE5881C09',
     immutableChangeLog: [
-      { id: 'ch-1', timestamp: '2026-09-01T10:00:00.000Z', user: 'Aarati Mule', action: 'INITIAL_INGESTION', newValue: 'Created initial statement draft from audited balance sheet' },
+      { id: 'ch-1', timestamp: '2026-09-01T10:00:00.000Z', user: 'Tejashree Pawar', action: 'INITIAL_INGESTION', newValue: 'Created initial statement draft from audited balance sheet' },
       { id: 'ch-2', timestamp: '2026-09-10T14:00:00.000Z', user: 'Rajesh Kulkarni', action: 'DEFERRED_TAX_RECLASSIFICATION', previousValue: 'Tax: ₹14.5L', newValue: 'Tax: ₹16.0L' },
-      { id: 'ch-3', timestamp: '2026-09-15T18:00:00.000Z', user: 'Aarati Mule', action: 'FINAL_PARTNER_SIGN_OFF', newValue: 'Approved statement and locked financial ratios for Board presentation' }
+      { id: 'ch-3', timestamp: '2026-09-15T18:00:00.000Z', user: 'Tejashree Pawar', action: 'FINAL_PARTNER_SIGN_OFF', newValue: 'Approved statement and locked financial ratios for Board presentation' }
     ]
   }
 ];
@@ -877,7 +877,7 @@ export const DEFAULT_FINANCIAL_STATEMENTS: ClientFinancialStatement[] = [
     cfoNotes: 'Solid balance sheet with healthy 2.44 Current Ratio and strong 55% gross margin. Working capital cycle is stabilized at 54 days with low reliance on external debt.',
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-15T00:00:00.000Z',
-    submittedBy: 'Aarati Mule (Managing Partner)',
+    submittedBy: 'Tejashree Pawar (Managing Partner)',
   },
   {
     id: 'cfs-acme-1',
@@ -977,7 +977,7 @@ export const DEFAULT_FINANCIAL_STATEMENTS: ClientFinancialStatement[] = [
     cfoNotes: 'Stable operational performance. Receivables collection cycle at 58 days is well within the 60-day target. Net margin improved by 1.2% over previous fiscal year.',
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-15T00:00:00.000Z',
-    submittedBy: 'Aarati Mule (Principal CFO)',
+    submittedBy: 'Tejashree Pawar (Principal CFO)',
   }
 ];
 
@@ -1218,7 +1218,7 @@ export const useDashboardStore = create<DashboardState>()(
           notes: 'Prepare P&L, balance sheet, and KPI flash report with departmental burn analysis.',
           dueDate: '2026-09-25T18:30:00.000Z',
           employeeId: 'u-admin-1',
-          employeeName: 'Aarati Mule',
+          employeeName: 'Tejashree Pawar',
           reviewPoints: [],
           createdAt: '2026-09-01T10:00:00.000Z',
         },
@@ -1235,7 +1235,7 @@ export const useDashboardStore = create<DashboardState>()(
           notes: 'Match sales register with e-way bills and GSTR-1 outward invoices.',
           dueDate: '2026-09-20T18:30:00.000Z',
           employeeId: 'u-admin-1',
-          employeeName: 'Aarati Mule',
+          employeeName: 'Tejashree Pawar',
           reviewPoints: [],
           createdAt: '2026-09-02T10:00:00.000Z',
         },
@@ -1252,7 +1252,7 @@ export const useDashboardStore = create<DashboardState>()(
           notes: 'Match Form 26AS, AIS, and vendor ledger tax deductions with nil variance.',
           dueDate: '2026-09-30T18:30:00.000Z',
           employeeId: 'u-admin-1',
-          employeeName: 'Aarati Mule',
+          employeeName: 'Tejashree Pawar',
           reviewPoints: [],
           createdAt: '2026-09-05T10:00:00.000Z',
         },
@@ -1269,7 +1269,7 @@ export const useDashboardStore = create<DashboardState>()(
           notes: 'Signed balance sheet and finalized trial balance schedules.',
           dueDate: '2026-09-10T18:30:00.000Z',
           employeeId: 'u-admin-1',
-          employeeName: 'Aarati Mule',
+          employeeName: 'Tejashree Pawar',
           reviewPoints: [],
           createdAt: '2026-08-20T10:00:00.000Z',
         }
@@ -1340,7 +1340,7 @@ export const useDashboardStore = create<DashboardState>()(
           dueDate: '2026-09-20',
           status: 'IN_PROGRESS',
           responsibleEmployeeId: 'u-admin-1',
-          responsibleEmployeeName: 'Aarati Mule',
+          responsibleEmployeeName: 'Tejashree Pawar',
           createdAt: '2026-09-01T10:00:00.000Z',
         },
         {
@@ -1350,7 +1350,7 @@ export const useDashboardStore = create<DashboardState>()(
           dueDate: '2026-10-07',
           status: 'PENDING',
           responsibleEmployeeId: 'u-admin-1',
-          responsibleEmployeeName: 'Aarati Mule',
+          responsibleEmployeeName: 'Tejashree Pawar',
           createdAt: '2026-09-01T10:00:00.000Z',
         },
         {
@@ -1360,7 +1360,7 @@ export const useDashboardStore = create<DashboardState>()(
           dueDate: '2026-10-30',
           status: 'PENDING',
           responsibleEmployeeId: 'u-admin-1',
-          responsibleEmployeeName: 'Aarati Mule',
+          responsibleEmployeeName: 'Tejashree Pawar',
           createdAt: '2026-09-01T10:00:00.000Z',
         }
       ],
@@ -1470,7 +1470,7 @@ export const useDashboardStore = create<DashboardState>()(
           notes: 'Consolidated P&L, balance sheet verification, and working capital ratios commentary.',
           dueDate: '2026-10-31T18:30:00.000Z',
           employeeId: 'u-admin-1',
-          employeeName: 'Aarati Mule',
+          employeeName: 'Tejashree Pawar',
           reviewPoints: [],
           createdAt: '2026-09-01T10:00:00.000Z',
         }
@@ -1513,7 +1513,7 @@ export const useDashboardStore = create<DashboardState>()(
     {
       id: 'ts-1',
       employeeId: 'u-admin-1',
-          employeeName: 'Aarati Mule',
+          employeeName: 'Tejashree Pawar',
       clientId: 'client-1',
       clientName: 'Acme Corp',
       date: new Date().toISOString().split('T')[0],
@@ -1525,7 +1525,7 @@ export const useDashboardStore = create<DashboardState>()(
     {
       id: 'ts-2',
       employeeId: 'u-admin-1',
-          employeeName: 'Aarati Mule',
+          employeeName: 'Tejashree Pawar',
       clientId: 'client-1',
       clientName: 'Acme Corp',
       date: new Date().toISOString().split('T')[0],
@@ -1533,7 +1533,7 @@ export const useDashboardStore = create<DashboardState>()(
       description: 'Virtual CFO monthly variance review and 13-week cashflow model update.',
       status: 'APPROVED',
       approvedAt: new Date().toISOString(),
-      approvedBy: 'Aarati Mule',
+      approvedBy: 'Tejashree Pawar',
       createdAt: new Date().toISOString()
     }
   ],
@@ -1548,7 +1548,7 @@ export const useDashboardStore = create<DashboardState>()(
       summary: 'Discussed virtual CFO scope, MIS reporting frequency, and audit requirements.',
       outcome: 'Client requested comprehensive quotation for 12 months.',
       nextFollowUpDate: '2026-09-18',
-      createdBy: 'Aarati Mule',
+      createdBy: 'Tejashree Pawar',
       createdAt: new Date().toISOString()
     },
     {
@@ -1561,7 +1561,7 @@ export const useDashboardStore = create<DashboardState>()(
       summary: 'Virtual Google Meet demo of Vantage CFO portal and client document exchange.',
       outcome: 'Agreed on milestone structure. Preparing engagement letter.',
       nextFollowUpDate: '2026-09-20',
-      createdBy: 'Aarati Mule',
+      createdBy: 'Tejashree Pawar',
       createdAt: new Date().toISOString()
     }
   ],
@@ -1700,8 +1700,8 @@ export const useDashboardStore = create<DashboardState>()(
   communicationLogs: [],
   currentUser: getInitialCurrentUser(),
   adminSettings: {
-    adminName: "Aarati Mule",
-    adminEmail: "billing@vanntaggecfo.com",
+    adminName: "Tejashree Pawar",
+    adminEmail: "kashinathgaikwad844@gmail.com",
     adminPhone: "918668388715",
     companyName: "VANNTAGGE CFO SERVICES LLP",
   },
@@ -2983,7 +2983,7 @@ export const useDashboardStore = create<DashboardState>()(
         periodKey,
         fieldKey: 'revenue',
         approvedBy: primaryTask.approvedBy || 'u-reviewer',
-        approvedByName: primaryTask.approvedByName || 'Aarati Mule (Principal CFO)',
+        approvedByName: primaryTask.approvedByName || 'Tejashree Pawar (Principal CFO)',
         approvedAt: primaryTask.approvedAt || now,
       },
       ebitda: {
@@ -2997,7 +2997,7 @@ export const useDashboardStore = create<DashboardState>()(
         periodKey,
         fieldKey: 'ebitda',
         approvedBy: primaryTask.approvedBy || 'u-reviewer',
-        approvedByName: primaryTask.approvedByName || 'Aarati Mule (Principal CFO)',
+        approvedByName: primaryTask.approvedByName || 'Tejashree Pawar (Principal CFO)',
         approvedAt: primaryTask.approvedAt || now,
       },
       closing_cash: {
@@ -3011,7 +3011,7 @@ export const useDashboardStore = create<DashboardState>()(
         periodKey,
         fieldKey: 'closing_cash',
         approvedBy: primaryTask.approvedBy || 'u-reviewer',
-        approvedByName: primaryTask.approvedByName || 'Aarati Mule (Principal CFO)',
+        approvedByName: primaryTask.approvedByName || 'Tejashree Pawar (Principal CFO)',
         approvedAt: primaryTask.approvedAt || now,
       },
     };
@@ -4139,8 +4139,8 @@ export const useDashboardStore = create<DashboardState>()(
     let matchedUser = get().users.find((u) => u.email.toLowerCase() === cleanEmail);
 
     if (!matchedUser) {
-      if (cleanEmail === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'aaratimule006@gmail.com' || cleanEmail === 'admin@vantage.com' || cleanEmail === 'admin@vanntagge.com') {
-        matchedUser = get().users.find((u) => u.email.toLowerCase() === 'aaratimule006@gmail.com') || get().users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
+      if (cleanEmail === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'tejashreepawar@gmail.com' || cleanEmail === 'tejashreepawar@gmail.com' || cleanEmail === 'tejashree' || cleanEmail.includes('tejashree') || cleanEmail === 'admin@vantage.com' || cleanEmail === 'admin@vanntagge.com') {
+        matchedUser = get().users.find((u) => (u.email.toLowerCase() === 'tejashreepawar@gmail.com' || u.email.toLowerCase() === 'tejashreepawar@gmail.com')) || get().users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
       } else if (cleanEmail === 'kashinath' || cleanEmail.includes('kashinath') || cleanEmail === 'kashinathgaikwad844@gmail.com' || cleanEmail === 'kashinathgaikwad305@gmail.com') {
         matchedUser = get().users.find((u) => (u.email.toLowerCase() === 'kashinathgaikwad844@gmail.com' || u.email.toLowerCase() === 'kashinathgaikwad305@gmail.com')) || get().users[1];
       } else if (cleanEmail === 'employee' || cleanEmail.includes('employee')) {

@@ -641,7 +641,7 @@ export const CRMView: React.FC<{ initialAction?: 'lead' | 'quotation' | null, on
       subject: `Commercial Proposal & Fee Quotation #${quotationNumber} - VANNTAGE CFO`,
       body: `Quotation #${quotationNumber} for amount ₹${finalAmount.toLocaleString('en-IN')} dispatched to ${selectedLead.contactPerson}. Services: ${quotationServices.map(s => s.name).join(', ')}.`,
       status: 'SENT',
-      sentBy: currentUser?.name || 'Aarati Mule',
+      sentBy: currentUser?.name || 'Tejashree Pawar',
       relatedEntityId: selectedLead.id,
       relatedEntityType: 'LEAD',
     });

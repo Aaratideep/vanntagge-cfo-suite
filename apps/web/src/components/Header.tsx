@@ -128,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-purple-600 text-white shadow-xs'
                     : 'text-slate-600 hover:text-purple-700 hover:bg-white/80'
                 }`}
-                title="Admin Dashboard (Aarati Mule)"
+                title="Admin Dashboard (Tejashree Pawar)"
               >
                 <span className="material-symbols-outlined text-[15px] -mt-0.5">admin_panel_settings</span>
                 <span className="hidden sm:inline">Admin</span>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDashboardStore } from '../../store/dashboardStore';
 import { Role } from '../../types';
-import { Plus, Search, UserCheck, Shield, Briefcase, Building2, MoreVertical, X, Check, Lock, ArrowRight, Zap, Sparkles, Mail, Copy, CheckCircle2, Eye, EyeOff, Send } from 'lucide-react';
+import { Plus, Search, UserCheck, Shield, Briefcase, Building2, MoreVertical, X, Check, Lock, ArrowRight, Zap, Sparkles, Mail, Copy, CheckCircle2, Eye, EyeOff, Send, AlertTriangle } from 'lucide-react';
 import { AutomationDashboardView } from './AutomationDashboardView';
 import { AiDashboardView } from './AiDashboardView';
 
@@ -39,6 +39,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
     password: string;
     role: string;
     emailDispatched: boolean;
+    dispatchError?: string;
   } | null>(null);
 
   const activeUsers = users.filter((u) => u.status !== 'SUSPENDED');
@@ -46,8 +47,8 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
   const employees = activeUsers.filter((u) => u.role === 'EMPLOYEE');
   const clients = activeUsers.filter((u) => u.role === 'CLIENT');
 
-  const filteredUsers = users.filter((u) => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredUsers = users.filter((u) =>
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.role.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -108,6 +109,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
 
       // 3. Dispatch Email with Username and Password to the newly created admin / user
       let emailDispatched = false;
+      let dispatchError = '';
       try {
         const portalUrl = typeof window !== 'undefined' ? window.location.origin : 'https://vanntagge.com';
         const emailHtml = `
@@ -181,6 +183,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
           </html>
         `;
 
+        const { adminSettings } = useDashboardStore.getState();
         const emailRes = await fetch('/api/dispatch/email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -189,18 +192,25 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
             subject: `Your VANNTAGGE CFO Suite ${newUserRole === 'SUPER_ADMIN' || newUserRole === 'ADMIN' ? 'Administrator' : ''} Login Credentials`,
             html: emailHtml,
             adminDetails: {
-              adminName: currentUser?.name || 'Aarati Mule',
-              adminEmail: currentUser?.email || 'admin@vanntagge.com',
-              companyName: 'VANNTAGGE CFO SERVICES LLP',
+              adminName: currentUser?.name || adminSettings.adminName || 'Tejashree Pawar',
+              adminEmail: adminSettings.adminEmail || currentUser?.email || 'kashinathgaikwad844@gmail.com',
+              smtpPassword: adminSettings.smtpPassword,
+              companyName: adminSettings.companyName || 'VANNTAGGE CFO SERVICES LLP',
             },
           }),
         });
 
-        if (emailRes.ok) {
+        const emailData = await emailRes.json().catch(() => ({}));
+        if (emailRes.ok && emailData.success) {
           emailDispatched = true;
+        } else {
+          emailDispatched = false;
+          dispatchError = emailData.error || 'SMTP delivery failed';
         }
-      } catch (emailErr) {
+      } catch (emailErr: any) {
         console.warn('Email dispatch warning:', emailErr);
+        emailDispatched = false;
+        dispatchError = emailErr.message || 'Network request failed';
       }
 
       // 4. Log to Communication Hub (Outbox)
@@ -208,26 +218,31 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
         type: 'EMAIL',
         recipient: email,
         subject: `Your VANNTAGGE CFO Suite ${newUserRole === 'SUPER_ADMIN' || newUserRole === 'ADMIN' ? 'Administrator' : ''} Login Credentials`,
-        body: `Account credentials dispatched to ${fullName} (${email}). Initial password issued.`,
-        status: 'SENT',
-        sentBy: currentUser?.name || 'Aarati Mule',
+        body: `Account credentials issued to ${fullName} (${email}). Initial password issued. Status: ${emailDispatched ? 'Dispatched via SMTP' : 'Email notice: ' + (dispatchError || 'Pending SMTP')}`,
+        status: emailDispatched ? 'SENT' : 'FAILED',
+        sentBy: currentUser?.name || 'Tejashree Pawar',
         relatedEntityType: 'OTHER',
       });
 
       // 5. Add to Audit Log
       useDashboardStore.getState().addAuditLog(
         'ADMIN_CREATED',
-        `Administrator ${currentUser?.name || 'Admin'} provisioned ${newUserRole} account for ${fullName} (${email}) and dispatched credentials via email.`
+        `Administrator ${currentUser?.name || 'Admin'} provisioned ${newUserRole} account for ${fullName} (${email}). Email dispatch status: ${emailDispatched ? 'DELIVERED' : 'FAILED (' + (dispatchError || 'SMTP error') + ')'}.`
       );
 
-      setGlobalSuccessMsg(`Account for ${fullName} created and credentials email dispatched to ${email}!`);
-      
+      if (emailDispatched) {
+        setGlobalSuccessMsg(`Account for ${fullName} created and credentials email dispatched to ${email}!`);
+      } else {
+        setGlobalSuccessMsg(`Account for ${fullName} created! (SMTP email notice: ${dispatchError || 'Delivery error'}). Copy credentials from screen.`);
+      }
+
       setCreatedCredsSummary({
         name: fullName,
         email,
         password: finalPassword,
         role: newUserRole,
-        emailDispatched: true,
+        emailDispatched,
+        dispatchError: emailDispatched ? undefined : dispatchError,
       });
 
       setIsModalOpen(false);
@@ -245,7 +260,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
   };
 
   const getRoleBadge = (role: string) => {
-    switch(role) {
+    switch (role) {
       case 'SUPER_ADMIN':
       case 'ADMIN':
         return {
@@ -280,27 +295,24 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
       <div className="bg-white border border-slate-200/80 p-1.5 rounded-2xl shadow-sm flex flex-wrap items-center gap-2">
         <button
           onClick={() => setActiveSubTab('users')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeSubTab === 'users' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeSubTab === 'users' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+            }`}
         >
           <Lock size={15} /> User Access & Permissions
         </button>
 
         <button
           onClick={() => setActiveSubTab('automation')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeSubTab === 'automation' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeSubTab === 'automation' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+            }`}
         >
           <Zap size={15} className="text-amber-500" /> Automation & Workflows
         </button>
 
         <button
           onClick={() => setActiveSubTab('ai_usage')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-            activeSubTab === 'ai_usage' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
-          }`}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeSubTab === 'ai_usage' ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'
+            }`}
         >
           <Sparkles size={15} className="text-blue-500" /> AI Usage & Config
         </button>
@@ -319,7 +331,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
                 Real enterprise access control. Adding an administrator automatically delivers their username & credentials via email.
               </p>
             </div>
-            <button 
+            <button
               onClick={() => setIsModalOpen(true)}
               className="btn-primary flex items-center gap-2 self-start sm:self-auto cursor-pointer"
             >
@@ -330,7 +342,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
 
           {/* Active Administrators Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* Real Admin 1: Aarati Mule */}
+            {/* Real Admin 1: Tejashree Pawar */}
             <div className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -340,11 +352,11 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
                   <span className="text-[11px] font-bold text-purple-600">Super Admin</span>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Aarati Mule</h3>
+                  <h3 className="text-base font-bold text-slate-900">Tejashree Pawar</h3>
                   <div className="text-[11px] text-purple-700 font-semibold">Managing Partner & Principal CFO</div>
                 </div>
                 <p className="text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700">Email:</span> aaratimule006@gmail.com
+                  <span className="font-semibold text-slate-700">Email:</span> tejashreepawar@gmail.com
                 </p>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Full control over multi-entity financial statement ingestion, GST filing audits, fee collections, and staff governance.
@@ -373,7 +385,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
                   <div className="text-[11px] text-purple-700 font-semibold">Co-Founder & Chief Technology Officer</div>
                 </div>
                 <p className="text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700">Email:</span> kashinathgaikwad844@gmail.com
+                  <span className="font-semibold text-slate-700">Email:</span> kashinathgaikwad305@gmail.com
                 </p>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Full control over technology infrastructure, security protocols, API pipelines, automated workflows, and AI engines.
@@ -424,9 +436,9 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
               <h2 className="font-bold text-slate-800 font-outfit text-sm">Active Platform Accounts ({users.length})</h2>
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
-                <input 
-                  type="text" 
-                  placeholder="Search by name, email or role..." 
+                <input
+                  type="text"
+                  placeholder="Search by name, email or role..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9 pr-4 py-1.5 border border-slate-200 rounded-xl text-xs w-full focus:outline-none focus:ring-2 focus:ring-purple-200 bg-white"
@@ -517,7 +529,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
                 <h3 className="font-bold text-slate-900 text-base font-outfit">Add Platform Administrator / User</h3>
                 <p className="text-[11px] text-slate-500">Credentials will be emailed automatically to the user upon creation.</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
               >
@@ -655,13 +667,30 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 relative animate-in fade-in zoom-in-95 duration-200">
             <div className="text-center pb-4 border-b border-slate-100">
-              <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
-                <CheckCircle2 size={24} />
+              <div className={`w-12 h-12 ${createdCredsSummary.emailDispatched ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'} rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner`}>
+                {createdCredsSummary.emailDispatched ? <CheckCircle2 size={24} /> : <AlertTriangle size={24} />}
               </div>
               <h3 className="font-bold text-slate-900 text-lg font-outfit">User Account Created</h3>
-              <p className="text-xs text-emerald-700 font-semibold mt-1 flex items-center justify-center gap-1">
-                <Mail size={13} /> Credentials dispatched to {createdCredsSummary.email}
-              </p>
+              {createdCredsSummary.emailDispatched ? (
+                <p className="text-xs text-emerald-700 font-semibold mt-1 flex items-center justify-center gap-1">
+                  <Mail size={13} /> Credentials dispatched to {createdCredsSummary.email}
+                </p>
+              ) : (
+                <div className="mt-2.5 p-3 bg-amber-50 rounded-xl border border-amber-200 text-left">
+                  <p className="text-xs text-amber-800 font-bold flex items-center gap-1.5">
+                    <Mail size={13} className="shrink-0 text-amber-600" />
+                    Email Dispatch Notice
+                  </p>
+                  <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">
+                    {createdCredsSummary.dispatchError?.includes('535') 
+                      ? 'Google rejected the App Password (BadCredentials). To send live emails from Gmail, please generate a 16-character App Password at myaccount.google.com/apppasswords and configure it in Config Hub or .env.local.' 
+                      : createdCredsSummary.dispatchError || 'SMTP email could not be delivered.'}
+                  </p>
+                  <p className="text-[11px] text-slate-600 mt-1.5 font-medium">
+                    You can copy the generated login credentials below and share them directly with {createdCredsSummary.name}:
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="my-5 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5 text-xs">
