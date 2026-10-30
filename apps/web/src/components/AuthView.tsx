@@ -665,51 +665,14 @@ export const AuthView: React.FC = () => {
                     Sign In
                   </h2>
                   <p className="text-xs text-on-surface-variant leading-relaxed">
-                    Select your workspace role or enter your credentials below to access the suite.
+                    Enter your credentials below to access the suite.
                   </p>
                 </header>
 
-                {/* Quick Role Selector */}
-                <div className="mb-6 grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl text-[11px] font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('tejashreepawar@gmail.com');
-                      setPassword('Vanntagge@Admin2026');
-                    }}
-                    className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${
-                      email.toLowerCase().includes('tejashree') || email.toLowerCase().includes('admin')
-                        ? 'bg-purple-600 text-white shadow-xs font-bold'
-                        : 'text-slate-600 hover:text-slate-900 bg-white/70'
-                    }`}
-                  >
-                    <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Admin (Tejashree Pawar)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEmail('kashinathgaikwad844@gmail.com');
-                      setPassword('Vanntagge@Admin2026');
-                    }}
-                    className={`py-2 px-2 rounded-lg text-center transition-all flex items-center justify-center gap-1.5 ${
-                      email.toLowerCase().includes('kashinath')
-                        ? 'bg-purple-600 text-white shadow-xs font-bold'
-                        : 'text-slate-600 hover:text-slate-900 bg-white/70'
-                    }`}
-                  >
-                    <ShieldCheck className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Admin (Kashinath G.)</span>
-                  </button>
-                </div>
-
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="text-[11px] font-bold text-on-surface-variant flex justify-between" htmlFor="login-email">
-                      <span>Email Address</span>
-                      {!isFirebaseConfigured && (
-                        <span className="text-primary hover:underline cursor-help" onClick={() => alert('Demo logins: sarah.jenkins@vanntagge.com, priya.sharma@vanntagge.com')}>Demo Users?</span>
-                      )}
+                    <label className="text-[11px] font-bold text-on-surface-variant" htmlFor="login-email">
+                      Email Address
                     </label>
                     <input
                       type="email"
