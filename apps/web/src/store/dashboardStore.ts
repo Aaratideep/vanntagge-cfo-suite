@@ -507,6 +507,69 @@ export const FIXED_USERS: User[] = [
   }
 ];
 
+
+export const isDummyOrLegacyUser = (u: any): boolean => {
+  if (!u) return false;
+  const name = (u.name || '').toLowerCase().trim();
+  const email = (u.email || '').toLowerCase().trim();
+  const id = (u.id || '').trim();
+
+  if (name.includes('aarati') || name.includes('mule') || email.includes('aarati') || email.includes('mule')) {
+    return true;
+  }
+  if (
+    email.endsWith('@vantage.com') ||
+    email.endsWith('@vanntagge.com') ||
+    email === 'testclient@vantage.com' ||
+    email === 'admin@vantage.com' ||
+    email === 'employee@vantage.com' ||
+    email === 'client@vantage.com'
+  ) {
+    return true;
+  }
+  if (name === 'priya sharma' || name === 'rajesh mehta' || name === 'aditya kashyap') {
+    return true;
+  }
+  if (['u-employee', 'u-client', 'u-cfo-test', 'u-admin'].includes(id)) {
+    return true;
+  }
+  return false;
+};
+
+export const sanitizeUsersList = (userList: User[]): User[] => {
+  const result: User[] = [];
+
+  // Always ensure Tejashree Pawar is index 0
+  result.push({ ...FIXED_USERS[0] });
+
+  // Always ensure Kashinath Gaikwad is index 1
+  result.push({ ...FIXED_USERS[1] });
+
+  if (Array.isArray(userList)) {
+    for (const u of userList) {
+      if (!u) continue;
+      if (isDummyOrLegacyUser(u)) continue;
+
+      const email = (u.email || '').toLowerCase().trim();
+      if (
+        email === 'tejashreepawar@gmail.com' ||
+        email === 'kashinathgaikwad844@gmail.com' ||
+        email === 'kashinathgaikwad305@gmail.com' ||
+        u.id === 'u-admin-1' ||
+        u.id === 'u-admin-2'
+      ) {
+        continue;
+      }
+      if (result.some(existing => existing.email.toLowerCase().trim() === email || existing.id === u.id)) {
+        continue;
+      }
+      result.push(u);
+    }
+  }
+
+  return result;
+};
+
 export const getInitialCurrentUser = (): User | null => {
   if (typeof window !== 'undefined') {
     try {
@@ -514,13 +577,14 @@ export const getInitialCurrentUser = (): User | null => {
       if (savedUserStr) {
         const parsed = JSON.parse(savedUserStr);
         if (parsed && parsed.id && parsed.role) {
-          const isAarati = (parsed.name && (parsed.name.toLowerCase().includes('aarati') || parsed.name.toLowerCase().includes('mule'))) ||
-            (parsed.email && (parsed.email.toLowerCase().includes('aarati') || parsed.email.toLowerCase().includes('aaratimule'))) ||
-            parsed.email === 'admin@vantage.com';
-
-          if (isAarati || parsed.id === 'u-employee' || parsed.id === 'u-client' || parsed.id === 'u-cfo-test') {
+          if (isDummyOrLegacyUser(parsed)) {
             localStorage.setItem('cfo_current_user', JSON.stringify(FIXED_USERS[0]));
             return FIXED_USERS[0];
+          }
+          if (parsed.email && (parsed.email.toLowerCase() === 'kashinathgaikwad305@gmail.com' || parsed.email.toLowerCase() === 'kashinathgaikwad844@gmail.com')) {
+            const updated = { ...FIXED_USERS[1], ...parsed, email: FIXED_USERS[1].email, name: FIXED_USERS[1].name };
+            localStorage.setItem('cfo_current_user', JSON.stringify(updated));
+            return updated;
           }
           const matched = FIXED_USERS.find(u => u.id === parsed.id || (u.email && u.email.toLowerCase() === parsed.email?.toLowerCase()));
           return matched ? { ...matched, ...parsed, name: matched.name, email: matched.email } : parsed;
@@ -5606,7 +5670,7 @@ export const useDashboardStore = create<DashboardState>()(
 }),
 {
   name: 'cfo-dashboard-storage',
-  version: 6,
+  version: 8,
   storage: createJSONStorage(() => storage),
   partialize: (state) => ({
     currentUser: state.currentUser,
@@ -5632,55 +5696,31 @@ export const useDashboardStore = create<DashboardState>()(
     performanceReviews: state.performanceReviews,
     serviceCategories: state.serviceCategories,
   }),
-  onRehydrateStorage: () => (state) => {
+    onRehydrateStorage: () => (state) => {
     if (state) {
-      // 1. Sanitize currentUser if legacy Aarati Mule or admin@vantage.com
+      // 1. Sanitize currentUser if legacy Aarati Mule or dummy account
       if (state.currentUser) {
-        const isAarati = (state.currentUser.name && (state.currentUser.name.toLowerCase().includes('aarati') || state.currentUser.name.toLowerCase().includes('mule'))) ||
-          (state.currentUser.email && state.currentUser.email.toLowerCase().includes('aarati')) ||
-          state.currentUser.email === 'admin@vantage.com';
-        if (isAarati) {
+        if (isDummyOrLegacyUser(state.currentUser)) {
           state.currentUser = { ...FIXED_USERS[0] };
           if (typeof window !== 'undefined') {
             try {
               localStorage.setItem('cfo_current_user', JSON.stringify(FIXED_USERS[0]));
             } catch (e) {}
           }
+        } else if (state.currentUser.email && (state.currentUser.email.toLowerCase() === 'kashinathgaikwad305@gmail.com' || state.currentUser.email.toLowerCase() === 'kashinathgaikwad844@gmail.com')) {
+          state.currentUser.email = 'kashinathgaikwad844@gmail.com';
         }
       }
 
-      // 2. Sanitize and cleanse users array: Replace Aarati Mule with Tejashree Pawar and deduplicate
-      if (state.users && Array.isArray(state.users)) {
-        const sanitizedUsers: User[] = [];
-        for (const u of state.users) {
-          const isAarati = (u.name && (u.name.toLowerCase().includes('aarati') || u.name.toLowerCase().includes('mule'))) ||
-            (u.email && u.email.toLowerCase().includes('aarati')) ||
-            u.email === 'admin@vantage.com';
-          if (isAarati) {
-            if (!sanitizedUsers.some(existing => existing.email === 'tejashreepawar@gmail.com')) {
-              sanitizedUsers.push({ ...FIXED_USERS[0] });
-            }
-          } else {
-            sanitizedUsers.push(u);
-          }
-        }
-        if (!sanitizedUsers.some(u => u.email === 'tejashreepawar@gmail.com')) {
-          sanitizedUsers.unshift({ ...FIXED_USERS[0] });
-        }
-        if (!sanitizedUsers.some(u => u.email === 'kashinathgaikwad844@gmail.com' || u.email === 'kashinathgaikwad305@gmail.com')) {
-          sanitizedUsers.push({ ...FIXED_USERS[1] });
-        }
-        state.users = sanitizedUsers;
-      } else {
-        state.users = [...FIXED_USERS];
-      }
+      // 2. Sanitize and purge dummy users from users array
+      state.users = sanitizeUsersList(state.users);
 
       // 3. Sanitize adminSettings
       if (state.adminSettings) {
         if (state.adminSettings.adminName && (state.adminSettings.adminName.toLowerCase().includes('aarati') || state.adminSettings.adminName.toLowerCase().includes('mule'))) {
           state.adminSettings.adminName = 'Tejashree Pawar';
         }
-        if (state.adminSettings.adminEmail && (state.adminSettings.adminEmail.toLowerCase().includes('aarati') || state.adminSettings.adminEmail === 'admin@vantage.com')) {
+        if (state.adminSettings.adminEmail && (state.adminSettings.adminEmail.toLowerCase().includes('aarati') || state.adminSettings.adminEmail.endsWith('@vantage.com'))) {
           state.adminSettings.adminEmail = 'kashinathgaikwad844@gmail.com';
         }
       }
@@ -5690,37 +5730,23 @@ export const useDashboardStore = create<DashboardState>()(
       }
     }
   },
-  migrate: (persistedState: any, version: number) => {
+    migrate: (persistedState: any, version: number) => {
     if (persistedState) {
       if (persistedState.currentUser) {
-        const isAarati = (persistedState.currentUser.name && (persistedState.currentUser.name.toLowerCase().includes('aarati') || persistedState.currentUser.name.toLowerCase().includes('mule'))) ||
-          (persistedState.currentUser.email && persistedState.currentUser.email.toLowerCase().includes('aarati')) ||
-          persistedState.currentUser.email === 'admin@vantage.com';
-        if (isAarati) {
+        if (isDummyOrLegacyUser(persistedState.currentUser)) {
           persistedState.currentUser = { ...FIXED_USERS[0] };
+        } else if (persistedState.currentUser.email && (persistedState.currentUser.email.toLowerCase() === 'kashinathgaikwad305@gmail.com' || persistedState.currentUser.email.toLowerCase() === 'kashinathgaikwad844@gmail.com')) {
+          persistedState.currentUser.email = 'kashinathgaikwad844@gmail.com';
         }
       }
-      if (persistedState.users && Array.isArray(persistedState.users)) {
-        persistedState.users = persistedState.users.map((u: any) => {
-          const isAarati = (u.name && (u.name.toLowerCase().includes('aarati') || u.name.toLowerCase().includes('mule'))) ||
-            (u.email && u.email.toLowerCase().includes('aarati')) ||
-            u.email === 'admin@vantage.com';
-          if (isAarati) {
-            return { ...FIXED_USERS[0] };
-          }
-          return u;
-        });
-      }
+      persistedState.users = sanitizeUsersList(persistedState.users);
       if (persistedState.adminSettings) {
         if (persistedState.adminSettings.adminName && (persistedState.adminSettings.adminName.toLowerCase().includes('aarati') || persistedState.adminSettings.adminName.toLowerCase().includes('mule'))) {
           persistedState.adminSettings.adminName = 'Tejashree Pawar';
         }
-        if (persistedState.adminSettings.adminEmail && (persistedState.adminSettings.adminEmail.toLowerCase().includes('aarati') || persistedState.adminSettings.adminEmail === 'admin@vantage.com')) {
+        if (persistedState.adminSettings.adminEmail && (persistedState.adminSettings.adminEmail.toLowerCase().includes('aarati') || persistedState.adminSettings.adminEmail.endsWith('@vantage.com'))) {
           persistedState.adminSettings.adminEmail = 'kashinathgaikwad844@gmail.com';
         }
-      }
-      if (!persistedState.billingEntities || persistedState.billingEntities.length === 0) {
-        persistedState.billingEntities = DEFAULT_BILLING_ENTITIES;
       }
     }
     return persistedState;

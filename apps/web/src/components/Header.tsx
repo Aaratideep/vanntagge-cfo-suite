@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useDashboardStore, FIXED_USERS } from '../store/dashboardStore';
+import { useDashboardStore, FIXED_USERS, isDummyOrLegacyUser } from '../store/dashboardStore';
 import { History, X, Shield, Clock, Menu } from 'lucide-react';
 
 interface HeaderProps {
@@ -43,26 +43,18 @@ export const Header: React.FC<HeaderProps> = ({
   const [editName, setEditName] = useState(currentUser?.name || '');
   const [editAvatar, setEditAvatar] = useState(currentUser?.avatar || '');
 
-  useEffect(() => {
-    if (currentUser) {
-      const isAarati = (currentUser.name && (currentUser.name.toLowerCase().includes('aarati') || currentUser.name.toLowerCase().includes('mule'))) ||
-        (currentUser.email && currentUser.email.toLowerCase().includes('aarati')) ||
-        currentUser.email === 'admin@vantage.com';
-      if (isAarati) {
-        useDashboardStore.setState({ currentUser: FIXED_USERS[0] });
-        try {
-          localStorage.setItem('cfo_current_user', JSON.stringify(FIXED_USERS[0]));
-        } catch (e) {}
-      }
+    useEffect(() => {
+    if (currentUser && isDummyOrLegacyUser(currentUser)) {
+      useDashboardStore.setState({ currentUser: FIXED_USERS[0] });
+      try {
+        localStorage.setItem('cfo_current_user', JSON.stringify(FIXED_USERS[0]));
+      } catch (e) {}
     }
   }, [currentUser]);
 
-  if (!currentUser) return null;
+    if (!currentUser) return null;
 
-  const isAaratiCurrent = (currentUser.name && (currentUser.name.toLowerCase().includes('aarati') || currentUser.name.toLowerCase().includes('mule'))) ||
-    (currentUser.email && currentUser.email.toLowerCase().includes('aarati')) ||
-    currentUser.email === 'admin@vantage.com';
-  const effectiveUser = isAaratiCurrent ? FIXED_USERS[0] : currentUser;
+  const effectiveUser = isDummyOrLegacyUser(currentUser) ? FIXED_USERS[0] : currentUser;
 
   const isTarget = (n: any) => (n.targetRoles || ['SUPER_ADMIN', 'ADMIN']).includes(currentUser.role);
   const unreadCount = notifications.filter((n) => !n.isRead && isTarget(n)).length;

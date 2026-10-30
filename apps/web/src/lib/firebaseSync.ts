@@ -10,7 +10,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { useDashboardStore, FIXED_USERS } from '../store/dashboardStore';
+import { useDashboardStore, FIXED_USERS, isDummyOrLegacyUser, sanitizeUsersList } from '../store/dashboardStore';
 import { Lead, Engagement, User, FollowUp, Quotation, EngagementLetter, Client, Notification, AuditLog } from '../types';
 
 let isFirestoreDisabled = false;
@@ -43,35 +43,25 @@ export async function pullDatabaseFromFirebase() {
       fetchCollection<AuditLog>('auditLogs'),
     ]);
 
-    // Sanitize any legacy Aarati Mule records fetched from Firestore
-    const cleanedUsers: User[] = [];
+        // Purge any dummy or legacy users from Firestore
     for (const u of users) {
-      const isAarati = (u.name && (u.name.toLowerCase().includes('aarati') || u.name.toLowerCase().includes('mule'))) ||
-        (u.email && u.email.toLowerCase().includes('aarati')) ||
-        u.email === 'admin@vantage.com';
-      if (isAarati) {
-        const healedUser: User = {
-          ...u,
-          name: 'Tejashree Pawar',
-          email: 'tejashreepawar@gmail.com',
-          designation: 'Managing Partner & Principal CFO',
-          role: 'SUPER_ADMIN',
-          permissions: ['all'],
-        };
-        pushRecordToFirebase('users', u.id, healedUser);
-        if (!cleanedUsers.some(cu => cu.email === 'tejashreepawar@gmail.com')) {
-          cleanedUsers.push(healedUser);
-        }
-      } else {
-        cleanedUsers.push(u);
+      if (isDummyOrLegacyUser(u)) {
+        console.log(`🗑️ Deleting legacy/dummy user from Firestore: ${u.id} (${u.name} - ${u.email})`);
+        deleteRecordFromFirebase('users', u.id);
       }
     }
+
+    // Persist real admins to Firestore
+    pushRecordToFirebase('users', FIXED_USERS[0].id, FIXED_USERS[0]);
+    pushRecordToFirebase('users', FIXED_USERS[1].id, FIXED_USERS[1]);
+
+    const cleanedUsers = sanitizeUsersList(users);
 
     // Update Zustand state
     useDashboardStore.setState({
       leads: leads.length > 0 ? leads : useDashboardStore.getState().leads,
       engagements: engagements.length > 0 ? engagements : useDashboardStore.getState().engagements,
-      users: cleanedUsers.length > 0 ? cleanedUsers : useDashboardStore.getState().users,
+      users: cleanedUsers,
       followUps: followUps.length > 0 ? followUps : useDashboardStore.getState().followUps,
       quotations: quotations.length > 0 ? quotations : useDashboardStore.getState().quotations,
       engagementLetters: engagementLetters.length > 0 ? engagementLetters : useDashboardStore.getState().engagementLetters,

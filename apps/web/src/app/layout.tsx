@@ -1,14 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "../components/QueryProvider";
 import { TaxInvoiceModal } from "../components/TaxInvoiceModal";
 import { AICopilotWidget } from "../components/AICopilotWidget";
 
-const inter = Inter({
+const inter = {
   variable: "--font-inter",
-  subsets: ["latin"],
-});
+};
 
 export const viewport: Viewport = {
   themeColor: "#4f46e5",
@@ -66,7 +64,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`h-full ${inter.variable}`} suppressHydrationWarning>
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
         <meta name="theme-color" content="#4f46e5" />
       </head>
       <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)] font-sans" suppressHydrationWarning>

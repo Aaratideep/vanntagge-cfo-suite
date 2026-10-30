@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useDashboardStore } from '../../store/dashboardStore';
+import { useDashboardStore, FIXED_USERS, isDummyOrLegacyUser, sanitizeUsersList } from '../../store/dashboardStore';
 import { Role } from '../../types';
 import { Plus, Search, UserCheck, Shield, Briefcase, Building2, MoreVertical, X, Check, Lock, ArrowRight, Zap, Sparkles, Mail, Copy, CheckCircle2, Eye, EyeOff, Send, AlertTriangle, Trash2 } from 'lucide-react';
 import { AutomationDashboardView } from './AutomationDashboardView';
@@ -48,35 +48,25 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Self-heal any legacy Aarati Mule user record in database/state on load
+    // Self-heal and purge all dummy users from database/state on load, keeping only real admins and valid provisioned users
   useEffect(() => {
-    const hasAarati = users.some(u => 
-      (u.name && (u.name.toLowerCase().includes('aarati') || u.name.toLowerCase().includes('mule'))) ||
-      (u.email && u.email.toLowerCase().includes('aarati')) ||
-      u.email === 'admin@vantage.com'
-    );
-    if (hasAarati) {
-      const cleaned = users.map(u => {
-        if (
-          (u.name && (u.name.toLowerCase().includes('aarati') || u.name.toLowerCase().includes('mule'))) ||
-          (u.email && u.email.toLowerCase().includes('aarati')) ||
-          u.email === 'admin@vantage.com'
-        ) {
-          return {
-            ...u,
-            name: 'Tejashree Pawar',
-            email: 'tejashreepawar@gmail.com',
-            designation: 'Managing Partner & Principal CFO',
-            role: 'SUPER_ADMIN' as Role,
-            permissions: ['all'],
-          };
-        }
-        return u;
-      });
+    const hasDummyOrLegacy = users.some(isDummyOrLegacyUser);
+    const hasMissingAdmins = !users.some(u => u.email === 'tejashreepawar@gmail.com') ||
+      !users.some(u => u.email === 'kashinathgaikwad844@gmail.com');
+    const hasOldKashinathEmail = users.some(u => u.email === 'kashinathgaikwad305@gmail.com');
+
+    if (hasDummyOrLegacy || hasMissingAdmins || hasOldKashinathEmail) {
+      const dummyAccounts = users.filter(isDummyOrLegacyUser);
+      const cleaned = sanitizeUsersList(users);
       useDashboardStore.setState({ users: cleaned });
-      import('../../lib/firebaseSync').then(({ pushRecordToFirebase }) => {
-        const fixed = cleaned.find(u => u.email === 'tejashreepawar@gmail.com');
-        if (fixed) pushRecordToFirebase('users', fixed.id, fixed);
+
+      // Cleanse from Firestore and persist real admins
+      import('../../lib/firebaseSync').then(({ pushRecordToFirebase, deleteRecordFromFirebase }) => {
+        dummyAccounts.forEach(dummy => {
+          deleteRecordFromFirebase('users', dummy.id);
+        });
+        pushRecordToFirebase('users', FIXED_USERS[0].id, FIXED_USERS[0]);
+        pushRecordToFirebase('users', FIXED_USERS[1].id, FIXED_USERS[1]);
       });
     }
   }, [users]);
@@ -449,7 +439,7 @@ export const UsersView: React.FC<UsersViewProps> = ({ initialSubTab = 'users' })
                   <div className="text-[11px] text-purple-700 font-semibold">Co-Founder & Chief Technology Officer</div>
                 </div>
                 <p className="text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700">Email:</span> kashinathgaikwad305@gmail.com
+                  <span className="font-semibold text-slate-700">Email:</span> kashinathgaikwad844@gmail.com
                 </p>
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Full control over technology infrastructure, security protocols, API pipelines, automated workflows, and AI engines.
