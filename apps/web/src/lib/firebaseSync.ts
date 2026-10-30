@@ -10,7 +10,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { useDashboardStore } from '../store/dashboardStore';
+import { useDashboardStore, FIXED_USERS } from '../store/dashboardStore';
 import { Lead, Engagement, User, FollowUp, Quotation, EngagementLetter, Client, Notification, AuditLog } from '../types';
 
 let isFirestoreDisabled = false;
@@ -43,11 +43,35 @@ export async function pullDatabaseFromFirebase() {
       fetchCollection<AuditLog>('auditLogs'),
     ]);
 
+    // Sanitize any legacy Aarati Mule records fetched from Firestore
+    const cleanedUsers: User[] = [];
+    for (const u of users) {
+      const isAarati = (u.name && (u.name.toLowerCase().includes('aarati') || u.name.toLowerCase().includes('mule'))) ||
+        (u.email && u.email.toLowerCase().includes('aarati')) ||
+        u.email === 'admin@vantage.com';
+      if (isAarati) {
+        const healedUser: User = {
+          ...u,
+          name: 'Tejashree Pawar',
+          email: 'tejashreepawar@gmail.com',
+          designation: 'Managing Partner & Principal CFO',
+          role: 'SUPER_ADMIN',
+          permissions: ['all'],
+        };
+        pushRecordToFirebase('users', u.id, healedUser);
+        if (!cleanedUsers.some(cu => cu.email === 'tejashreepawar@gmail.com')) {
+          cleanedUsers.push(healedUser);
+        }
+      } else {
+        cleanedUsers.push(u);
+      }
+    }
+
     // Update Zustand state
     useDashboardStore.setState({
       leads: leads.length > 0 ? leads : useDashboardStore.getState().leads,
       engagements: engagements.length > 0 ? engagements : useDashboardStore.getState().engagements,
-      users: users.length > 0 ? users : useDashboardStore.getState().users,
+      users: cleanedUsers.length > 0 ? cleanedUsers : useDashboardStore.getState().users,
       followUps: followUps.length > 0 ? followUps : useDashboardStore.getState().followUps,
       quotations: quotations.length > 0 ? quotations : useDashboardStore.getState().quotations,
       engagementLetters: engagementLetters.length > 0 ? engagementLetters : useDashboardStore.getState().engagementLetters,

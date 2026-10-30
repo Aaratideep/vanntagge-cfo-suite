@@ -514,12 +514,16 @@ export const getInitialCurrentUser = (): User | null => {
       if (savedUserStr) {
         const parsed = JSON.parse(savedUserStr);
         if (parsed && parsed.id && parsed.role) {
-          if (parsed.id === 'u-employee' || parsed.id === 'u-client' || parsed.id === 'u-cfo-test') {
-            localStorage.removeItem('cfo_current_user');
+          const isAarati = (parsed.name && (parsed.name.toLowerCase().includes('aarati') || parsed.name.toLowerCase().includes('mule'))) ||
+            (parsed.email && (parsed.email.toLowerCase().includes('aarati') || parsed.email.toLowerCase().includes('aaratimule'))) ||
+            parsed.email === 'admin@vantage.com';
+
+          if (isAarati || parsed.id === 'u-employee' || parsed.id === 'u-client' || parsed.id === 'u-cfo-test') {
+            localStorage.setItem('cfo_current_user', JSON.stringify(FIXED_USERS[0]));
             return FIXED_USERS[0];
           }
           const matched = FIXED_USERS.find(u => u.id === parsed.id || (u.email && u.email.toLowerCase() === parsed.email?.toLowerCase()));
-          return matched ? { ...matched, ...parsed } : parsed;
+          return matched ? { ...matched, ...parsed, name: matched.name, email: matched.email } : parsed;
         }
       }
     } catch (e) {
@@ -4106,7 +4110,16 @@ export const useDashboardStore = create<DashboardState>()(
       return;
     }
 
-    let target = get().users.find((u) => role === 'ADMIN' ? (u.role === 'SUPER_ADMIN' || u.role === 'ADMIN') : u.role === role);
+    let target = get().users.find((u) => {
+      if (role === 'ADMIN') {
+        return (u.role === 'SUPER_ADMIN' || u.role === 'ADMIN') &&
+          !u.name?.toLowerCase().includes('aarati') &&
+          !u.name?.toLowerCase().includes('mule') &&
+          !u.email?.toLowerCase().includes('aarati') &&
+          u.email !== 'admin@vantage.com';
+      }
+      return u.role === role;
+    });
     if (!target) {
       if (role === 'ADMIN') target = FIXED_USERS[0];
       else {
@@ -4139,8 +4152,8 @@ export const useDashboardStore = create<DashboardState>()(
     let matchedUser = get().users.find((u) => u.email.toLowerCase() === cleanEmail);
 
     if (!matchedUser) {
-      if (cleanEmail === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'tejashreepawar@gmail.com' || cleanEmail === 'tejashreepawar@gmail.com' || cleanEmail === 'tejashree' || cleanEmail.includes('tejashree') || cleanEmail === 'admin@vantage.com' || cleanEmail === 'admin@vanntagge.com') {
-        matchedUser = get().users.find((u) => (u.email.toLowerCase() === 'tejashreepawar@gmail.com' || u.email.toLowerCase() === 'tejashreepawar@gmail.com')) || get().users.find((u) => u.role === 'SUPER_ADMIN' || u.role === 'ADMIN');
+      if (cleanEmail === 'admin' || cleanEmail.includes('admin') || cleanEmail === 'tejashreepawar@gmail.com' || cleanEmail === 'tejashree' || cleanEmail.includes('tejashree') || cleanEmail === 'admin@vantage.com' || cleanEmail === 'admin@vanntagge.com') {
+        matchedUser = get().users.find((u) => u.email.toLowerCase() === 'tejashreepawar@gmail.com') || FIXED_USERS[0];
       } else if (cleanEmail === 'kashinath' || cleanEmail.includes('kashinath') || cleanEmail === 'kashinathgaikwad844@gmail.com' || cleanEmail === 'kashinathgaikwad305@gmail.com') {
         matchedUser = get().users.find((u) => (u.email.toLowerCase() === 'kashinathgaikwad844@gmail.com' || u.email.toLowerCase() === 'kashinathgaikwad305@gmail.com')) || get().users[1];
       } else if (cleanEmail === 'employee' || cleanEmail.includes('employee')) {
@@ -4233,20 +4246,21 @@ export const useDashboardStore = create<DashboardState>()(
   },
 
   deleteUser: (id) => {
-    const user = get().users.find((u) => u.id === id);
+    const user = get().users.find((u) => u.id === id || u.email?.toLowerCase() === id.toLowerCase());
     if (user) {
+      const targetId = user.id;
       set((state) => {
         const isCurrentDeleted = state.currentUser && (
-          state.currentUser.id === id ||
+          state.currentUser.id === targetId ||
           state.currentUser.email.toLowerCase().trim() === user.email.toLowerCase().trim()
         );
         return {
-          users: state.users.filter((u) => u.id !== id),
-          currentUser: isCurrentDeleted ? null : state.currentUser,
+          users: state.users.filter((u) => u.id !== targetId && u.email?.toLowerCase() !== user.email?.toLowerCase()),
+          currentUser: isCurrentDeleted ? FIXED_USERS[0] : state.currentUser,
         };
       });
       get().addAuditLog('USER_DELETED', `User ${user.name} (${user.email}) deleted.`);
-      deleteRecordFromFirebase('users', id);
+      deleteRecordFromFirebase('users', targetId);
     }
   },
 
@@ -5592,7 +5606,7 @@ export const useDashboardStore = create<DashboardState>()(
 }),
 {
   name: 'cfo-dashboard-storage',
-  version: 5,
+  version: 6,
   storage: createJSONStorage(() => storage),
   partialize: (state) => ({
     currentUser: state.currentUser,
@@ -5620,6 +5634,57 @@ export const useDashboardStore = create<DashboardState>()(
   }),
   onRehydrateStorage: () => (state) => {
     if (state) {
+      // 1. Sanitize currentUser if legacy Aarati Mule or admin@vantage.com
+      if (state.currentUser) {
+        const isAarati = (state.currentUser.name && (state.currentUser.name.toLowerCase().includes('aarati') || state.currentUser.name.toLowerCase().includes('mule'))) ||
+          (state.currentUser.email && state.currentUser.email.toLowerCase().includes('aarati')) ||
+          state.currentUser.email === 'admin@vantage.com';
+        if (isAarati) {
+          state.currentUser = { ...FIXED_USERS[0] };
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.setItem('cfo_current_user', JSON.stringify(FIXED_USERS[0]));
+            } catch (e) {}
+          }
+        }
+      }
+
+      // 2. Sanitize and cleanse users array: Replace Aarati Mule with Tejashree Pawar and deduplicate
+      if (state.users && Array.isArray(state.users)) {
+        const sanitizedUsers: User[] = [];
+        for (const u of state.users) {
+          const isAarati = (u.name && (u.name.toLowerCase().includes('aarati') || u.name.toLowerCase().includes('mule'))) ||
+            (u.email && u.email.toLowerCase().includes('aarati')) ||
+            u.email === 'admin@vantage.com';
+          if (isAarati) {
+            if (!sanitizedUsers.some(existing => existing.email === 'tejashreepawar@gmail.com')) {
+              sanitizedUsers.push({ ...FIXED_USERS[0] });
+            }
+          } else {
+            sanitizedUsers.push(u);
+          }
+        }
+        if (!sanitizedUsers.some(u => u.email === 'tejashreepawar@gmail.com')) {
+          sanitizedUsers.unshift({ ...FIXED_USERS[0] });
+        }
+        if (!sanitizedUsers.some(u => u.email === 'kashinathgaikwad844@gmail.com' || u.email === 'kashinathgaikwad305@gmail.com')) {
+          sanitizedUsers.push({ ...FIXED_USERS[1] });
+        }
+        state.users = sanitizedUsers;
+      } else {
+        state.users = [...FIXED_USERS];
+      }
+
+      // 3. Sanitize adminSettings
+      if (state.adminSettings) {
+        if (state.adminSettings.adminName && (state.adminSettings.adminName.toLowerCase().includes('aarati') || state.adminSettings.adminName.toLowerCase().includes('mule'))) {
+          state.adminSettings.adminName = 'Tejashree Pawar';
+        }
+        if (state.adminSettings.adminEmail && (state.adminSettings.adminEmail.toLowerCase().includes('aarati') || state.adminSettings.adminEmail === 'admin@vantage.com')) {
+          state.adminSettings.adminEmail = 'kashinathgaikwad844@gmail.com';
+        }
+      }
+
       if (!state.billingEntities || state.billingEntities.length === 0) {
         state.billingEntities = DEFAULT_BILLING_ENTITIES;
       }
@@ -5627,6 +5692,33 @@ export const useDashboardStore = create<DashboardState>()(
   },
   migrate: (persistedState: any, version: number) => {
     if (persistedState) {
+      if (persistedState.currentUser) {
+        const isAarati = (persistedState.currentUser.name && (persistedState.currentUser.name.toLowerCase().includes('aarati') || persistedState.currentUser.name.toLowerCase().includes('mule'))) ||
+          (persistedState.currentUser.email && persistedState.currentUser.email.toLowerCase().includes('aarati')) ||
+          persistedState.currentUser.email === 'admin@vantage.com';
+        if (isAarati) {
+          persistedState.currentUser = { ...FIXED_USERS[0] };
+        }
+      }
+      if (persistedState.users && Array.isArray(persistedState.users)) {
+        persistedState.users = persistedState.users.map((u: any) => {
+          const isAarati = (u.name && (u.name.toLowerCase().includes('aarati') || u.name.toLowerCase().includes('mule'))) ||
+            (u.email && u.email.toLowerCase().includes('aarati')) ||
+            u.email === 'admin@vantage.com';
+          if (isAarati) {
+            return { ...FIXED_USERS[0] };
+          }
+          return u;
+        });
+      }
+      if (persistedState.adminSettings) {
+        if (persistedState.adminSettings.adminName && (persistedState.adminSettings.adminName.toLowerCase().includes('aarati') || persistedState.adminSettings.adminName.toLowerCase().includes('mule'))) {
+          persistedState.adminSettings.adminName = 'Tejashree Pawar';
+        }
+        if (persistedState.adminSettings.adminEmail && (persistedState.adminSettings.adminEmail.toLowerCase().includes('aarati') || persistedState.adminSettings.adminEmail === 'admin@vantage.com')) {
+          persistedState.adminSettings.adminEmail = 'kashinathgaikwad844@gmail.com';
+        }
+      }
       if (!persistedState.billingEntities || persistedState.billingEntities.length === 0) {
         persistedState.billingEntities = DEFAULT_BILLING_ENTITIES;
       }

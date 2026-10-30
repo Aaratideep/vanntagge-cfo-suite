@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { useDashboardStore } from '../store/dashboardStore';
+import { useDashboardStore, FIXED_USERS } from '../store/dashboardStore';
 import { History, X, Shield, Clock, Menu } from 'lucide-react';
 
 interface HeaderProps {
@@ -43,7 +43,26 @@ export const Header: React.FC<HeaderProps> = ({
   const [editName, setEditName] = useState(currentUser?.name || '');
   const [editAvatar, setEditAvatar] = useState(currentUser?.avatar || '');
 
+  useEffect(() => {
+    if (currentUser) {
+      const isAarati = (currentUser.name && (currentUser.name.toLowerCase().includes('aarati') || currentUser.name.toLowerCase().includes('mule'))) ||
+        (currentUser.email && currentUser.email.toLowerCase().includes('aarati')) ||
+        currentUser.email === 'admin@vantage.com';
+      if (isAarati) {
+        useDashboardStore.setState({ currentUser: FIXED_USERS[0] });
+        try {
+          localStorage.setItem('cfo_current_user', JSON.stringify(FIXED_USERS[0]));
+        } catch (e) {}
+      }
+    }
+  }, [currentUser]);
+
   if (!currentUser) return null;
+
+  const isAaratiCurrent = (currentUser.name && (currentUser.name.toLowerCase().includes('aarati') || currentUser.name.toLowerCase().includes('mule'))) ||
+    (currentUser.email && currentUser.email.toLowerCase().includes('aarati')) ||
+    currentUser.email === 'admin@vantage.com';
+  const effectiveUser = isAaratiCurrent ? FIXED_USERS[0] : currentUser;
 
   const isTarget = (n: any) => (n.targetRoles || ['SUPER_ADMIN', 'ADMIN']).includes(currentUser.role);
   const unreadCount = notifications.filter((n) => !n.isRead && isTarget(n)).length;
@@ -254,7 +273,7 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Active Profile Info */}
           <div className="flex items-center gap-2.5 shrink-0">
             <div className="text-right hidden sm:block leading-tight whitespace-nowrap">
-              <div className="text-xs font-bold text-slate-800">{currentUser.name}</div>
+              <div className="text-xs font-bold text-slate-800">{effectiveUser.name}</div>
               <button
                 onClick={() => logoutUser()}
                 aria-label="Log out of session" className="text-[10px] text-red-600 hover:underline font-semibold cursor-pointer"
@@ -276,9 +295,9 @@ export const Header: React.FC<HeaderProps> = ({
                 className="w-full h-full object-cover"
                 alt="Profile Avatar"
                 referrerPolicy="no-referrer"
-                src={currentUser.avatar || "https://ui-avatars.com/api/?name=" + encodeURIComponent(currentUser.name) + "&background=0D8ABC&color=fff"}
+                src={effectiveUser.avatar || "https://ui-avatars.com/api/?name=" + encodeURIComponent(effectiveUser.name) + "&background=0D8ABC&color=fff"}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(currentUser.name) + "&background=0D8ABC&color=fff";
+                  (e.target as HTMLImageElement).src = "https://ui-avatars.com/api/?name=" + encodeURIComponent(effectiveUser.name) + "&background=0D8ABC&color=fff";
                 }}
               />
             </div>
