@@ -33,7 +33,8 @@ if (isFirebaseConfigured) {
     // Only initialize Firestore if explicitly enabled in env, avoiding unprovisioned database retry loops
     if (process.env.NEXT_PUBLIC_ENABLE_FIRESTORE === 'true') {
       try {
-        db = getFirestore(app);
+        const databaseId = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_ID;
+        db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
       } catch (err) {
         console.warn('⚠️ Firestore initialization skipped. Running in Local State Mode.');
         db = null;
